@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 모든 파일에 대해 인증된 사용자만 접근 가능
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 사용자별 폴더 구조
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 문서별 파일
+    match /documents/{documentId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+} 

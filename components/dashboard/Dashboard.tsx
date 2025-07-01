@@ -1,0 +1,140 @@
+'use client'
+
+import { useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { DocumentEditor } from './DocumentEditor'
+import { BulletinBoard } from './BulletinBoard'
+import { PostViewer } from './PostViewer'
+import { Sidebar } from './Sidebar'
+import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
+
+type ViewMode = 'list' | 'view' | 'edit' | 'create'
+
+export function Dashboard() {
+  const { user, signOut } = useAuth()
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+    }
+  }
+
+  const handleSelectPost = (postId: string) => {
+    setSelectedPostId(postId)
+    setViewMode('view')
+  }
+
+  const handleEditPost = (postId: string) => {
+    setEditingPostId(postId)
+    setViewMode('edit')
+  }
+
+  const handleCreatePost = () => {
+    setEditingPostId(null)
+    setViewMode('create')
+  }
+
+  const handleBackToList = () => {
+    setViewMode('list')
+    setSelectedPostId(null)
+    setEditingPostId(null)
+  }
+
+  const handleBackToView = () => {
+    setViewMode('view')
+    setEditingPostId(null)
+  }
+
+  return (
+    <div className="h-screen flex bg-gray-50">
+      {/* 사이드바 */}
+      <Sidebar 
+        onSignOut={handleSignOut}
+        user={user}
+      />
+      
+      {/* 메인 콘텐츠 */}
+      <div className="flex-1 flex flex-col">
+        {/* 헤더 */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Cowork Platform
+            </h1>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">
+                {user?.email}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="btn-secondary text-sm"
+              >
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* 콘텐츠 영역 */}
+        <div className="flex-1 flex">
+          {viewMode === 'list' && (
+            <>
+              {/* 게시판 목록 */}
+              <div className="w-96 bg-white border-r border-gray-200">
+                <BulletinBoard 
+                  onSelectPost={handleSelectPost}
+                  selectedPostId={selectedPostId}
+                  onCreatePost={handleCreatePost}
+                />
+              </div>
+
+              {/* 게시글 뷰어 */}
+              <div className="flex-1">
+                {selectedPostId ? (
+                  <PostViewer 
+                    postId={selectedPostId}
+                    onEditPost={handleEditPost}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-medium mb-2">게시글을 선택하세요</h3>
+                      <p className="text-sm">왼쪽에서 게시판을 선택하고 게시글을 확인해보세요.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {viewMode === 'view' && selectedPostId && (
+            <div className="flex-1">
+              <PostViewer 
+                postId={selectedPostId}
+                onEditPost={handleEditPost}
+                onBackToList={handleBackToList}
+              />
+            </div>
+          )}
+
+          {(viewMode === 'edit' || viewMode === 'create') && (
+            <div className="flex-1">
+              <DocumentEditor 
+                documentId={editingPostId || 'new'}
+                isPostEditor={true}
+                onBack={viewMode === 'edit' ? handleBackToView : handleBackToList}
+                onSave={handleBackToList}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+} 

@@ -206,11 +206,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
     }
 
     try {
+      // 임시로 단순한 쿼리 사용 (인덱스 오류 해결을 위해)
       const q = query(
         collection(db, 'bulletinPosts'),
-        where('bulletinId', '==', bulletinId),
-        orderBy('isPinned', 'desc'),
-        orderBy('createdAt', 'desc')
+        where('bulletinId', '==', bulletinId)
       )
       
       const querySnapshot = await getDocs(q)
@@ -233,6 +232,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
         })
+      })
+      
+      // 클라이언트 사이드에서 정렬
+      postData.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) {
+          return b.isPinned ? 1 : -1
+        }
+        return b.createdAt.getTime() - a.createdAt.getTime()
       })
       
       setPosts(postData)

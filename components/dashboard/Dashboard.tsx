@@ -15,6 +15,7 @@ export function Dashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
 
   const handleSignOut = async () => {
     try {
@@ -37,6 +38,10 @@ export function Dashboard() {
   const handleCreatePost = () => {
     setEditingPostId(null)
     setViewMode('create')
+  }
+
+  const handleBulletinSelect = (bulletinId: string) => {
+    setSelectedBulletinId(bulletinId)
   }
 
   const handleBackToList = () => {
@@ -90,6 +95,7 @@ export function Dashboard() {
                   onSelectPost={handleSelectPost}
                   selectedPostId={selectedPostId}
                   onCreatePost={handleCreatePost}
+                  onBulletinSelect={handleBulletinSelect}
                 />
               </div>
 
@@ -128,6 +134,7 @@ export function Dashboard() {
               <DocumentEditor 
                 documentId={editingPostId || 'new'}
                 isPostEditor={true}
+                bulletinId={selectedBulletinId || undefined}
                 onBack={viewMode === 'edit' ? handleBackToView : handleBackToList}
                 onSave={handleBackToList}
               />

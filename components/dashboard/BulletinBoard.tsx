@@ -22,6 +22,7 @@ interface BulletinBoardProps {
   onSelectPost: (postId: string) => void
   selectedPostId: string | null
   onCreatePost: () => void
+  onBulletinSelect?: (bulletinId: string) => void
 }
 
 // 테스트 모드 확인
@@ -130,7 +131,7 @@ const mockPosts: BulletinPost[] = [
   },
 ]
 
-export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: BulletinBoardProps) {
+export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBulletinSelect }: BulletinBoardProps) {
   const { user } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [posts, setPosts] = useState<BulletinPost[]>([])
@@ -287,7 +288,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
       return (
         <div key={bulletin.id}>
           <div
-            onClick={() => setSelectedBulletinId(bulletin.id)}
+            onClick={() => {
+              setSelectedBulletinId(bulletin.id)
+              onBulletinSelect?.(bulletin.id)
+            }}
             className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-colors ${
               isSelected ? 'bg-primary-50 text-primary-700' : 'hover:bg-gray-100'
             }`}

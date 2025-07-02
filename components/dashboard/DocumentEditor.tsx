@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Document } from '@/types/firebase'
@@ -23,6 +23,7 @@ import {
 interface DocumentEditorProps {
   documentId: string
   isPostEditor?: boolean
+  bulletinId?: string // 게시판 ID 추가
   onBack?: () => void
   onSave?: () => void
 }
@@ -30,7 +31,7 @@ interface DocumentEditorProps {
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 
-export function DocumentEditor({ documentId, isPostEditor, onBack, onSave }: DocumentEditorProps) {
+export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, onSave }: DocumentEditorProps) {
   const { user } = useAuth()
   const [document, setDocument] = useState<Document | null>(null)
   const [title, setTitle] = useState('')
@@ -145,7 +146,29 @@ export function DocumentEditor({ documentId, isPostEditor, onBack, onSave }: Doc
       }
 
       try {
-        // 실제 구현에서는 Firestore에 새 게시글을 저장
+        // Firestore에 새 게시글을 저장
+        if (!bulletinId) {
+          toast.error('게시판을 선택해주세요.')
+          setSaving(false)
+          return
+        }
+
+        const postData = {
+          bulletinId: bulletinId,
+          title: title.trim(),
+          content: content,
+          userId: user.uid,
+          authorName: user.displayName || user.email || '익명',
+          isPinned: false,
+          isLocked: false,
+          viewCount: 0,
+          likeCount: 0,
+          tags: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+
+        await addDoc(collection(db, 'bulletinPosts'), postData)
         toast.success('새 게시글이 작성되었습니다.')
         if (onSave) onSave()
       } catch (error: any) {

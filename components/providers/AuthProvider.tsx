@@ -63,6 +63,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', user.uid))
           if (userDoc.exists()) {
             setUserProfile(userDoc.data() as UserProfile)
+          } else {
+            // 프로필이 없으면 자동 생성
+            const userProfile: UserProfile = {
+              id: user.uid,
+              email: user.email || '',
+              name: user.displayName || user.email?.split('@')[0] || '사용자',
+              avatarUrl: user.photoURL || undefined,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+            
+            try {
+              await setDoc(doc(db, 'users', user.uid), userProfile)
+              setUserProfile(userProfile)
+            } catch (createError) {
+              console.error('Error creating user profile:', createError)
+            }
           }
         } catch (error) {
           console.error('Error fetching user profile:', error)

@@ -15,6 +15,7 @@ import {
   HeartIcon,
   StarIcon,
   LockClosedIcon,
+  FolderPlusIcon,
 } from '@heroicons/react/24/outline'
 
 interface BulletinBoardProps {
@@ -136,6 +137,12 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
   const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
   const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [showCreateBulletin, setShowCreateBulletin] = useState(false)
+  const [newBulletin, setNewBulletin] = useState({
+    title: '',
+    description: '',
+    parentId: '',
+  })
 
   useEffect(() => {
     if (user) {
@@ -319,6 +326,52 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
     })
   }
 
+  const handleCreateBulletin = async () => {
+    if (!newBulletin.title.trim()) {
+      toast.error('게시판 제목을 입력해주세요.')
+      return
+    }
+
+    try {
+      const bulletinData = {
+        title: newBulletin.title.trim(),
+        description: newBulletin.description.trim(),
+        parentId: newBulletin.parentId || null,
+        level: newBulletin.parentId ? 1 : 0,
+        order: bulletins.length + 1,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+
+      if (isTestMode) {
+        const newBulletinItem: Bulletin = {
+          id: `bulletin-${Date.now()}`,
+          title: bulletinData.title,
+          description: bulletinData.description,
+          parentId: bulletinData.parentId || undefined,
+          level: bulletinData.level,
+          order: bulletinData.order,
+          isActive: bulletinData.isActive,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        setBulletins([...bulletins, newBulletinItem])
+        toast.success('게시판이 생성되었습니다.')
+      } else {
+        const docRef = await addDoc(collection(db, 'bulletins'), bulletinData)
+        toast.success('게시판이 생성되었습니다.')
+        fetchBulletins() // 게시판 목록 새로고침
+      }
+
+      setNewBulletin({ title: '', description: '', parentId: '' })
+      setShowCreateBulletin(false)
+    } catch (error: any) {
+      toast.error('게시판 생성에 실패했습니다.')
+      console.error('Error creating bulletin:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-4">
@@ -337,17 +390,92 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">게시판</h2>
-          {selectedBulletinId && (
+          <div className="flex items-center space-x-2">
             <button
-              onClick={onCreatePost}
+              onClick={() => setShowCreateBulletin(true)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="새 게시글 작성"
+              title="새 게시판 생성"
             >
-              <PlusIcon className="w-5 h-5" />
+              <FolderPlusIcon className="w-5 h-5" />
             </button>
-          )}
+            {selectedBulletinId && (
+              <button
+                onClick={onCreatePost}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="새 게시글 작성"
+              >
+                <PlusIcon className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* 게시판 생성 모달 */}
+      {showCreateBulletin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <h3 className="text-lg font-semibold mb-4">새 게시판 생성</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  게시판 제목 *
+                </label>
+                <input
+                  type="text"
+                  value={newBulletin.title}
+                  onChange={(e) => setNewBulletin({ ...newBulletin, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="게시판 제목을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  설명
+                </label>
+                <textarea
+                  value={newBulletin.description}
+                  onChange={(e) => setNewBulletin({ ...newBulletin, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="게시판 설명을 입력하세요"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  상위 게시판 (선택사항)
+                </label>
+                <select
+                  value={newBulletin.parentId}
+                  onChange={(e) => setNewBulletin({ ...newBulletin, parentId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">최상위 게시판</option>
+                  {bulletins.filter(b => !b.parentId).map((bulletin) => (
+                    <option key={bulletin.id} value={bulletin.id}>
+                      {bulletin.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowCreateBulletin(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateBulletin}
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex">
         {/* 게시판 목록 */}

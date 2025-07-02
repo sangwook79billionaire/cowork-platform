@@ -165,9 +165,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost }: Bu
 
     try {
       const q = query(
-        collection(db, 'bulletins'),
-        where('isActive', '==', true),
-        orderBy('order', 'asc')
+        collection(db, 'bulletins')
+        // 임시로 복합 쿼리 제거 (인덱스 빌드 중)
+        // where('isActive', '==', true),
+        // orderBy('order', 'asc')
       )
       
       const querySnapshot = await getDocs(q)

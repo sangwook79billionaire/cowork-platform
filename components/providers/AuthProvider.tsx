@@ -65,14 +65,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile(userDoc.data() as UserProfile)
           } else {
             // 프로필이 없으면 자동 생성
-            const userProfile: UserProfile = {
+            const userProfileData: any = {
               id: user.uid,
               email: user.email || '',
               name: user.displayName || user.email?.split('@')[0] || '사용자',
-              avatarUrl: user.photoURL || undefined,
               createdAt: new Date(),
               updatedAt: new Date(),
             }
+            
+            // avatarUrl이 있을 때만 추가
+            if (user.photoURL) {
+              userProfileData.avatarUrl = user.photoURL
+            }
+            
+            const userProfile: UserProfile = userProfileData
             
             try {
               await setDoc(doc(db, 'users', user.uid), userProfile)

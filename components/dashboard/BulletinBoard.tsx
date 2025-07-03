@@ -215,6 +215,7 @@ function SortableBulletinItem({
                   onEdit()
                 } else {
                   // 편집 불가능한 경우 선택만
+                  console.log('📋 Title clicked for selecting bulletin:', bulletin.title)
                   onSelect()
                 }
               }}
@@ -673,8 +674,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           childCount={childCount}
           onToggleExpansion={() => toggleBulletinExpansion(bulletin.id)}
           onSelect={() => {
+            console.log('📋 Selecting bulletin:', bulletin.id, bulletin.title)
             setSelectedBulletinId(bulletin.id)
             onBulletinSelect?.(bulletin.id)
+            // 게시판 선택 시 해당 게시판의 게시글 가져오기
+            fetchPosts(bulletin.id)
           }}
           onEdit={() => setEditingBulletin(bulletin)}
           onDelete={() => handleDeleteBulletin(bulletin.id)}

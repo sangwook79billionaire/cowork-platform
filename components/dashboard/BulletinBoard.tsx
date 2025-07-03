@@ -212,6 +212,12 @@ function SortableBulletinItem({
               )}
               {bulletin.title}
             </h3>
+            {/* 수정 가능한 게시판 표시 */}
+            {(isAdmin || (user && bulletin.userId === user.uid)) && (
+              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200">
+                {isAdmin ? '관리' : '내 게시판'}
+              </span>
+            )}
             {hasChildren && (
               <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
                 {childCount}
@@ -236,16 +242,17 @@ function SortableBulletinItem({
 
         {/* 수정 권한 확인 (admin 또는 게시판 생성자) */}
         {(isAdmin || (user && bulletin.userId === user.uid)) && (
-          <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
+          <div className="flex-shrink-0 flex items-center space-x-2 ml-3">
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 onEdit()
               }}
-              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="게시판 수정"
+              className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200 border border-transparent hover:border-blue-200"
+              title={isAdmin ? "게시판 수정 (관리자)" : "게시판 수정 (내가 만든 게시판)"}
             >
-              <PencilIcon className="w-3 h-3" />
+              <PencilIcon className="w-4 h-4" />
+              <span className="text-xs font-medium">수정</span>
             </button>
             {isAdmin && (
               <button
@@ -253,10 +260,11 @@ function SortableBulletinItem({
                   e.stopPropagation()
                   onDelete()
                 }}
-                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                title="게시판 삭제"
+                className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 border border-transparent hover:border-red-200"
+                title="게시판 삭제 (관리자만 가능)"
               >
-                <TrashIcon className="w-3 h-3" />
+                <TrashIcon className="w-4 h-4" />
+                <span className="text-xs font-medium">삭제</span>
               </button>
             )}
           </div>
@@ -1068,7 +1076,24 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       {editingBulletin && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 max-w-md">
-            <h3 className="text-lg font-semibold mb-4">게시판 수정</h3>
+            <div className="flex items-center space-x-2 mb-4">
+              <PencilIcon className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">게시판 수정</h3>
+            </div>
+            
+            {/* 권한 안내 */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center space-x-2 text-sm text-blue-700">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>
+                  {isAdmin 
+                    ? "관리자 권한으로 수정 중입니다" 
+                    : "내가 만든 게시판을 수정 중입니다"
+                  }
+                </span>
+              </div>
+            </div>
+            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1104,9 +1129,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               </button>
               <button
                 onClick={() => handleEditBulletin(editingBulletin)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors flex items-center space-x-1"
               >
-                수정
+                <PencilIcon className="w-4 h-4" />
+                <span>수정 완료</span>
               </button>
             </div>
           </div>
@@ -1165,19 +1191,33 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* 게시판 목록 */}
         <div className="w-full lg:w-full border-b lg:border-b-0 lg:border-r border-gray-200">
-          {/* 게시판 구조 안내 */}
+          {/* 게시판 구조 및 수정 안내 */}
           <div className="p-3 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center space-x-2 text-xs text-gray-600">
-              <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
-              <span>최상위 게시판</span>
-              <div className="w-3 h-3 bg-blue-400 rounded-sm ml-4"></div>
-              <span>1단계 하위</span>
-              <div className="w-2 h-2 bg-blue-300 rounded-sm ml-4"></div>
-              <span>2단계 하위</span>
-              <div className="w-1.5 h-1.5 bg-green-400 rounded-sm ml-4"></div>
-              <span>3단계 하위</span>
-              <div className="w-1 h-1 bg-purple-400 rounded-sm ml-4"></div>
-              <span>4단계+ 하위</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-xs text-gray-600">
+                <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+                <span>최상위 게시판</span>
+                <div className="w-3 h-3 bg-blue-400 rounded-sm ml-4"></div>
+                <span>1단계 하위</span>
+                <div className="w-2 h-2 bg-blue-300 rounded-sm ml-4"></div>
+                <span>2단계 하위</span>
+                <div className="w-1.5 h-1.5 bg-green-400 rounded-sm ml-4"></div>
+                <span>3단계 하위</span>
+                <div className="w-1 h-1 bg-purple-400 rounded-sm ml-4"></div>
+                <span>4단계+ 하위</span>
+              </div>
+              
+              {/* 수정 방법 안내 */}
+              <div className="flex items-center space-x-3 text-xs text-gray-500">
+                <div className="flex items-center space-x-1">
+                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200">내 게시판</span>
+                  <span>또는</span>
+                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200">관리</span>
+                  <span>→</span>
+                  <PencilIcon className="w-3 h-3 text-blue-600" />
+                  <span>수정 버튼 클릭</span>
+                </div>
+              </div>
             </div>
           </div>
           <div className="p-4 h-full overflow-y-auto overflow-x-auto">

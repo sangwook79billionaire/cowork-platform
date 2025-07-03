@@ -92,28 +92,15 @@ export function Dashboard() {
         {/* 콘텐츠 영역 */}
         <div className="flex-1 flex flex-col lg:flex-row">
           {viewMode === 'list' && (
-            <>
-              {/* 게시판 목록 - 더 큰 공간 할당 */}
-              <div className="w-full lg:w-2/3 xl:w-3/5 bg-white border-b lg:border-b-0 lg:border-r border-gray-200">
-                <BulletinBoard 
-                  onSelectPost={handleSelectPost}
-                  selectedPostId={selectedPostId}
-                  onCreatePost={handleCreatePost}
-                  onBulletinSelect={handleBulletinSelect}
-                  onRefreshPosts={handleRefreshPosts}
-                />
-              </div>
-
-              {/* 게시글 뷰어 - 게시글이 선택된 경우에만 표시 */}
-              {selectedPostId && (
-                <div className="w-full lg:w-1/3 xl:w-2/5">
-                  <PostViewer 
-                    postId={selectedPostId}
-                    onEditPost={handleEditPost}
-                  />
-                </div>
-              )}
-            </>
+            <div className="w-full bg-white">
+              <BulletinBoard 
+                onSelectPost={handleSelectPost}
+                selectedPostId={selectedPostId}
+                onCreatePost={handleCreatePost}
+                onBulletinSelect={handleBulletinSelect}
+                onRefreshPosts={handleRefreshPosts}
+              />
+            </div>
           )}
 
           {viewMode === 'view' && selectedPostId && (

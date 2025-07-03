@@ -140,32 +140,57 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
     }
 
     try {
-      const docRef = doc(db, 'documents', documentId)
+      // 게시글 편집기인 경우 bulletinPosts 컬렉션에서 가져오기
+      const collectionName = isPostEditor ? 'bulletinPosts' : 'documents'
+      const docRef = doc(db, collectionName, documentId)
       const docSnap = await getDoc(docRef)
 
       if (docSnap.exists()) {
         const data = docSnap.data()
-        const documentData: Document = {
-          id: docSnap.id,
-          title: data.title,
-          content: data.content,
-          userId: data.userId,
-          isPublic: data.isPublic,
-          category: data.category,
-          tags: data.tags,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
+        
+        if (isPostEditor) {
+          // 게시글 데이터 구조
+          const postData = {
+            id: docSnap.id,
+            title: data.title,
+            content: data.content,
+            userId: data.userId,
+            authorName: data.authorName,
+            bulletinId: data.bulletinId,
+            isPinned: data.isPinned,
+            isLocked: data.isLocked,
+            viewCount: data.viewCount,
+            likeCount: data.likeCount,
+            tags: data.tags,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate() || new Date(),
+          }
+          setDocument(postData as any)
+          setTitle(postData.title)
+          setContent(postData.content)
+        } else {
+          // 일반 문서 데이터 구조
+          const documentData: Document = {
+            id: docSnap.id,
+            title: data.title,
+            content: data.content,
+            userId: data.userId,
+            isPublic: data.isPublic,
+            category: data.category,
+            tags: data.tags,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate() || new Date(),
+          }
+          setDocument(documentData)
+          setTitle(documentData.title)
+          setContent(documentData.content)
         }
-
-        setDocument(documentData)
-        setTitle(documentData.title)
-        setContent(documentData.content)
         setIsEditorInitialized(false)
       } else {
-        toast.error('문서를 찾을 수 없습니다.')
+        toast.error(isPostEditor ? '게시글을 찾을 수 없습니다.' : '문서를 찾을 수 없습니다.')
       }
     } catch (error: any) {
-      toast.error('문서를 불러오는데 실패했습니다.')
+      toast.error(isPostEditor ? '게시글을 불러오는데 실패했습니다.' : '문서를 불러오는데 실패했습니다.')
       console.error('Error fetching document:', error)
     } finally {
       setLoading(false)
@@ -255,14 +280,32 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
     }
 
     try {
-      const docRef = doc(db, 'documents', documentId)
-      await updateDoc(docRef, {
-        title,
-        content,
-        updatedAt: serverTimestamp()
-      })
+      // 게시글 편집기인 경우 bulletinPosts 컬렉션에 저장
+      const collectionName = isPostEditor ? 'bulletinPosts' : 'documents'
+      const docRef = doc(db, collectionName, documentId)
+      
+      if (isPostEditor) {
+        // 게시글 업데이트
+        await updateDoc(docRef, {
+          title,
+          content,
+          updatedAt: serverTimestamp()
+        })
+      } else {
+        // 일반 문서 업데이트
+        await updateDoc(docRef, {
+          title,
+          content,
+          updatedAt: serverTimestamp()
+        })
+      }
 
       toast.success('저장되었습니다.')
+      
+      // 게시글인 경우 목록 새로고침
+      if (isPostEditor && onRefreshPosts) {
+        onRefreshPosts()
+      }
     } catch (error: any) {
       toast.error('저장에 실패했습니다.')
       console.error('Error saving document:', error)

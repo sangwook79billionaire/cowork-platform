@@ -23,6 +23,7 @@ interface BulletinBoardProps {
   selectedPostId: string | null
   onCreatePost: () => void
   onBulletinSelect?: (bulletinId: string) => void
+  onRefreshPosts?: () => void
 }
 
 // 테스트 모드 확인
@@ -131,7 +132,7 @@ const mockPosts: BulletinPost[] = [
   },
 ]
 
-export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBulletinSelect }: BulletinBoardProps) {
+export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBulletinSelect, onRefreshPosts }: BulletinBoardProps) {
   const { user } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [posts, setPosts] = useState<BulletinPost[]>([])
@@ -139,6 +140,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [showCreateBulletin, setShowCreateBulletin] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [newBulletin, setNewBulletin] = useState({
     title: '',
     description: '',
@@ -155,7 +157,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     if (selectedBulletinId) {
       fetchPosts(selectedBulletinId)
     }
-  }, [selectedBulletinId])
+  }, [selectedBulletinId, refreshTrigger])
 
   const fetchBulletins = async () => {
     if (isTestMode) {
@@ -336,6 +338,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         </div>
       )
     })
+  }
+
+  const handleRefreshPosts = () => {
+    setRefreshTrigger(prev => prev + 1)
   }
 
   const handleCreateBulletin = async () => {

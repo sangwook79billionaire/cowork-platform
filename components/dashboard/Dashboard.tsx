@@ -44,6 +44,10 @@ export function Dashboard() {
     setSelectedBulletinId(bulletinId)
   }
 
+  const handleRefreshPosts = () => {
+    // BulletinBoard 내부에서 직접 처리됨
+  }
+
   const handleBackToList = () => {
     setViewMode('list')
     setSelectedPostId(null)
@@ -96,6 +100,7 @@ export function Dashboard() {
                   selectedPostId={selectedPostId}
                   onCreatePost={handleCreatePost}
                   onBulletinSelect={handleBulletinSelect}
+                  onRefreshPosts={handleRefreshPosts}
                 />
               </div>
 
@@ -137,6 +142,7 @@ export function Dashboard() {
                 bulletinId={selectedBulletinId || undefined}
                 onBack={viewMode === 'edit' ? handleBackToView : handleBackToList}
                 onSave={handleBackToList}
+                onRefreshPosts={handleRefreshPosts}
               />
             </div>
           )}

@@ -26,12 +26,13 @@ interface DocumentEditorProps {
   bulletinId?: string // 게시판 ID 추가
   onBack?: () => void
   onSave?: () => void
+  onRefreshPosts?: () => void
 }
 
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 
-export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, onSave }: DocumentEditorProps) {
+export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, onSave, onRefreshPosts }: DocumentEditorProps) {
   const { user } = useAuth()
   const [document, setDocument] = useState<Document | null>(null)
   const [title, setTitle] = useState('')
@@ -170,6 +171,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
 
         await addDoc(collection(db, 'bulletinPosts'), postData)
         toast.success('새 게시글이 작성되었습니다.')
+        if (onRefreshPosts) onRefreshPosts()
         if (onSave) onSave()
       } catch (error: any) {
         toast.error('게시글 작성에 실패했습니다.')

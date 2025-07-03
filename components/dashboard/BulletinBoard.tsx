@@ -209,11 +209,22 @@ function SortableBulletinItem({
                 isSelected ? 'text-primary-700' : 'text-gray-900'
               }`}
               onClick={(e) => {
+                // 디버깅을 위한 임시 로그
+                console.log('🔍 Bulletin edit check:', {
+                  bulletinTitle: bulletin.title,
+                  bulletinUserId: bulletin.userId,
+                  currentUserId: user?.uid,
+                  isAdmin: isAdmin,
+                  canEdit: isAdmin || (user && bulletin.userId === user.uid)
+                })
+                
                 // 편집 가능한 게시판인 경우 편집 모드로 전환
                 if (isAdmin || (user && bulletin.userId === user.uid)) {
+                  console.log('✏️ Opening edit modal for:', bulletin.title)
                   onEdit()
                 } else {
                   // 편집 불가능한 경우 선택만
+                  console.log('📋 Selecting bulletin:', bulletin.title)
                   onSelect()
                 }
               }}
@@ -269,6 +280,7 @@ function SortableBulletinItem({
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                console.log('✏️ Edit button clicked for bulletin:', bulletin.title)
                 onEdit()
               }}
               className="flex items-center justify-center w-8 h-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all duration-200 border border-blue-200 hover:border-blue-300 shadow-sm"

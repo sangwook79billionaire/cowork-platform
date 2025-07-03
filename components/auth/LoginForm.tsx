@@ -68,11 +68,11 @@ export function LoginForm() {
               <input
                 id="email-address"
                 name="email"
-                type="email"
+                type={isSignUp ? 'email' : 'text'}
                 autoComplete="email"
                 required
                 className={`input-field ${isSignUp ? '' : 'rounded-t-lg'} ${isSignUp ? 'rounded-none' : ''}`}
-                placeholder="이메일 주소"
+                placeholder={isSignUp ? '이메일 주소' : '이메일 주소 또는 admin'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

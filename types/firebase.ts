@@ -42,6 +42,7 @@ export interface Bulletin {
   level: number // 깊이 레벨 (0: 최상위, 1: 하위, 2: 하하위...)
   order: number // 정렬 순서
   isActive: boolean
+  userId: string // 게시판 생성자 ID
   createdAt: Date
   updatedAt: Date
 }

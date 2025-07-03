@@ -68,6 +68,7 @@ function SortableBulletinItem({
   isChecked,
   onCheckChange,
   isAdmin,
+  user,
   allBulletins,
   renderBulletinTree
 }: {
@@ -84,6 +85,7 @@ function SortableBulletinItem({
   isChecked: boolean
   onCheckChange: (checked: boolean) => void
   isAdmin: boolean
+  user: any
   allBulletins: Bulletin[]
   renderBulletinTree: (bulletins: Bulletin[], allBulletins: Bulletin[], level: number) => JSX.Element[]
 }) {
@@ -232,8 +234,8 @@ function SortableBulletinItem({
           </div>
         )}
 
-        {/* Admin 권한에 따른 수정/삭제 버튼 */}
-        {isAdmin && (
+        {/* 수정 권한 확인 (admin 또는 게시판 생성자) */}
+        {(isAdmin || (user && bulletin.userId === user.uid)) && (
           <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
             <button
               onClick={(e) => {
@@ -245,16 +247,18 @@ function SortableBulletinItem({
             >
               <PencilIcon className="w-3 h-3" />
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-              }}
-              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="게시판 삭제"
-            >
-              <TrashIcon className="w-3 h-3" />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                }}
+                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="게시판 삭제"
+              >
+                <TrashIcon className="w-3 h-3" />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -282,6 +286,7 @@ const mockBulletins: Bulletin[] = [
     level: 0,
     order: 1,
     isActive: true,
+    userId: 'admin',
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -292,6 +297,7 @@ const mockBulletins: Bulletin[] = [
     level: 0,
     order: 2,
     isActive: true,
+    userId: 'user-1',
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -302,6 +308,7 @@ const mockBulletins: Bulletin[] = [
     level: 0,
     order: 3,
     isActive: true,
+    userId: 'user-2',
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -313,6 +320,7 @@ const mockBulletins: Bulletin[] = [
     level: 1,
     order: 1,
     isActive: true,
+    userId: 'user-1',
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -324,6 +332,7 @@ const mockBulletins: Bulletin[] = [
     level: 1,
     order: 2,
     isActive: true,
+    userId: 'user-3',
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -451,6 +460,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           level: data.level,
           order: data.order,
           isActive: data.isActive,
+          userId: data.userId || 'unknown',
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
         }
@@ -601,6 +611,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             })
           }}
           isAdmin={isAdmin}
+          user={user}
           allBulletins={allBulletins}
           renderBulletinTree={renderBulletinTree}
         />
@@ -639,6 +650,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         level: newBulletin.parentId ? getBulletinLevel(newBulletin.parentId) + 1 : 0,
         order: bulletins.length + 1,
         isActive: true,
+        userId: user?.uid || 'unknown', // 게시판 생성자 ID 추가
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -654,6 +666,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           level: bulletinData.level,
           order: bulletinData.order,
           isActive: bulletinData.isActive,
+          userId: bulletinData.userId,
           createdAt: new Date(),
           updatedAt: new Date(),
         }

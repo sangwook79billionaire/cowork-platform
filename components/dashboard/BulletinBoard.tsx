@@ -245,17 +245,24 @@ function SortableBulletinItem({
                 </span>
               )}
             </h3>
-            {/* 수정 가능한 게시판 표시 */}
-            {(isAdmin || (user && bulletin.userId === user.uid)) && (
-              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
-                {isAdmin ? '관리' : '내 게시판'}
-              </span>
-            )}
-            {hasChildren && (
-              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                {childCount}
-              </span>
-            )}
+            {/* 권한 표시 배지 */}
+            <div className="flex items-center space-x-1">
+              {(isAdmin || (user && bulletin.userId === user.uid)) && (
+                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
+                  {isAdmin ? '관리' : '내 게시판'}
+                </span>
+              )}
+              {!(isAdmin || (user && bulletin.userId === user.uid)) && (
+                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200 font-medium">
+                  읽기 전용
+                </span>
+              )}
+              {hasChildren && (
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                  {childCount}
+                </span>
+              )}
+            </div>
           </div>
           {bulletin.description && (
             <p className={`text-xs mt-1 truncate ${
@@ -273,22 +280,35 @@ function SortableBulletinItem({
           </div>
         )}
 
-        {/* 수정/삭제 버튼 - 더 명확하게 표시 */}
+        {/* 수정/삭제 버튼 - 모든 게시판에 표시 */}
         <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
-          {/* 수정 버튼 (admin 또는 게시판 생성자) */}
-          {(isAdmin || (user && bulletin.userId === user.uid)) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
+          {/* 편집 버튼 - 모든 게시판에 표시하되 권한에 따라 다르게 처리 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              // 권한 확인
+              if (isAdmin || (user && bulletin.userId === user.uid)) {
                 console.log('✏️ Edit button clicked for bulletin:', bulletin.title)
                 onEdit()
-              }}
-              className="flex items-center justify-center w-8 h-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all duration-200 border border-blue-200 hover:border-blue-300 shadow-sm"
-              title={isAdmin ? "게시판 수정 (관리자)" : "게시판 수정 (내가 만든 게시판)"}
-            >
-              <PencilIcon className="w-4 h-4" />
-            </button>
-          )}
+              } else {
+                // 권한이 없는 경우 안내
+                toast.error('게시판을 수정할 권한이 없습니다. 관리자이거나 게시판 생성자만 수정할 수 있습니다.')
+                console.log('❌ No permission to edit bulletin:', bulletin.title)
+              }
+            }}
+            className={`flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 border shadow-sm ${
+              isAdmin || (user && bulletin.userId === user.uid)
+                ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-300'
+            }`}
+            title={
+              isAdmin || (user && bulletin.userId === user.uid)
+                ? "게시판 수정 (권한 있음)"
+                : "게시판 수정 (권한 없음)"
+            }
+          >
+            <PencilIcon className="w-4 h-4" />
+          </button>
           
           {/* 삭제 버튼 (admin만) */}
           {isAdmin && (
@@ -1351,7 +1371,12 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                   <div className="flex items-center justify-center w-6 h-6 bg-blue-50 border border-blue-200 rounded">
                     <PencilIcon className="w-3 h-3 text-blue-600" />
                   </div>
-                  <span>연필 아이콘 클릭</span>
+                  <span>편집 가능</span>
+                  <span>|</span>
+                  <div className="flex items-center justify-center w-6 h-6 bg-gray-50 border border-gray-200 rounded">
+                    <PencilIcon className="w-3 h-3 text-gray-400" />
+                  </div>
+                  <span>읽기 전용</span>
                 </div>
               </div>
             </div>

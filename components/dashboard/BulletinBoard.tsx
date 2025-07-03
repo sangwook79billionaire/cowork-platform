@@ -7,6 +7,27 @@ import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
 import toast from 'react-hot-toast'
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
   PlusIcon,
   ChatBubbleLeftRightIcon,
   ChevronRightIcon,
@@ -31,6 +52,226 @@ interface BulletinBoardProps {
 
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+
+// 드래그 가능한 게시판 컴포넌트
+function SortableBulletinItem({ 
+  bulletin, 
+  level, 
+  hasChildren, 
+  isExpanded, 
+  isSelected, 
+  childCount, 
+  onToggleExpansion, 
+  onSelect, 
+  onEdit, 
+  onDelete,
+  isChecked,
+  onCheckChange,
+  isAdmin,
+  allBulletins,
+  renderBulletinTree
+}: {
+  bulletin: Bulletin
+  level: number
+  hasChildren: boolean
+  isExpanded: boolean
+  isSelected: boolean
+  childCount: number
+  onToggleExpansion: () => void
+  onSelect: () => void
+  onEdit: () => void
+  onDelete: () => void
+  isChecked: boolean
+  onCheckChange: (checked: boolean) => void
+  isAdmin: boolean
+  allBulletins: Bulletin[]
+  renderBulletinTree: (bulletins: Bulletin[], allBulletins: Bulletin[], level: number) => JSX.Element[]
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: bulletin.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="mb-1">
+      <div
+        onClick={onSelect}
+        className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+          isSelected 
+            ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm' 
+            : level === 0 
+              ? 'bg-gray-50 hover:bg-gray-100 border-gray-200' 
+              : level === 1 
+                ? 'bg-white hover:bg-gray-50 border-gray-100'
+                : 'bg-gray-25 hover:bg-gray-50 border-transparent hover:border-gray-200'
+        }`}
+        style={{ 
+          paddingLeft: `${level * 24 + 16}px`,
+          marginLeft: `${level * 8}px`,
+          marginRight: '8px',
+          minWidth: `${Math.max(300, level * 50 + 300)}px`
+        }}
+      >
+        {/* (admin) 체크박스 */}
+        {isAdmin && (
+          <input
+            type="checkbox"
+            className="mr-2"
+            checked={isChecked}
+            onChange={e => onCheckChange(e.target.checked)}
+            onClick={e => e.stopPropagation()}
+          />
+        )}
+
+        {/* 드래그 핸들 */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 w-4 h-4 cursor-grab active:cursor-grabbing mr-2"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="w-full h-full flex flex-col justify-center items-center">
+            <div className="w-3 h-0.5 bg-gray-400 mb-0.5"></div>
+            <div className="w-3 h-0.5 bg-gray-400 mb-0.5"></div>
+            <div className="w-3 h-0.5 bg-gray-400"></div>
+          </div>
+        </div>
+
+        {/* 확장/축소 버튼 */}
+        <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
+          {hasChildren ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleExpansion()
+              }}
+              className="p-1 hover:bg-gray-200 rounded transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDownIcon className="w-4 h-4" />
+              ) : (
+                <ChevronRightIcon className="w-4 h-4" />
+              )}
+            </button>
+          ) : (
+            <div className="w-4 h-6 flex items-center justify-center">
+              {level > 0 && (
+                <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 게시판 아이콘 */}
+        <div className="flex-shrink-0">
+          {level === 0 ? (
+            <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
+          ) : level === 1 ? (
+            <div className="w-5 h-5 flex items-center justify-center">
+              <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
+            </div>
+          ) : level === 2 ? (
+            <div className="w-5 h-5 flex items-center justify-center">
+              <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
+            </div>
+          ) : level === 3 ? (
+            <div className="w-5 h-5 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-sm"></div>
+            </div>
+          ) : level === 4 ? (
+            <div className="w-5 h-5 flex items-center justify-center">
+              <div className="w-1 h-1 bg-purple-400 rounded-sm"></div>
+            </div>
+          ) : (
+            <div className="w-5 h-5 flex items-center justify-center">
+              <div className="w-1 h-1 bg-gray-400 rounded-sm"></div>
+            </div>
+          )}
+        </div>
+
+        {/* 게시판 정보 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <h3 className={`text-sm font-medium truncate ${
+              isSelected ? 'text-primary-700' : 'text-gray-900'
+            }`}>
+              {level > 0 && (
+                <span className="text-xs text-gray-400 mr-1">L{level}</span>
+              )}
+              {bulletin.title}
+            </h3>
+            {hasChildren && (
+              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                {childCount}
+              </span>
+            )}
+          </div>
+          {bulletin.description && (
+            <p className={`text-xs mt-1 truncate ${
+              isSelected ? 'text-primary-500' : 'text-gray-500'
+            }`}>
+              {bulletin.description}
+            </p>
+          )}
+        </div>
+
+        {/* 계층 레벨 표시 */}
+        {level > 0 && (
+          <div className="flex-shrink-0 text-xs text-gray-400">
+            L{level}
+          </div>
+        )}
+
+        {/* Admin 권한에 따른 수정/삭제 버튼 */}
+        {isAdmin && (
+          <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit()
+              }}
+              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="게시판 수정"
+            >
+              <PencilIcon className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="게시판 삭제"
+            >
+              <TrashIcon className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 하위 게시판들 - 드롭다운 형태 */}
+      {hasChildren && isExpanded && (
+        <div className="ml-4">
+          {renderBulletinTree(
+            allBulletins.filter(b => b.parentId === bulletin.id),
+            allBulletins,
+            level + 1
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // 모의 데이터
 const mockBulletins: Bulletin[] = [
@@ -153,6 +394,15 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   const [editingPost, setEditingPost] = useState<BulletinPost | null>(null)
   const [selectedBulletinIds, setSelectedBulletinIds] = useState<Set<string>>(new Set())
   const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set())
+  
+  // 드래그 앤 드롭 상태
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     if (user) {
@@ -325,183 +575,35 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       const isSelected = selectedBulletinId === bulletin.id
       const childCount = allBulletins.filter(b => b.parentId === bulletin.id).length
 
-      console.log(`🔍 Rendering bulletin: ${bulletin.title} (${bulletin.id})`, {
-        hasChildren,
-        isExpanded,
-        childCount,
-        parentId: bulletin.parentId,
-        level
-      })
-
       return (
-        <div key={bulletin.id} className="mb-1">
-          <div
-            onClick={() => {
-              setSelectedBulletinId(bulletin.id)
-              onBulletinSelect?.(bulletin.id)
-            }}
-            className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
-              isSelected 
-                ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm' 
-                : level === 0 
-                  ? 'bg-gray-50 hover:bg-gray-100 border-gray-200' 
-                  : level === 1 
-                    ? 'bg-white hover:bg-gray-50 border-gray-100'
-                    : 'bg-gray-25 hover:bg-gray-50 border-transparent hover:border-gray-200'
-            }`}
-            style={{ 
-              paddingLeft: `${level * 24 + 16}px`,
-              marginLeft: `${level * 8}px`,
-              marginRight: '8px',
-              minWidth: `${Math.max(300, level * 50 + 300)}px`
-            }}
-          >
-            {/* (admin) 체크박스 */}
-            {isAdmin && (
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={selectedBulletinIds.has(bulletin.id)}
-                onChange={e => {
-                  e.stopPropagation()
-                  setSelectedBulletinIds(prev => {
-                    const next = new Set(prev)
-                    if (e.target.checked) next.add(bulletin.id)
-                    else next.delete(bulletin.id)
-                    return next
-                  })
-                }}
-              />
-            )}
-
-            {/* 확장/축소 버튼 */}
-            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
-              {hasChildren ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleBulletinExpansion(bulletin.id)
-                  }}
-                  className="p-1 hover:bg-gray-200 rounded transition-colors"
-                >
-                  {isExpanded ? (
-                    <ChevronDownIcon className="w-4 h-4" />
-                  ) : (
-                    <ChevronRightIcon className="w-4 h-4" />
-                  )}
-                </button>
-              ) : (
-                <div className="w-4 h-6 flex items-center justify-center">
-                  {level > 0 && (
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 게시판 아이콘 */}
-            <div className="flex-shrink-0">
-              {level === 0 ? (
-                <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
-              ) : level === 1 ? (
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
-                </div>
-              ) : level === 2 ? (
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
-                </div>
-              ) : level === 3 ? (
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-sm"></div>
-                </div>
-              ) : level === 4 ? (
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <div className="w-1 h-1 bg-purple-400 rounded-sm"></div>
-                </div>
-              ) : (
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <div className="w-1 h-1 bg-gray-400 rounded-sm"></div>
-                </div>
-              )}
-            </div>
-
-            {/* 게시판 정보 */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <h3 className={`text-sm font-medium truncate ${
-                  isSelected ? 'text-primary-700' : 'text-gray-900'
-                }`}>
-                  {level > 0 && (
-                    <span className="text-xs text-gray-400 mr-1">L{level}</span>
-                  )}
-                  {bulletin.title}
-                </h3>
-                {hasChildren && (
-                  <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                    {childCount}
-                  </span>
-                )}
-              </div>
-              {bulletin.description && (
-                <p className={`text-xs mt-1 truncate ${
-                  isSelected ? 'text-primary-500' : 'text-gray-500'
-                }`}>
-                  {bulletin.description}
-                </p>
-              )}
-            </div>
-
-            {/* 계층 레벨 표시 */}
-            {level > 0 && (
-              <div className="flex-shrink-0 text-xs text-gray-400">
-                L{level}
-              </div>
-            )}
-
-            {/* Admin 권한에 따른 수정/삭제 버튼 */}
-            {isAdmin && (
-              <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditingBulletin(bulletin)
-                  }}
-                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                  title="게시판 수정"
-                >
-                  <PencilIcon className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteBulletin(bulletin.id)
-                  }}
-                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                  title="게시판 삭제"
-                >
-                  <TrashIcon className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 하위 게시판들 - 드롭다운 형태 */}
-          {(() => {
-            if (hasChildren && isExpanded) {
-              const children = allBulletins.filter(b => b.parentId === bulletin.id)
-              console.log(`🎯 Rendering children for ${bulletin.title} (${bulletin.id}):`, children)
-              console.log(`✅ Conditions met: hasChildren=${hasChildren}, isExpanded=${isExpanded}`)
-              return renderBulletinTree(children, allBulletins, level + 1)
-            } else if (hasChildren && !isExpanded) {
-              console.log(`❌ Conditions not met for ${bulletin.title} (${bulletin.id}): hasChildren=${hasChildren}, isExpanded=${isExpanded}`)
-              return null
-            } else {
-              console.log(`❌ No children for ${bulletin.title} (${bulletin.id}): hasChildren=${hasChildren}`)
-              return null
-            }
-          })()}
-        </div>
+        <SortableBulletinItem
+          key={bulletin.id}
+          bulletin={bulletin}
+          level={level}
+          hasChildren={hasChildren}
+          isExpanded={isExpanded}
+          isSelected={isSelected}
+          childCount={childCount}
+          onToggleExpansion={() => toggleBulletinExpansion(bulletin.id)}
+          onSelect={() => {
+            setSelectedBulletinId(bulletin.id)
+            onBulletinSelect?.(bulletin.id)
+          }}
+          onEdit={() => setEditingBulletin(bulletin)}
+          onDelete={() => handleDeleteBulletin(bulletin.id)}
+          isChecked={selectedBulletinIds.has(bulletin.id)}
+          onCheckChange={(checked) => {
+            setSelectedBulletinIds(prev => {
+              const next = new Set(prev)
+              if (checked) next.add(bulletin.id)
+              else next.delete(bulletin.id)
+              return next
+            })
+          }}
+          isAdmin={isAdmin}
+          allBulletins={allBulletins}
+          renderBulletinTree={renderBulletinTree}
+        />
       )
     })
   }
@@ -738,6 +840,76 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       console.error('일괄 삭제 오류:', e)
       toast.error('일괄 삭제 중 오류 발생')
     }
+  }
+
+  // 드래그 앤 드롭 핸들러
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    const draggedBulletin = bulletins.find(b => b.id === active.id)
+    const targetBulletin = bulletins.find(b => b.id === over.id)
+
+    if (!draggedBulletin || !targetBulletin) {
+      return
+    }
+
+    // 같은 게시판으로는 이동 불가
+    if (draggedBulletin.id === targetBulletin.id) {
+      return
+    }
+
+    // 자기 자신의 하위로는 이동 불가
+    if (isDescendant(draggedBulletin.id, targetBulletin.id)) {
+      toast.error('자기 자신의 하위로는 이동할 수 없습니다.')
+      return
+    }
+
+    try {
+      // 새로운 부모 설정
+      const newParentId = targetBulletin.id
+      const newLevel = targetBulletin.level + 1
+
+      if (isTestMode) {
+        // 테스트 모드: 로컬 상태 업데이트
+        setBulletins(prev => prev.map(b => 
+          b.id === draggedBulletin.id 
+            ? { ...b, parentId: newParentId, level: newLevel }
+            : b
+        ))
+        toast.success('게시판 위치가 변경되었습니다.')
+      } else {
+        // 실제 모드: Firestore 업데이트
+        const bulletinRef = doc(db, 'bulletins', draggedBulletin.id)
+        await setDoc(bulletinRef, {
+          parentId: newParentId,
+          level: newLevel,
+          updatedAt: serverTimestamp(),
+        }, { merge: true })
+        
+        fetchBulletins()
+        toast.success('게시판 위치가 변경되었습니다.')
+      }
+    } catch (error) {
+      console.error('게시판 이동 오류:', error)
+      toast.error('게시판 이동에 실패했습니다.')
+    }
+  }
+
+  // 하위 게시판인지 확인하는 함수
+  const isDescendant = (parentId: string, childId: string): boolean => {
+    const child = bulletins.find(b => b.id === childId)
+    if (!child || !child.parentId) return false
+    if (child.parentId === parentId) return true
+    return isDescendant(parentId, child.parentId)
   }
 
   if (loading) {
@@ -986,9 +1158,28 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             </div>
           </div>
           <div className="p-4 h-full overflow-y-auto overflow-x-auto">
-            <div className="min-w-max">
-              {renderBulletinTree(getTopLevelBulletins(), bulletins, 0)}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={bulletins.map(b => b.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="min-w-max">
+                  {renderBulletinTree(getTopLevelBulletins(), bulletins, 0)}
+                </div>
+              </SortableContext>
+              <DragOverlay>
+                {activeId ? (
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg opacity-80">
+                    {bulletins.find(b => b.id === activeId)?.title}
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </div>
         </div>
 

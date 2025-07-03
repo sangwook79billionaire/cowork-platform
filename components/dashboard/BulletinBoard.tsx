@@ -267,7 +267,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   }
 
   const getTopLevelBulletins = () => {
-    return bulletins.filter(bulletin => !bulletin.parentId)
+    return bulletins.filter(bulletin => !bulletin.parentId || bulletin.parentId === null)
   }
 
   const formatDate = (date: Date) => {
@@ -301,9 +301,9 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 : 'hover:bg-gray-50 border-transparent hover:border-gray-200'
             }`}
             style={{ 
-              paddingLeft: `${level * 20 + 12}px`,
-              marginLeft: `${level * 8}px`,
-              marginRight: '8px'
+              paddingLeft: `${level * 16 + 8}px`,
+              marginLeft: `${level * 4}px`,
+              marginRight: '4px'
             }}
           >
             {/* 확장/축소 버튼 */}
@@ -462,31 +462,31 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   return (
     <div className="h-full flex flex-col">
       {/* 헤더 */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-3 lg:p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">게시판</h2>
-          <div className="flex items-center space-x-2">
+          <h2 className="text-base lg:text-lg font-semibold text-gray-900">게시판</h2>
+          <div className="flex items-center space-x-1 lg:space-x-2">
             <button
               onClick={toggleAllBulletins}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="전체 펼치기/접기"
             >
               <ChevronDownIcon className="w-4 h-4" />
             </button>
             <button
               onClick={() => setShowCreateBulletin(true)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="새 게시판 생성"
             >
-              <FolderPlusIcon className="w-5 h-5" />
+              <FolderPlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
             {selectedBulletinId && (
               <button
                 onClick={onCreatePost}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 title="새 게시글 작성"
               >
-                <PlusIcon className="w-5 h-5" />
+                <PlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </button>
             )}
           </div>
@@ -567,31 +567,31 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         </div>
       )}
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col lg:flex-row">
         {/* 게시판 목록 */}
-        <div className="w-2/5 border-r border-gray-200">
+        <div className="w-full lg:w-2/5 border-b lg:border-b-0 lg:border-r border-gray-200">
           <div className="p-2 h-full overflow-y-auto">
             {renderBulletinTree(getTopLevelBulletins())}
           </div>
         </div>
 
         {/* 게시글 목록 */}
-        <div className="w-3/5 flex flex-col">
+        <div className="w-full lg:w-3/5 flex flex-col">
           {selectedBulletinId ? (
             <>
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-md font-semibold text-gray-900">
+              <div className="p-3 lg:p-4 border-b border-gray-200">
+                <h3 className="text-sm lg:text-md font-semibold text-gray-900">
                   {bulletins.find(b => b.id === selectedBulletinId)?.title}
                 </h3>
               </div>
               <div className="flex-1 overflow-y-auto">
                 {posts.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">
-                    <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-sm">게시글이 없습니다</p>
+                    <ChatBubbleLeftRightIcon className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="text-xs lg:text-sm">게시글이 없습니다</p>
                     <button
                       onClick={onCreatePost}
-                      className="mt-2 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      className="mt-2 text-primary-600 hover:text-primary-700 text-xs lg:text-sm font-medium"
                     >
                       첫 번째 게시글 작성하기
                     </button>
@@ -602,35 +602,35 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                       <div
                         key={post.id}
                         onClick={() => onSelectPost(post.id)}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                        className={`p-2 lg:p-3 rounded-lg cursor-pointer transition-colors ${
                           selectedPostId === post.id
                             ? 'bg-primary-50 border border-primary-200'
                             : 'hover:bg-gray-50'
                         }`}
                       >
-                        <div className="flex items-start space-x-3">
+                        <div className="flex items-start space-x-2 lg:space-x-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1 lg:space-x-2">
                               {post.isPinned && (
-                                <StarIcon className="w-4 h-4 text-red-500" />
+                                <StarIcon className="w-3 h-3 lg:w-4 lg:h-4 text-red-500" />
                               )}
                               {post.isLocked && (
-                                <LockClosedIcon className="w-4 h-4 text-gray-500" />
+                                <LockClosedIcon className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
                               )}
-                              <h3 className="text-sm font-medium text-gray-900 truncate">
+                              <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
                                 {post.title}
                               </h3>
                             </div>
-                            <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                              <span>{post.authorName}</span>
-                              <span>{formatDate(post.createdAt)}</span>
+                            <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
+                              <span className="truncate">{post.authorName}</span>
+                              <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
                               <div className="flex items-center space-x-1">
                                 <EyeIcon className="w-3 h-3" />
-                                <span>{post.viewCount}</span>
+                                <span className="hidden lg:inline">{post.viewCount}</span>
                               </div>
                               <div className="flex items-center space-x-1">
                                 <HeartIcon className="w-3 h-3" />
-                                <span>{post.likeCount}</span>
+                                <span className="hidden lg:inline">{post.likeCount}</span>
                               </div>
                             </div>
                             {post.tags && post.tags.length > 0 && (
@@ -638,7 +638,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                                 {post.tags.map((tag, index) => (
                                   <span
                                     key={index}
-                                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                                    className="px-1 lg:px-2 py-0.5 lg:py-1 text-xs bg-gray-100 text-gray-600 rounded"
                                   >
                                     {tag}
                                   </span>
@@ -655,10 +655,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-500 bg-gray-50">
-              <div className="text-center">
-                <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">게시판을 선택해주세요</p>
-                <p className="text-sm text-gray-400">왼쪽에서 게시판을 선택하여 게시글을 확인하세요</p>
+              <div className="text-center p-4">
+                <ChatBubbleLeftRightIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-base lg:text-lg font-medium mb-2">게시판을 선택해주세요</p>
+                <p className="text-xs lg:text-sm text-gray-400">위에서 게시판을 선택하여 게시글을 확인하세요</p>
               </div>
             </div>
           )}

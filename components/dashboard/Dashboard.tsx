@@ -90,11 +90,11 @@ export function Dashboard() {
         </header>
 
         {/* 콘텐츠 영역 */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex flex-col lg:flex-row">
           {viewMode === 'list' && (
             <>
-              {/* 게시판 목록 */}
-              <div className="w-96 bg-white border-r border-gray-200">
+              {/* 게시판 목록 - 더 큰 공간 할당 */}
+              <div className="w-full lg:w-2/3 xl:w-3/5 bg-white border-b lg:border-b-0 lg:border-r border-gray-200">
                 <BulletinBoard 
                   onSelectPost={handleSelectPost}
                   selectedPostId={selectedPostId}
@@ -104,19 +104,19 @@ export function Dashboard() {
                 />
               </div>
 
-              {/* 게시글 뷰어 */}
-              <div className="flex-1">
+              {/* 게시글 뷰어 - 더 작은 공간 */}
+              <div className="w-full lg:w-1/3 xl:w-2/5">
                 {selectedPostId ? (
                   <PostViewer 
                     postId={selectedPostId}
                     onEditPost={handleEditPost}
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="flex items-center justify-center h-full text-gray-500 p-8">
                     <div className="text-center">
-                      <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-medium mb-2">게시글을 선택하세요</h3>
-                      <p className="text-sm">왼쪽에서 게시판을 선택하고 게시글을 확인해보세요.</p>
+                      <ChatBubbleLeftRightIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-base lg:text-lg font-medium mb-2">게시글을 선택하세요</h3>
+                      <p className="text-sm text-gray-400">왼쪽에서 게시판을 선택하고 게시글을 확인해보세요.</p>
                     </div>
                   </div>
                 )}

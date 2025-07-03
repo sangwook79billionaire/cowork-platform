@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
@@ -46,12 +46,63 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
   const [imageUrl, setImageUrl] = useState('')
   const [imageAlt, setImageAlt] = useState('')
   const editorRef = useRef<HTMLDivElement>(null)
+  const [isEditorInitialized, setIsEditorInitialized] = useState(false)
 
   useEffect(() => {
     if (documentId) {
       fetchDocument()
     }
   }, [documentId])
+
+  // 에디터 초기화
+  useEffect(() => {
+    if (editorRef.current && !isEditorInitialized) {
+      initializeEditor()
+    }
+  }, [content, isEditorInitialized])
+
+  const initializeEditor = () => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = content || ''
+      setIsEditorInitialized(true)
+    }
+  }
+
+  const saveSelection = () => {
+    if (typeof window !== 'undefined' && window.getSelection) {
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        return selection.getRangeAt(0)
+      }
+    }
+    return null
+  }
+
+  const restoreSelection = (range: Range | null) => {
+    if (range && typeof window !== 'undefined' && window.getSelection) {
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+    }
+  }
+
+  const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    const target = e.currentTarget
+    const savedRange = saveSelection()
+    setContent(target.innerHTML)
+    // 다음 틱에서 커서 위치 복원
+    setTimeout(() => {
+      if (savedRange) {
+        restoreSelection(savedRange)
+      }
+    }, 0)
+  }, [])
+
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+    setContent(e.currentTarget.innerHTML)
+  }, [])
 
   const fetchDocument = async () => {
     // 새 게시글 작성 모드인 경우
@@ -70,6 +121,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
       setTitle('')
       setContent('')
       setLoading(false)
+      setIsEditorInitialized(false)
       return
     }
 
@@ -108,6 +160,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
         setDocument(documentData)
         setTitle(documentData.title)
         setContent(documentData.content)
+        setIsEditorInitialized(false)
       } else {
         toast.error('문서를 찾을 수 없습니다.')
       }
@@ -437,8 +490,8 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
         <div
           ref={editorRef}
           contentEditable
-          onInput={(e) => setContent(e.currentTarget.innerHTML)}
-          dangerouslySetInnerHTML={{ __html: content }}
+          onInput={handleInput}
+          onBlur={handleBlur}
           className="w-full h-full outline-none text-gray-900 prose prose-sm max-w-none"
           style={{ minHeight: 'calc(100vh - 300px)' }}
           data-placeholder={isPostEditor ? "게시글 내용을 입력하세요..." : "문서 내용을 입력하세요..."}

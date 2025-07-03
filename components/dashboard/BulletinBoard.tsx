@@ -151,6 +151,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   })
   const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null)
   const [editingPost, setEditingPost] = useState<BulletinPost | null>(null)
+  const [selectedBulletinIds, setSelectedBulletinIds] = useState<Set<string>>(new Set())
+  const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (user) {
@@ -354,6 +356,24 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               minWidth: `${Math.max(300, level * 50 + 300)}px`
             }}
           >
+            {/* (admin) 체크박스 */}
+            {isAdmin && (
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={selectedBulletinIds.has(bulletin.id)}
+                onChange={e => {
+                  e.stopPropagation()
+                  setSelectedBulletinIds(prev => {
+                    const next = new Set(prev)
+                    if (e.target.checked) next.add(bulletin.id)
+                    else next.delete(bulletin.id)
+                    return next
+                  })
+                }}
+              />
+            )}
+
             {/* 확장/축소 버튼 */}
             <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
               {hasChildren ? (
@@ -676,6 +696,48 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     }
   }
 
+  const handleBulkDeleteBulletins = async () => {
+    if (!window.confirm('선택한 게시판을 모두 삭제하시겠습니까?')) return
+    if (isTestMode) {
+      setBulletins(prev => prev.filter(b => !selectedBulletinIds.has(b.id)))
+      setSelectedBulletinIds(new Set())
+      toast.success('선택한 게시판이 삭제되었습니다.')
+      return
+    }
+    try {
+      for (const id of selectedBulletinIds) {
+        const bulletinRef = doc(db, 'bulletins', id)
+        await setDoc(bulletinRef, { isActive: false }, { merge: true })
+      }
+      setSelectedBulletinIds(new Set())
+      fetchBulletins()
+      toast.success('선택한 게시판이 삭제되었습니다.')
+    } catch (e) {
+      toast.error('일괄 삭제 중 오류 발생')
+    }
+  }
+
+  const handleBulkDeletePosts = async () => {
+    if (!window.confirm('선택한 게시글을 모두 삭제하시겠습니까?')) return
+    if (isTestMode) {
+      setPosts(prev => prev.filter(p => !selectedPostIds.has(p.id)))
+      setSelectedPostIds(new Set())
+      toast.success('선택한 게시글이 삭제되었습니다.')
+      return
+    }
+    try {
+      for (const id of selectedPostIds) {
+        const postRef = doc(db, 'bulletinPosts', id)
+        await setDoc(postRef, { isDeleted: true }, { merge: true })
+      }
+      setSelectedPostIds(new Set())
+      fetchPosts(selectedBulletinId!)
+      toast.success('선택한 게시글이 삭제되었습니다.')
+    } catch (e) {
+      toast.error('일괄 삭제 중 오류 발생')
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-4">
@@ -720,6 +782,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 title="새 게시글 작성"
               >
                 <PlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </button>
+            )}
+            {isAdmin && selectedBulletinIds.size > 0 && (
+              <button
+                onClick={handleBulkDeleteBulletins}
+                className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+              >
+                선택 게시판 삭제
               </button>
             )}
           </div>
@@ -942,6 +1012,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 </div>
               ) : (
                 <div className="p-2">
+                  {isAdmin && selectedPostIds.size > 0 && (
+                    <button
+                      onClick={handleBulkDeletePosts}
+                      className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                    >
+                      선택 게시글 삭제
+                    </button>
+                  )}
                   {posts.map((post) => (
                     <div
                       key={post.id}
@@ -1016,6 +1094,22 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                           )}
                         </div>
                       </div>
+                      {isAdmin && (
+                        <input
+                          type="checkbox"
+                          className="mr-2"
+                          checked={selectedPostIds.has(post.id)}
+                          onChange={e => {
+                            e.stopPropagation()
+                            setSelectedPostIds(prev => {
+                              const next = new Set(prev)
+                              if (e.target.checked) next.add(post.id)
+                              else next.delete(post.id)
+                              return next
+                            })
+                          }}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

@@ -241,7 +241,7 @@ function SortableBulletinItem({
         )}
 
         {/* 수정/삭제 버튼 - 더 명확하게 표시 */}
-        <div className="flex-shrink-0 flex items-center space-x-1 ml-2 bg-yellow-100 p-1 rounded">
+        <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
           {/* 디버깅용 로그 */}
           {console.log('🔍 Button Debug for', bulletin.title, ':', {
             isAdmin: isAdmin,
@@ -438,6 +438,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   useEffect(() => {
     if (user) {
       fetchBulletins()
+      // 기존 게시판들의 userId를 현재 사용자로 업데이트
+      updateExistingBulletinsUserId()
     }
   }, [user])
 
@@ -453,6 +455,36 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       fetchPosts(selectedBulletinId)
     }
   }, [selectedBulletinId, refreshTrigger])
+
+  // 기존 게시판들의 userId를 현재 사용자로 업데이트
+  const updateExistingBulletinsUserId = async () => {
+    if (!user?.uid || isTestMode) return
+
+    try {
+      const q = query(
+        collection(db, 'bulletins'),
+        where('userId', '==', 'unknown')
+      )
+      
+      const querySnapshot = await getDocs(q)
+      const updatePromises = querySnapshot.docs.map(docSnapshot => {
+        const bulletinRef = doc(db, 'bulletins', docSnapshot.id)
+        return setDoc(bulletinRef, {
+          userId: user.uid,
+          updatedAt: serverTimestamp(),
+        }, { merge: true })
+      })
+
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises)
+        console.log(`🔄 Updated ${updatePromises.length} bulletins with userId: ${user.uid}`)
+        // 게시판 목록 새로고침
+        fetchBulletins()
+      }
+    } catch (error: any) {
+      console.error('Error updating bulletin user IDs:', error)
+    }
+  }
 
   const fetchBulletins = async () => {
     if (isTestMode) {
@@ -664,6 +696,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       return
     }
 
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.')
+      return
+    }
+
     try {
       const bulletinData = {
         title: newBulletin.title.trim(),
@@ -672,7 +709,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         level: newBulletin.parentId ? getBulletinLevel(newBulletin.parentId) + 1 : 0,
         order: bulletins.length + 1,
         isActive: true,
-        userId: user?.uid || 'unknown', // 게시판 생성자 ID 추가
+        userId: user.uid, // 반드시 현재 사용자 ID로 설정
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }

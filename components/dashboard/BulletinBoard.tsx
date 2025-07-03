@@ -242,11 +242,21 @@ function SortableBulletinItem({
 
         {/* 수정/삭제 버튼 - 더 명확하게 표시 */}
         <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
+          {/* 디버깅용 로그 */}
+          {console.log('🔍 Button Debug:', {
+            isAdmin,
+            userId: user?.uid,
+            bulletinUserId: bulletin.userId,
+            canEdit: isAdmin || (user && bulletin.userId === user.uid),
+            canDelete: isAdmin
+          })}
+          
           {/* 수정 버튼 (admin 또는 게시판 생성자) */}
           {(isAdmin || (user && bulletin.userId === user.uid)) && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                console.log('✏️ Edit button clicked for bulletin:', bulletin.title)
                 onEdit()
               }}
               className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200 border border-transparent hover:border-blue-200"
@@ -261,6 +271,7 @@ function SortableBulletinItem({
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                console.log('🗑️ Delete button clicked for bulletin:', bulletin.title)
                 onDelete()
               }}
               className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 border border-transparent hover:border-red-200"
@@ -773,6 +784,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
 
   // 게시글 수정
   const handleEditPost = async (post: BulletinPost) => {
+    console.log('📝 Editing post:', post)
+    
     if (isTestMode) {
       setPosts(prev => prev.map(p => 
         p.id === post.id ? { ...post, updatedAt: new Date() } : p
@@ -789,7 +802,15 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         updatedAt: serverTimestamp(),
       })
       setEditingPost(null)
-      fetchPosts(selectedBulletinId!)
+      
+      // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
+      if (selectedBulletinId) {
+        fetchPosts(selectedBulletinId)
+      } else {
+        // selectedBulletinId가 없으면 post의 bulletinId로 새로고침
+        fetchPosts(post.bulletinId)
+      }
+      
       toast.success('게시글이 수정되었습니다.')
     } catch (error: any) {
       toast.error('게시글 수정에 실패했습니다.')
@@ -803,6 +824,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       return
     }
 
+    // 삭제할 게시글 찾기
+    const postToDelete = posts.find(p => p.id === postId)
+    if (!postToDelete) {
+      toast.error('게시글을 찾을 수 없습니다.')
+      return
+    }
+
     if (isTestMode) {
       setPosts(prev => prev.filter(p => p.id !== postId))
       toast.success('게시글이 삭제되었습니다.')
@@ -812,7 +840,15 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     try {
       const postRef = doc(db, 'bulletinPosts', postId)
       await deleteDoc(postRef)
-      fetchPosts(selectedBulletinId!)
+      
+      // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
+      if (selectedBulletinId) {
+        fetchPosts(selectedBulletinId)
+      } else {
+        // selectedBulletinId가 없으면 post의 bulletinId로 새로고침
+        fetchPosts(postToDelete.bulletinId)
+      }
+      
       toast.success('게시글이 삭제되었습니다.')
     } catch (error: any) {
       toast.error('게시글 삭제에 실패했습니다.')
@@ -856,7 +892,12 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         await deleteDoc(postRef)
       }
       setSelectedPostIds(new Set())
-      fetchPosts(selectedBulletinId!)
+      
+      // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
+      if (selectedBulletinId) {
+        fetchPosts(selectedBulletinId)
+      }
+      
       toast.success('선택한 게시글이 삭제되었습니다.')
     } catch (e) {
       console.error('일괄 삭제 오류:', e)

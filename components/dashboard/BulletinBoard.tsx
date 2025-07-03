@@ -839,7 +839,16 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         updatedAt: serverTimestamp(),
       })
       setEditingBulletin(null)
-      fetchBulletins()
+      
+      // 현재 확장된 게시판 상태를 저장
+      const currentExpandedState = new Set(expandedBulletins)
+      
+      // 게시판 목록 새로고침
+      await fetchBulletins()
+      
+      // 확장된 게시판 상태 복원
+      setExpandedBulletins(currentExpandedState)
+      
       toast.success('게시판이 수정되었습니다.')
     } catch (error: any) {
       toast.error('게시판 수정에 실패했습니다.')
@@ -862,7 +871,18 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     try {
       const bulletinRef = doc(db, 'bulletins', bulletinId)
       await deleteDoc(bulletinRef)
-      fetchBulletins()
+      
+      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판 제외)
+      const currentExpandedState = new Set(
+        Array.from(expandedBulletins).filter(id => id !== bulletinId)
+      )
+      
+      // 게시판 목록 새로고침
+      await fetchBulletins()
+      
+      // 확장된 게시판 상태 복원
+      setExpandedBulletins(currentExpandedState)
+      
       toast.success('게시판이 삭제되었습니다.')
     } catch (error: any) {
       toast.error('게시판 삭제에 실패했습니다.')
@@ -964,7 +984,18 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         await deleteDoc(bulletinRef)
       }
       setSelectedBulletinIds(new Set())
-      fetchBulletins()
+      
+      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판들 제외)
+      const currentExpandedState = new Set(
+        Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
+      )
+      
+      // 게시판 목록 새로고침
+      await fetchBulletins()
+      
+      // 확장된 게시판 상태 복원
+      setExpandedBulletins(currentExpandedState)
+      
       toast.success('선택한 게시판이 삭제되었습니다.')
     } catch (e) {
       console.error('일괄 삭제 오류:', e)
@@ -1052,7 +1083,15 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           updatedAt: serverTimestamp(),
         }, { merge: true })
         
-        fetchBulletins()
+        // 현재 확장된 게시판 상태를 저장
+        const currentExpandedState = new Set(expandedBulletins)
+        
+        // 게시판 목록 새로고침
+        await fetchBulletins()
+        
+        // 확장된 게시판 상태 복원
+        setExpandedBulletins(currentExpandedState)
+        
         toast.success('게시판 위치가 변경되었습니다.')
       }
     } catch (error) {

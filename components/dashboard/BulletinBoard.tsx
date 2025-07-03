@@ -188,7 +188,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-        bulletinData.push({
+        const bulletin = {
           id: doc.id,
           title: data.title,
           description: data.description,
@@ -198,7 +198,9 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           isActive: data.isActive,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
-        })
+        }
+        bulletinData.push(bulletin)
+        console.log('Loaded bulletin:', bulletin)
       })
       
       setBulletins(bulletinData)
@@ -272,11 +274,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   }
 
   const getChildBulletins = (parentId: string) => {
-    return bulletins.filter(bulletin => bulletin.parentId === parentId)
+    const children = bulletins.filter(bulletin => bulletin.parentId === parentId)
+    console.log(`Children for ${parentId}:`, children)
+    return children
   }
 
   const getTopLevelBulletins = () => {
-    return bulletins.filter(bulletin => !bulletin.parentId || bulletin.parentId === null)
+    return bulletins.filter(bulletin => !bulletin.parentId || bulletin.parentId === null || bulletin.parentId === undefined)
   }
 
   const formatDate = (date: Date) => {
@@ -451,11 +455,15 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           createdAt: new Date(),
           updatedAt: new Date(),
         }
-        setBulletins([...bulletins, newBulletinItem])
+        setBulletins(prev => [...prev, newBulletinItem])
+        // 새로 생성된 게시판을 펼친 상태로 설정
+        setExpandedBulletins(prev => new Set([...Array.from(prev), newBulletinItem.id]))
         toast.success('게시판이 생성되었습니다.')
       } else {
         const docRef = await addDoc(collection(db, 'bulletins'), bulletinData)
         toast.success('게시판이 생성되었습니다.')
+        // 새로 생성된 게시판을 펼친 상태로 설정
+        setExpandedBulletins(prev => new Set([...Array.from(prev), docRef.id]))
         fetchBulletins() // 게시판 목록 새로고침
       }
 

@@ -11,6 +11,7 @@ import {
   ChatBubbleLeftRightIcon,
   ChevronRightIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
   EyeIcon,
   HeartIcon,
   StarIcon,
@@ -152,6 +153,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       fetchBulletins()
     }
   }, [user])
+
+  // 게시판 로드 후 모든 게시판을 펼치기
+  useEffect(() => {
+    if (bulletins.length > 0) {
+      const allBulletinIds = bulletins.map(b => b.id)
+      setExpandedBulletins(new Set(allBulletinIds))
+    }
+  }, [bulletins])
 
   useEffect(() => {
     if (selectedBulletinId) {
@@ -298,7 +307,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
               isSelected 
                 ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm' 
-                : 'hover:bg-gray-50 border-transparent hover:border-gray-200'
+                : level === 0 
+                  ? 'bg-gray-50 hover:bg-gray-100 border-gray-200' 
+                  : level === 1 
+                    ? 'bg-white hover:bg-gray-50 border-gray-100'
+                    : 'bg-gray-25 hover:bg-gray-50 border-transparent hover:border-gray-200'
             }`}
             style={{ 
               paddingLeft: `${level * 16 + 8}px`,
@@ -334,10 +347,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             {/* 게시판 아이콘 */}
             <div className="flex-shrink-0">
               {level === 0 ? (
-                <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
+              ) : level === 1 ? (
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
+                </div>
               ) : (
                 <div className="w-5 h-5 flex items-center justify-center">
-                  <div className="w-3 h-3 bg-gray-300 rounded-sm"></div>
+                  <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
                 </div>
               )}
             </div>
@@ -348,10 +365,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 <h3 className={`text-sm font-medium truncate ${
                   isSelected ? 'text-primary-700' : 'text-gray-900'
                 }`}>
+                  {level > 0 && (
+                    <span className="text-xs text-gray-400 mr-1">L{level}</span>
+                  )}
                   {bulletin.title}
                 </h3>
                 {hasChildren && (
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                  <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
                     {childCount}
                   </span>
                 )}
@@ -471,7 +491,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="전체 펼치기/접기"
             >
-              <ChevronDownIcon className="w-4 h-4" />
+              {expandedBulletins.size > 0 ? (
+                <ChevronUpIcon className="w-4 h-4" />
+              ) : (
+                <ChevronDownIcon className="w-4 h-4" />
+              )}
             </button>
             <button
               onClick={() => setShowCreateBulletin(true)}
@@ -570,6 +594,17 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* 게시판 목록 */}
         <div className="w-full lg:w-2/5 border-b lg:border-b-0 lg:border-r border-gray-200">
+          {/* 게시판 구조 안내 */}
+          <div className="p-3 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center space-x-2 text-xs text-gray-600">
+              <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+              <span>최상위 게시판</span>
+              <div className="w-3 h-3 bg-gray-300 rounded-sm ml-4"></div>
+              <span>하위 게시판</span>
+              <div className="w-3 h-3 bg-gray-200 rounded-sm ml-4"></div>
+              <span>세부 게시판</span>
+            </div>
+          </div>
           <div className="p-2 h-full overflow-y-auto">
             {renderBulletinTree(getTopLevelBulletins())}
           </div>

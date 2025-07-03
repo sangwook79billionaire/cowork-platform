@@ -199,6 +199,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           updatedAt: data.updatedAt?.toDate() || new Date(),
         }
         bulletinData.push(bulletin)
+        console.log(`📥 Loaded bulletin:`, bulletin)
       })
       
       setBulletins(bulletinData)
@@ -272,7 +273,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   }
 
   const getChildBulletins = (parentId: string) => {
-    return bulletins.filter(bulletin => bulletin.parentId === parentId)
+    const children = bulletins.filter(bulletin => bulletin.parentId === parentId)
+    console.log(`🔍 getChildBulletins for ${parentId}:`, children)
+    console.log(`📊 All bulletins:`, bulletins)
+    return children
   }
 
   const getTopLevelBulletins = () => {
@@ -499,15 +503,38 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           updatedAt: new Date(),
         }
         setBulletins(prev => [...prev, newBulletinItem])
+        
+        // 부모 게시판이 있다면 부모 게시판을 펼친 상태로 설정
+        if (bulletinData.parentId && typeof bulletinData.parentId === 'string') {
+          setExpandedBulletins(prev => new Set([...Array.from(prev), bulletinData.parentId as string]))
+        }
+        
         // 새로 생성된 게시판을 펼친 상태로 설정
         setExpandedBulletins(prev => new Set([...Array.from(prev), newBulletinItem.id]))
+        
+        // 새로 생성된 게시판을 선택
+        setSelectedBulletinId(newBulletinItem.id)
+        onBulletinSelect?.(newBulletinItem.id)
+        
         toast.success('게시판이 생성되었습니다.')
       } else {
         const docRef = await addDoc(collection(db, 'bulletins'), bulletinData)
         toast.success('게시판이 생성되었습니다.')
+        
+        // 부모 게시판이 있다면 부모 게시판을 펼친 상태로 설정
+        if (bulletinData.parentId && typeof bulletinData.parentId === 'string') {
+          setExpandedBulletins(prev => new Set([...Array.from(prev), bulletinData.parentId as string]))
+        }
+        
         // 새로 생성된 게시판을 펼친 상태로 설정
         setExpandedBulletins(prev => new Set([...Array.from(prev), docRef.id]))
-        fetchBulletins() // 게시판 목록 새로고침
+        
+        // 게시판 목록 새로고침
+        await fetchBulletins()
+        
+        // 새로 생성된 게시판을 선택
+        setSelectedBulletinId(docRef.id)
+        onBulletinSelect?.(docRef.id)
       }
 
       setNewBulletin({ title: '', description: '', parentId: '' })
@@ -608,19 +635,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">📁 최상위 게시판</option>
-                  {bulletins.filter(b => !b.parentId).map((bulletin) => (
+                  {bulletins.filter(b => !b.parentId || b.parentId === null || b.parentId === undefined).map((bulletin) => (
                     <option key={bulletin.id} value={bulletin.id}>
                       📂 {bulletin.title}
                     </option>
                   ))}
-                  {bulletins.filter(b => b.parentId).map((bulletin) => {
-                    const parent = bulletins.find(p => p.id === bulletin.parentId)
-                    return (
-                      <option key={bulletin.id} value={bulletin.id}>
-                        &nbsp;&nbsp;&nbsp;📄 {bulletin.title} (하위: {parent?.title})
-                      </option>
-                    )
-                  })}
                 </select>
               </div>
             </div>

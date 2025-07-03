@@ -241,14 +241,16 @@ function SortableBulletinItem({
         )}
 
         {/* 수정/삭제 버튼 - 더 명확하게 표시 */}
-        <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
+        <div className="flex-shrink-0 flex items-center space-x-1 ml-2 bg-yellow-100 p-1 rounded">
           {/* 디버깅용 로그 */}
-          {console.log('🔍 Button Debug:', {
-            isAdmin,
-            userId: user?.uid,
-            bulletinUserId: bulletin.userId,
+          {console.log('🔍 Button Debug for', bulletin.title, ':', {
+            isAdmin: isAdmin,
+            userId: user?.uid || 'no user',
+            bulletinUserId: bulletin.userId || 'no bulletin user',
             canEdit: isAdmin || (user && bulletin.userId === user.uid),
-            canDelete: isAdmin
+            canDelete: isAdmin,
+            userExists: !!user,
+            bulletinUserExists: !!bulletin.userId
           })}
           
           {/* 수정 버튼 (admin 또는 게시판 생성자) */}

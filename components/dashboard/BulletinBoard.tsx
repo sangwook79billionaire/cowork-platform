@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
@@ -17,6 +17,8 @@ import {
   StarIcon,
   LockClosedIcon,
   FolderPlusIcon,
+  PencilIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 
 interface BulletinBoardProps {
@@ -134,7 +136,7 @@ const mockPosts: BulletinPost[] = [
 ]
 
 export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBulletinSelect, onRefreshPosts }: BulletinBoardProps) {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [posts, setPosts] = useState<BulletinPost[]>([])
   const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
@@ -147,6 +149,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     description: '',
     parentId: '',
   })
+  const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null)
+  const [editingPost, setEditingPost] = useState<BulletinPost | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -434,6 +438,32 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 L{level}
               </div>
             )}
+
+            {/* Admin 권한에 따른 수정/삭제 버튼 */}
+            {isAdmin && (
+              <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingBulletin(bulletin)
+                  }}
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="게시판 수정"
+                >
+                  <PencilIcon className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteBulletin(bulletin.id)
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                  title="게시판 삭제"
+                >
+                  <TrashIcon className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 하위 게시판들 - 드롭다운 형태 */}
@@ -545,6 +575,104 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     } catch (error: any) {
       toast.error('게시판 생성에 실패했습니다.')
       console.error('Error creating bulletin:', error)
+    }
+  }
+
+  // 게시판 수정
+  const handleEditBulletin = async (bulletin: Bulletin) => {
+    if (isTestMode) {
+      setBulletins(prev => prev.map(b => 
+        b.id === bulletin.id ? { ...bulletin, updatedAt: new Date() } : b
+      ))
+      setEditingBulletin(null)
+      toast.success('게시판이 수정되었습니다.')
+      return
+    }
+
+    try {
+      const bulletinRef = doc(db, 'bulletins', bulletin.id)
+      await setDoc(bulletinRef, {
+        ...bulletin,
+        updatedAt: serverTimestamp(),
+      })
+      setEditingBulletin(null)
+      fetchBulletins()
+      toast.success('게시판이 수정되었습니다.')
+    } catch (error: any) {
+      toast.error('게시판 수정에 실패했습니다.')
+      console.error('Error updating bulletin:', error)
+    }
+  }
+
+  // 게시판 삭제
+  const handleDeleteBulletin = async (bulletinId: string) => {
+    if (!confirm('정말로 이 게시판을 삭제하시겠습니까?')) {
+      return
+    }
+
+    if (isTestMode) {
+      setBulletins(prev => prev.filter(b => b.id !== bulletinId))
+      toast.success('게시판이 삭제되었습니다.')
+      return
+    }
+
+    try {
+      const bulletinRef = doc(db, 'bulletins', bulletinId)
+      await setDoc(bulletinRef, { isActive: false }, { merge: true })
+      fetchBulletins()
+      toast.success('게시판이 삭제되었습니다.')
+    } catch (error: any) {
+      toast.error('게시판 삭제에 실패했습니다.')
+      console.error('Error deleting bulletin:', error)
+    }
+  }
+
+  // 게시글 수정
+  const handleEditPost = async (post: BulletinPost) => {
+    if (isTestMode) {
+      setPosts(prev => prev.map(p => 
+        p.id === post.id ? { ...post, updatedAt: new Date() } : p
+      ))
+      setEditingPost(null)
+      toast.success('게시글이 수정되었습니다.')
+      return
+    }
+
+    try {
+      const postRef = doc(db, 'bulletinPosts', post.id)
+      await setDoc(postRef, {
+        ...post,
+        updatedAt: serverTimestamp(),
+      })
+      setEditingPost(null)
+      fetchPosts(selectedBulletinId!)
+      toast.success('게시글이 수정되었습니다.')
+    } catch (error: any) {
+      toast.error('게시글 수정에 실패했습니다.')
+      console.error('Error updating post:', error)
+    }
+  }
+
+  // 게시글 삭제
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+      return
+    }
+
+    if (isTestMode) {
+      setPosts(prev => prev.filter(p => p.id !== postId))
+      toast.success('게시글이 삭제되었습니다.')
+      return
+    }
+
+    try {
+      const postRef = doc(db, 'bulletinPosts', postId)
+      await setDoc(postRef, { isDeleted: true }, { merge: true })
+      fetchPosts(selectedBulletinId!)
+      toast.success('게시글이 삭제되었습니다.')
+    } catch (error: any) {
+      toast.error('게시글 삭제에 실패했습니다.')
+      console.error('Error deleting post:', error)
     }
   }
 
@@ -669,6 +797,104 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         </div>
       )}
 
+      {/* 게시판 수정 모달 */}
+      {editingBulletin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <h3 className="text-lg font-semibold mb-4">게시판 수정</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  게시판 제목 *
+                </label>
+                <input
+                  type="text"
+                  value={editingBulletin.title}
+                  onChange={(e) => setEditingBulletin({ ...editingBulletin, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="게시판 제목을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  설명
+                </label>
+                <textarea
+                  value={editingBulletin.description || ''}
+                  onChange={(e) => setEditingBulletin({ ...editingBulletin, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="게시판 설명을 입력하세요"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setEditingBulletin(null)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => handleEditBulletin(editingBulletin)}
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+              >
+                수정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 게시글 수정 모달 */}
+      {editingPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <h3 className="text-lg font-semibold mb-4">게시글 수정</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  제목 *
+                </label>
+                <input
+                  type="text"
+                  value={editingPost.title}
+                  onChange={(e) => setEditingPost({ ...editingPost, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="게시글 제목을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  내용
+                </label>
+                <textarea
+                  value={editingPost.content}
+                  onChange={(e) => setEditingPost({ ...editingPost, content: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="게시글 내용을 입력하세요"
+                  rows={5}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setEditingPost(null)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => handleEditPost(editingPost)}
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+              >
+                수정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* 게시판 목록 */}
         <div className="w-full lg:w-full border-b lg:border-b-0 lg:border-r border-gray-200">
@@ -738,6 +964,31 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                             <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
                               {post.title}
                             </h3>
+                            {/* Admin 권한에 따른 수정/삭제 버튼 */}
+                            {isAdmin && (
+                              <div className="flex items-center space-x-1 ml-auto">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setEditingPost(post)
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="게시글 수정"
+                                >
+                                  <PencilIcon className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeletePost(post.id)
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="게시글 삭제"
+                                >
+                                  <TrashIcon className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
                             <span className="truncate">{post.authorName}</span>

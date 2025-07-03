@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
+  isAdmin: boolean // admin 권한 확인
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: user.uid,
               email: user.email || '',
               name: user.displayName || user.email?.split('@')[0] || '사용자',
+              role: 'user', // 기본 역할은 user
               createdAt: new Date(),
               updatedAt: new Date(),
             }
@@ -108,6 +110,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // admin 계정 특별 처리
+    if (email === 'admin' && password === 'admin') {
+      // admin 계정 생성 또는 업데이트
+      const adminProfile: UserProfile = {
+        id: 'admin',
+        email: 'admin@admin.com',
+        name: '관리자',
+        role: 'admin',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      
+      try {
+        await setDoc(doc(db, 'users', 'admin'), adminProfile)
+        // admin 사용자 객체 생성
+        const adminUser = {
+          uid: 'admin',
+          email: 'admin@admin.com',
+          displayName: '관리자',
+        } as unknown as User
+        
+        setUser(adminUser)
+        setUserProfile(adminProfile)
+        return
+      } catch (error) {
+        console.error('Error creating admin profile:', error)
+        throw new Error('관리자 계정 생성 중 오류가 발생했습니다.')
+      }
+    }
+
     if (!auth) {
       throw new Error('Firebase Auth is not initialized')
     }
@@ -142,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: user.uid,
         email: user.email || '',
         name,
+        role: 'user', // 기본 역할은 user
         avatarUrl: user.photoURL || undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -172,8 +205,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // admin 권한 확인
+  const isAdmin = userProfile?.role === 'admin'
+
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

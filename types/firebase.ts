@@ -28,6 +28,7 @@ export interface UserProfile {
   email: string
   name: string
   avatarUrl?: string
+  role: 'user' | 'admin' // 사용자 역할 추가
   createdAt: Date
   updatedAt: Date
 }

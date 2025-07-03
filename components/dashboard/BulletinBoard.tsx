@@ -154,11 +154,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     }
   }, [user])
 
-  // 게시판 로드 후 모든 게시판을 펼치기
+  // 게시판 로드 후 기본적으로 접힌 상태로 시작
   useEffect(() => {
     if (bulletins.length > 0) {
-      const allBulletinIds = bulletins.map(b => b.id)
-      setExpandedBulletins(new Set(allBulletinIds))
+      setExpandedBulletins(new Set())
     }
   }, [bulletins])
 
@@ -200,7 +199,6 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           updatedAt: data.updatedAt?.toDate() || new Date(),
         }
         bulletinData.push(bulletin)
-        console.log('Loaded bulletin:', bulletin)
       })
       
       setBulletins(bulletinData)
@@ -274,9 +272,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   }
 
   const getChildBulletins = (parentId: string) => {
-    const children = bulletins.filter(bulletin => bulletin.parentId === parentId)
-    console.log(`Children for ${parentId}:`, children)
-    return children
+    return bulletins.filter(bulletin => bulletin.parentId === parentId)
   }
 
   const getTopLevelBulletins = () => {
@@ -340,7 +336,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                   )}
                 </button>
               ) : (
-                <div className="w-4 h-4 flex items-center justify-center">
+                <div className="w-4 h-6 flex items-center justify-center">
                   {level > 0 && (
                     <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
                   )}
@@ -397,10 +393,57 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             )}
           </div>
 
-          {/* 하위 게시판들 */}
+          {/* 하위 게시판들 - 드롭다운 형태 */}
           {hasChildren && isExpanded && (
-            <div className="mt-1">
-              {renderBulletinTree(getChildBulletins(bulletin.id), level + 1)}
+            <div className="mt-1 ml-4 border-l-2 border-gray-200 pl-2">
+              {getChildBulletins(bulletin.id).map((childBulletin) => {
+                const isChildSelected = selectedBulletinId === childBulletin.id
+                const childHasChildren = bulletins.some(b => b.parentId === childBulletin.id)
+                
+                return (
+                  <div key={childBulletin.id} className="mb-1">
+                    <div
+                      onClick={() => {
+                        setSelectedBulletinId(childBulletin.id)
+                        onBulletinSelect?.(childBulletin.id)
+                      }}
+                      className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-all duration-200 border ${
+                        isChildSelected 
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm' 
+                          : 'bg-white hover:bg-gray-50 border-gray-100'
+                      }`}
+                    >
+                      {/* 하위 게시판 아이콘 */}
+                      <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                        <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
+                      </div>
+
+                      {/* 하위 게시판 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <h4 className={`text-sm font-medium truncate ${
+                            isChildSelected ? 'text-blue-700' : 'text-gray-900'
+                          }`}>
+                            {childBulletin.title}
+                          </h4>
+                          {childHasChildren && (
+                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                              {bulletins.filter(b => b.parentId === childBulletin.id).length}
+                            </span>
+                          )}
+                        </div>
+                        {childBulletin.description && (
+                          <p className={`text-xs mt-1 truncate ${
+                            isChildSelected ? 'text-blue-500' : 'text-gray-500'
+                          }`}>
+                            {childBulletin.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -607,10 +650,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
             <div className="flex items-center space-x-2 text-xs text-gray-600">
               <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
               <span>최상위 게시판</span>
-              <div className="w-3 h-3 bg-gray-300 rounded-sm ml-4"></div>
-              <span>하위 게시판</span>
-              <div className="w-3 h-3 bg-gray-200 rounded-sm ml-4"></div>
-              <span>세부 게시판</span>
+              <div className="w-3 h-3 bg-blue-400 rounded-sm ml-4"></div>
+              <span>하위 게시판 (클릭 시 드롭다운)</span>
             </div>
           </div>
           <div className="p-2 h-full overflow-y-auto">

@@ -344,9 +344,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                     : 'bg-gray-25 hover:bg-gray-50 border-transparent hover:border-gray-200'
             }`}
             style={{ 
-              paddingLeft: `${level * 16 + 8}px`,
-              marginLeft: `${level * 4}px`,
-              marginRight: '4px'
+              paddingLeft: `${level * 24 + 16}px`,
+              marginLeft: `${level * 8}px`,
+              marginRight: '8px',
+              minWidth: `${Math.max(300, level * 50 + 300)}px`
             }}
           >
             {/* 확장/축소 버튼 */}
@@ -670,7 +671,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
 
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* 게시판 목록 */}
-        <div className="w-full lg:w-2/5 border-b lg:border-b-0 lg:border-r border-gray-200">
+        <div className="w-full lg:w-full border-b lg:border-b-0 lg:border-r border-gray-200">
           {/* 게시판 구조 안내 */}
           <div className="p-3 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center space-x-2 text-xs text-gray-600">
@@ -686,99 +687,91 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               <span>4단계+ 하위</span>
             </div>
           </div>
-          <div className="p-2 h-full overflow-y-auto">
-            {renderBulletinTree(getTopLevelBulletins(), bulletins, 0)}
+          <div className="p-4 h-full overflow-y-auto overflow-x-auto">
+            <div className="min-w-max">
+              {renderBulletinTree(getTopLevelBulletins(), bulletins, 0)}
+            </div>
           </div>
         </div>
 
-        {/* 게시글 목록 */}
-        <div className="w-full lg:w-3/5 flex flex-col">
-          {selectedBulletinId ? (
-            <>
-              <div className="p-3 lg:p-4 border-b border-gray-200">
-                <h3 className="text-sm lg:text-md font-semibold text-gray-900">
-                  {bulletins.find(b => b.id === selectedBulletinId)?.title}
-                </h3>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {posts.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
-                    <ChatBubbleLeftRightIcon className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-xs lg:text-sm">게시글이 없습니다</p>
-                    <button
-                      onClick={onCreatePost}
-                      className="mt-2 text-primary-600 hover:text-primary-700 text-xs lg:text-sm font-medium"
+        {/* 게시글 목록 - 선택된 게시판이 있을 때만 표시 */}
+        {selectedBulletinId && (
+          <div className="w-full lg:w-1/2 flex flex-col border-l border-gray-200">
+            <div className="p-3 lg:p-4 border-b border-gray-200">
+              <h3 className="text-sm lg:text-md font-semibold text-gray-900">
+                {bulletins.find(b => b.id === selectedBulletinId)?.title}
+              </h3>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {posts.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  <ChatBubbleLeftRightIcon className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-xs lg:text-sm">게시글이 없습니다</p>
+                  <button
+                    onClick={onCreatePost}
+                    className="mt-2 text-primary-600 hover:text-primary-700 text-xs lg:text-sm font-medium"
+                  >
+                    첫 번째 게시글 작성하기
+                  </button>
+                </div>
+              ) : (
+                <div className="p-2">
+                  {posts.map((post) => (
+                    <div
+                      key={post.id}
+                      onClick={() => onSelectPost(post.id)}
+                      className={`p-2 lg:p-3 rounded-lg cursor-pointer transition-colors ${
+                        selectedPostId === post.id
+                          ? 'bg-primary-50 border border-primary-200'
+                          : 'hover:bg-gray-50'
+                      }`}
                     >
-                      첫 번째 게시글 작성하기
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-2">
-                    {posts.map((post) => (
-                      <div
-                        key={post.id}
-                        onClick={() => onSelectPost(post.id)}
-                        className={`p-2 lg:p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedPostId === post.id
-                            ? 'bg-primary-50 border border-primary-200'
-                            : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-start space-x-2 lg:space-x-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-1 lg:space-x-2">
-                              {post.isPinned && (
-                                <StarIcon className="w-3 h-3 lg:w-4 lg:h-4 text-red-500" />
-                              )}
-                              {post.isLocked && (
-                                <LockClosedIcon className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
-                              )}
-                              <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
-                                {post.title}
-                              </h3>
-                            </div>
-                            <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
-                              <span className="truncate">{post.authorName}</span>
-                              <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
-                              <div className="flex items-center space-x-1">
-                                <EyeIcon className="w-3 h-3" />
-                                <span className="hidden lg:inline">{post.viewCount}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <HeartIcon className="w-3 h-3" />
-                                <span className="hidden lg:inline">{post.likeCount}</span>
-                              </div>
-                            </div>
-                            {post.tags && post.tags.length > 0 && (
-                              <div className="flex space-x-1 mt-1">
-                                {post.tags.map((tag, index) => (
-                                  <span
-                                    key={index}
-                                    className="px-1 lg:px-2 py-0.5 lg:py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
+                      <div className="flex items-start space-x-2 lg:space-x-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-1 lg:space-x-2">
+                            {post.isPinned && (
+                              <StarIcon className="w-3 h-3 lg:w-4 lg:h-4 text-red-500" />
                             )}
+                            {post.isLocked && (
+                              <LockClosedIcon className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
+                            )}
+                            <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
+                              {post.title}
+                            </h3>
                           </div>
+                          <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
+                            <span className="truncate">{post.authorName}</span>
+                            <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
+                            <div className="flex items-center space-x-1">
+                              <EyeIcon className="w-3 h-3" />
+                              <span className="hidden lg:inline">{post.viewCount}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <HeartIcon className="w-3 h-3" />
+                              <span className="hidden lg:inline">{post.likeCount}</span>
+                            </div>
+                          </div>
+                          {post.tags && post.tags.length > 0 && (
+                            <div className="flex space-x-1 mt-1">
+                              {post.tags.map((tag, index) => (
+                                <span
+                                  key={index}
+                                  className="px-1 lg:px-2 py-0.5 lg:py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500 bg-gray-50">
-              <div className="text-center p-4">
-                <ChatBubbleLeftRightIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-base lg:text-lg font-medium mb-2">게시판을 선택해주세요</p>
-                <p className="text-xs lg:text-sm text-gray-400">위에서 게시판을 선택하여 게시글을 확인하세요</p>
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

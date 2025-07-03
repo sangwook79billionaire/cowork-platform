@@ -825,6 +825,12 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
   const handleEditPost = async (post: BulletinPost) => {
     console.log('📝 Editing post:', post)
     
+    // 권한 확인
+    if (!isAdmin && (!user || post.userId !== user.uid)) {
+      toast.error('게시글을 수정할 권한이 없습니다.')
+      return
+    }
+    
     if (isTestMode) {
       setPosts(prev => prev.map(p => 
         p.id === post.id ? { ...post, updatedAt: new Date() } : p
@@ -1224,7 +1230,24 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       {editingPost && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 max-w-md">
-            <h3 className="text-lg font-semibold mb-4">게시글 수정</h3>
+            <div className="flex items-center space-x-2 mb-4">
+              <PencilIcon className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">게시글 수정</h3>
+            </div>
+            
+            {/* 권한 안내 */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center space-x-2 text-sm text-blue-700">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>
+                  {isAdmin 
+                    ? "관리자 권한으로 수정 중입니다" 
+                    : "내가 쓴 게시글을 수정 중입니다"
+                  }
+                </span>
+              </div>
+            </div>
+            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1260,9 +1283,10 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               </button>
               <button
                 onClick={() => handleEditPost(editingPost)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors flex items-center space-x-1"
               >
-                수정
+                <PencilIcon className="w-4 h-4" />
+                <span>수정 완료</span>
               </button>
             </div>
           </div>
@@ -1381,29 +1405,43 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                             <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
                               {post.title}
                             </h3>
-                            {/* Admin 권한에 따른 수정/삭제 버튼 */}
-                            {isAdmin && (
+                            {/* 수정 가능한 게시글 표시 */}
+                            {(isAdmin || (user && post.userId === user.uid)) && (
+                              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
+                                {isAdmin ? '관리' : '내 글'}
+                              </span>
+                            )}
+                            {/* 게시글 수정/삭제 버튼 (admin 또는 게시글 작성자) */}
+                            {(isAdmin || (user && post.userId === user.uid)) && (
                               <div className="flex items-center space-x-1 ml-auto">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
+                                    console.log('📝 Edit post button clicked:', {
+                                      postTitle: post.title,
+                                      postUserId: post.userId,
+                                      currentUserId: user?.uid,
+                                      isAdmin
+                                    })
                                     setEditingPost(post)
                                   }}
                                   className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title="게시글 수정"
+                                  title={isAdmin ? "게시글 수정 (관리자)" : "게시글 수정 (내가 쓴 글)"}
                                 >
                                   <PencilIcon className="w-3 h-3" />
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDeletePost(post.id)
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="게시글 삭제"
-                                >
-                                  <TrashIcon className="w-3 h-3" />
-                                </button>
+                                {isAdmin && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDeletePost(post.id)
+                                    }}
+                                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="게시글 삭제 (관리자만 가능)"
+                                  >
+                                    <TrashIcon className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>

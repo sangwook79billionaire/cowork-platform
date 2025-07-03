@@ -5,6 +5,7 @@ export const mockUserProfile: UserProfile = {
   id: 'test-user-id',
   email: 'test@example.com',
   name: '테스트 사용자',
+  role: 'user',
   avatarUrl: undefined,
   createdAt: new Date(),
   updatedAt: new Date(),

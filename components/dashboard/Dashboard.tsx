@@ -104,23 +104,15 @@ export function Dashboard() {
                 />
               </div>
 
-              {/* 게시글 뷰어 - 더 작은 공간 */}
-              <div className="w-full lg:w-1/3 xl:w-2/5">
-                {selectedPostId ? (
+              {/* 게시글 뷰어 - 게시글이 선택된 경우에만 표시 */}
+              {selectedPostId && (
+                <div className="w-full lg:w-1/3 xl:w-2/5">
                   <PostViewer 
                     postId={selectedPostId}
                     onEditPost={handleEditPost}
                   />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500 p-8">
-                    <div className="text-center">
-                      <ChatBubbleLeftRightIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-base lg:text-lg font-medium mb-2">게시글을 선택하세요</h3>
-                      <p className="text-sm text-gray-400">왼쪽에서 게시판을 선택하고 게시글을 확인해보세요.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
 

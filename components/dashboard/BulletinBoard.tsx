@@ -204,13 +204,36 @@ function SortableBulletinItem({
         {/* 게시판 정보 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <h3 className={`text-sm font-medium truncate ${
-              isSelected ? 'text-primary-700' : 'text-gray-900'
-            }`}>
+            <h3 
+              className={`text-sm font-medium truncate cursor-pointer hover:text-primary-600 transition-colors ${
+                isSelected ? 'text-primary-700' : 'text-gray-900'
+              }`}
+              onClick={(e) => {
+                // 편집 가능한 게시판인 경우 편집 모드로 전환
+                if (isAdmin || (user && bulletin.userId === user.uid)) {
+                  console.log('✏️ Title clicked for editing bulletin:', bulletin.title)
+                  onEdit()
+                } else {
+                  // 편집 불가능한 경우 선택만
+                  onSelect()
+                }
+              }}
+              title={
+                isAdmin || (user && bulletin.userId === user.uid) 
+                  ? "클릭하여 게시판 이름 편집" 
+                  : "클릭하여 게시판 선택"
+              }
+            >
               {level > 0 && (
                 <span className="text-xs text-gray-400 mr-1">L{level}</span>
               )}
               {bulletin.title}
+              {/* 편집 가능한 게시판 표시 */}
+              {(isAdmin || (user && bulletin.userId === user.uid)) && (
+                <span className="ml-1 text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                  ✏️
+                </span>
+              )}
             </h3>
             {/* 수정 가능한 게시판 표시 */}
             {(isAdmin || (user && bulletin.userId === user.uid)) && (
@@ -261,10 +284,10 @@ function SortableBulletinItem({
                 console.log('✏️ Edit button clicked for bulletin:', bulletin.title)
                 onEdit()
               }}
-              className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200 border border-transparent hover:border-blue-200"
+              className="flex items-center justify-center w-8 h-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all duration-200 border border-blue-200 hover:border-blue-300 shadow-sm"
               title={isAdmin ? "게시판 수정 (관리자)" : "게시판 수정 (내가 만든 게시판)"}
             >
-              <PencilIcon className="w-5 h-5" />
+              <PencilIcon className="w-4 h-4" />
             </button>
           )}
           
@@ -276,10 +299,10 @@ function SortableBulletinItem({
                 console.log('🗑️ Delete button clicked for bulletin:', bulletin.title)
                 onDelete()
               }}
-              className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 border border-transparent hover:border-red-200"
+              className="flex items-center justify-center w-8 h-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-all duration-200 border border-red-200 hover:border-red-300 shadow-sm"
               title="게시판 삭제 (관리자만 가능)"
             >
-              <TrashIcon className="w-5 h-5" />
+              <TrashIcon className="w-4 h-4" />
             </button>
           )}
         </div>

@@ -286,41 +286,76 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       const hasChildren = bulletins.some(b => b.parentId === bulletin.id)
       const isExpanded = expandedBulletins.has(bulletin.id)
       const isSelected = selectedBulletinId === bulletin.id
+      const childCount = bulletins.filter(b => b.parentId === bulletin.id).length
 
       return (
-        <div key={bulletin.id}>
+        <div key={bulletin.id} className="mb-1">
           <div
             onClick={() => {
               setSelectedBulletinId(bulletin.id)
               onBulletinSelect?.(bulletin.id)
             }}
-            className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-colors ${
-              isSelected ? 'bg-primary-50 text-primary-700' : 'hover:bg-gray-100'
+            className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+              isSelected 
+                ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm' 
+                : 'hover:bg-gray-50 border-transparent hover:border-gray-200'
             }`}
-            style={{ paddingLeft: `${level * 16 + 8}px` }}
+            style={{ 
+              paddingLeft: `${level * 20 + 12}px`,
+              marginLeft: `${level * 8}px`,
+              marginRight: '8px'
+            }}
           >
-            {hasChildren && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleBulletinExpansion(bulletin.id)
-                }}
-                className="p-1 hover:bg-gray-200 rounded"
-              >
-                {isExpanded ? (
-                  <ChevronDownIcon className="w-4 h-4" />
-                ) : (
-                  <ChevronRightIcon className="w-4 h-4" />
-                )}
-              </button>
-            )}
-            <ChatBubbleLeftRightIcon className="w-4 h-4 flex-shrink-0" />
+            {/* 확장/축소 버튼 */}
+            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
+              {hasChildren ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleBulletinExpansion(bulletin.id)
+                  }}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                >
+                  {isExpanded ? (
+                    <ChevronDownIcon className="w-4 h-4" />
+                  ) : (
+                    <ChevronRightIcon className="w-4 h-4" />
+                  )}
+                </button>
+              ) : (
+                <div className="w-4 h-4 flex items-center justify-center">
+                  {level > 0 && (
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 게시판 아이콘 */}
+            <div className="flex-shrink-0">
+              {level === 0 ? (
+                <ChatBubbleLeftRightIcon className="w-5 h-5" />
+              ) : (
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <div className="w-3 h-3 bg-gray-300 rounded-sm"></div>
+                </div>
+              )}
+            </div>
+
+            {/* 게시판 정보 */}
             <div className="flex-1 min-w-0">
-              <h3 className={`text-sm font-medium truncate ${
-                isSelected ? 'text-primary-700' : 'text-gray-900'
-              }`}>
-                {bulletin.title}
-              </h3>
+              <div className="flex items-center space-x-2">
+                <h3 className={`text-sm font-medium truncate ${
+                  isSelected ? 'text-primary-700' : 'text-gray-900'
+                }`}>
+                  {bulletin.title}
+                </h3>
+                {hasChildren && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    {childCount}
+                  </span>
+                )}
+              </div>
               {bulletin.description && (
                 <p className={`text-xs mt-1 truncate ${
                   isSelected ? 'text-primary-500' : 'text-gray-500'
@@ -329,9 +364,18 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 </p>
               )}
             </div>
+
+            {/* 계층 레벨 표시 */}
+            {level > 0 && (
+              <div className="flex-shrink-0 text-xs text-gray-400">
+                L{level}
+              </div>
+            )}
           </div>
+
+          {/* 하위 게시판들 */}
           {hasChildren && isExpanded && (
-            <div className="ml-2">
+            <div className="mt-1">
               {renderBulletinTree(getChildBulletins(bulletin.id), level + 1)}
             </div>
           )}
@@ -342,6 +386,19 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
 
   const handleRefreshPosts = () => {
     setRefreshTrigger(prev => prev + 1)
+  }
+
+  const toggleAllBulletins = () => {
+    const allBulletinIds = bulletins.map(b => b.id)
+    const hasExpanded = allBulletinIds.some(id => expandedBulletins.has(id))
+    
+    if (hasExpanded) {
+      // 모든 게시판 접기
+      setExpandedBulletins(new Set())
+    } else {
+      // 모든 게시판 펼치기
+      setExpandedBulletins(new Set(allBulletinIds))
+    }
   }
 
   const handleCreateBulletin = async () => {
@@ -410,6 +467,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           <h2 className="text-lg font-semibold text-gray-900">게시판</h2>
           <div className="flex items-center space-x-2">
             <button
+              onClick={toggleAllBulletins}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="전체 펼치기/접기"
+            >
+              <ChevronDownIcon className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setShowCreateBulletin(true)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="새 게시판 생성"
@@ -468,12 +532,20 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                   onChange={(e) => setNewBulletin({ ...newBulletin, parentId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">최상위 게시판</option>
+                  <option value="">📁 최상위 게시판</option>
                   {bulletins.filter(b => !b.parentId).map((bulletin) => (
                     <option key={bulletin.id} value={bulletin.id}>
-                      {bulletin.title}
+                      📂 {bulletin.title}
                     </option>
                   ))}
+                  {bulletins.filter(b => b.parentId).map((bulletin) => {
+                    const parent = bulletins.find(p => p.id === bulletin.parentId)
+                    return (
+                      <option key={bulletin.id} value={bulletin.id}>
+                        &nbsp;&nbsp;&nbsp;📄 {bulletin.title} (하위: {parent?.title})
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
             </div>

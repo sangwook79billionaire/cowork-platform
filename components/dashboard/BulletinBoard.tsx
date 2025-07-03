@@ -211,11 +211,9 @@ function SortableBulletinItem({
               onClick={(e) => {
                 // 편집 가능한 게시판인 경우 편집 모드로 전환
                 if (isAdmin || (user && bulletin.userId === user.uid)) {
-                  console.log('✏️ Title clicked for editing bulletin:', bulletin.title)
                   onEdit()
                 } else {
                   // 편집 불가능한 경우 선택만
-                  console.log('📋 Title clicked for selecting bulletin:', bulletin.title)
                   onSelect()
                 }
               }}
@@ -266,23 +264,11 @@ function SortableBulletinItem({
 
         {/* 수정/삭제 버튼 - 더 명확하게 표시 */}
         <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
-          {/* 디버깅용 로그 */}
-          {console.log('🔍 Button Debug for', bulletin.title, ':', {
-            isAdmin: isAdmin,
-            userId: user?.uid || 'no user',
-            bulletinUserId: bulletin.userId || 'no bulletin user',
-            canEdit: isAdmin || (user && bulletin.userId === user.uid),
-            canDelete: isAdmin,
-            userExists: !!user,
-            bulletinUserExists: !!bulletin.userId
-          })}
-          
           {/* 수정 버튼 (admin 또는 게시판 생성자) */}
           {(isAdmin || (user && bulletin.userId === user.uid)) && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                console.log('✏️ Edit button clicked for bulletin:', bulletin.title)
                 onEdit()
               }}
               className="flex items-center justify-center w-8 h-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all duration-200 border border-blue-200 hover:border-blue-300 shadow-sm"
@@ -297,7 +283,6 @@ function SortableBulletinItem({
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                console.log('🗑️ Delete button clicked for bulletin:', bulletin.title)
                 onDelete()
               }}
               className="flex items-center justify-center w-8 h-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-all duration-200 border border-red-200 hover:border-red-300 shadow-sm"
@@ -607,8 +592,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       
       setPosts(postData)
     } catch (error: any) {
-      toast.error('게시글을 불러오는데 실패했습니다.')
       console.error('Error fetching posts:', error)
+      // Firestore 연결 오류 시 빈 배열로 설정
+      if (error.code === 'unavailable' || error.message?.includes('QUIC_PROTOCOL_ERROR')) {
+        console.warn('Firestore connection error, setting empty posts array')
+        setPosts([])
+      } else {
+        toast.error('게시글을 불러오는데 실패했습니다.')
+      }
     }
   }
 
@@ -674,7 +665,6 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           childCount={childCount}
           onToggleExpansion={() => toggleBulletinExpansion(bulletin.id)}
           onSelect={() => {
-            console.log('📋 Selecting bulletin:', bulletin.id, bulletin.title)
             setSelectedBulletinId(bulletin.id)
             onBulletinSelect?.(bulletin.id)
             // 게시판 선택 시 해당 게시판의 게시글 가져오기
@@ -1444,12 +1434,6 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    console.log('📝 Edit post button clicked:', {
-                                      postTitle: post.title,
-                                      postUserId: post.userId,
-                                      currentUserId: user?.uid,
-                                      isAdmin
-                                    })
                                     setEditingPost(post)
                                   }}
                                   className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"

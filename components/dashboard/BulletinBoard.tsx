@@ -519,15 +519,16 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises)
         console.log(`🔄 Updated ${updatePromises.length} bulletins with userId: ${user.uid}`)
-        // 게시판 목록 새로고침
-        fetchBulletins()
+        // 현재 확장된 게시판 상태를 보존하면서 게시판 목록 새로고침
+        const currentExpandedState = new Set(expandedBulletins)
+        await fetchBulletins(currentExpandedState)
       }
     } catch (error: any) {
       console.error('Error updating bulletin user IDs:', error)
     }
   }
 
-  const fetchBulletins = async () => {
+  const fetchBulletins = async (preserveExpandedState?: Set<string>) => {
     if (isTestMode) {
       setBulletins(mockBulletins)
       setLoading(false)
@@ -570,6 +571,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       })
       
       setBulletins(bulletinData)
+      
+      // 확장 상태를 보존해야 하는 경우
+      if (preserveExpandedState) {
+        setExpandedBulletins(preserveExpandedState)
+      }
     } catch (error: any) {
       toast.error('게시판을 불러오는데 실패했습니다.')
       console.error('Error fetching bulletins:', error)
@@ -805,8 +811,9 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         // 새로 생성된 게시판을 펼친 상태로 설정
         setExpandedBulletins(prev => new Set([...Array.from(prev), docRef.id]))
         
-        // 게시판 목록 새로고침
-        await fetchBulletins()
+        // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
+        const currentExpandedState = new Set([...Array.from(expandedBulletins), docRef.id])
+        await fetchBulletins(currentExpandedState)
         
         // 새로 생성된 게시판을 선택
         setSelectedBulletinId(docRef.id)
@@ -840,14 +847,9 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       })
       setEditingBulletin(null)
       
-      // 현재 확장된 게시판 상태를 저장
+      // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
       const currentExpandedState = new Set(expandedBulletins)
-      
-      // 게시판 목록 새로고침
-      await fetchBulletins()
-      
-      // 확장된 게시판 상태 복원
-      setExpandedBulletins(currentExpandedState)
+      await fetchBulletins(currentExpandedState)
       
       toast.success('게시판이 수정되었습니다.')
     } catch (error: any) {
@@ -872,16 +874,11 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       const bulletinRef = doc(db, 'bulletins', bulletinId)
       await deleteDoc(bulletinRef)
       
-      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판 제외)
+      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판들 제외)하고 fetchBulletins에 전달
       const currentExpandedState = new Set(
-        Array.from(expandedBulletins).filter(id => id !== bulletinId)
+        Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
       )
-      
-      // 게시판 목록 새로고침
-      await fetchBulletins()
-      
-      // 확장된 게시판 상태 복원
-      setExpandedBulletins(currentExpandedState)
+      await fetchBulletins(currentExpandedState)
       
       toast.success('게시판이 삭제되었습니다.')
     } catch (error: any) {
@@ -985,16 +982,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       }
       setSelectedBulletinIds(new Set())
       
-      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판들 제외)
+      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판들 제외)하고 fetchBulletins에 전달
       const currentExpandedState = new Set(
         Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
       )
       
       // 게시판 목록 새로고침
       await fetchBulletins()
-      
-      // 확장된 게시판 상태 복원
-      setExpandedBulletins(currentExpandedState)
       
       toast.success('선택한 게시판이 삭제되었습니다.')
     } catch (e) {
@@ -1083,14 +1077,9 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           updatedAt: serverTimestamp(),
         }, { merge: true })
         
-        // 현재 확장된 게시판 상태를 저장
+        // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
         const currentExpandedState = new Set(expandedBulletins)
-        
-        // 게시판 목록 새로고침
-        await fetchBulletins()
-        
-        // 확장된 게시판 상태 복원
-        setExpandedBulletins(currentExpandedState)
+        await fetchBulletins(currentExpandedState)
         
         toast.success('게시판 위치가 변경되었습니다.')
       }

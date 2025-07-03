@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
@@ -638,7 +638,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
 
     try {
       const bulletinRef = doc(db, 'bulletins', bulletinId)
-      await setDoc(bulletinRef, { isActive: false }, { merge: true })
+      await deleteDoc(bulletinRef)
       fetchBulletins()
       toast.success('게시판이 삭제되었습니다.')
     } catch (error: any) {
@@ -687,7 +687,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
 
     try {
       const postRef = doc(db, 'bulletinPosts', postId)
-      await setDoc(postRef, { isDeleted: true }, { merge: true })
+      await deleteDoc(postRef)
       fetchPosts(selectedBulletinId!)
       toast.success('게시글이 삭제되었습니다.')
     } catch (error: any) {
@@ -707,12 +707,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     try {
       for (const id of selectedBulletinIds) {
         const bulletinRef = doc(db, 'bulletins', id)
-        await setDoc(bulletinRef, { isActive: false }, { merge: true })
+        await deleteDoc(bulletinRef)
       }
       setSelectedBulletinIds(new Set())
       fetchBulletins()
       toast.success('선택한 게시판이 삭제되었습니다.')
     } catch (e) {
+      console.error('일괄 삭제 오류:', e)
       toast.error('일괄 삭제 중 오류 발생')
     }
   }
@@ -728,12 +729,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     try {
       for (const id of selectedPostIds) {
         const postRef = doc(db, 'bulletinPosts', id)
-        await setDoc(postRef, { isDeleted: true }, { merge: true })
+        await deleteDoc(postRef)
       }
       setSelectedPostIds(new Set())
       fetchPosts(selectedBulletinId!)
       toast.success('선택한 게시글이 삭제되었습니다.')
     } catch (e) {
+      console.error('일괄 삭제 오류:', e)
       toast.error('일괄 삭제 중 오류 발생')
     }
   }

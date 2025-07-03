@@ -943,7 +943,15 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               )}
             </button>
             <button
-              onClick={() => setShowCreateBulletin(true)}
+              onClick={() => {
+                // 현재 선택된 게시판을 기본 상위 게시판으로 설정
+                setNewBulletin({
+                  title: '',
+                  description: '',
+                  parentId: selectedBulletinId || '',
+                })
+                setShowCreateBulletin(true)
+              }}
               className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="새 게시판 생성"
             >
@@ -1010,16 +1018,18 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">📁 최상위 게시판</option>
-                  {bulletins.map((bulletin) => {
-                    const level = getBulletinLevel(bulletin.id)
-                    const indent = '  '.repeat(level)
-                    const icon = level === 0 ? '📂' : level === 1 ? '📄' : level === 2 ? '📋' : '📌'
-                    return (
-                      <option key={bulletin.id} value={bulletin.id}>
-                        {indent}{icon} {bulletin.title}
-                      </option>
-                    )
-                  })}
+                  {bulletins
+                    .filter(bulletin => bulletin.isActive !== false) // 현재 존재하는 게시판만 필터링
+                    .map((bulletin) => {
+                      const level = getBulletinLevel(bulletin.id)
+                      const indent = '  '.repeat(level)
+                      const icon = level === 0 ? '📂' : level === 1 ? '📄' : level === 2 ? '📋' : '📌'
+                      return (
+                        <option key={bulletin.id} value={bulletin.id}>
+                          {indent}{icon} {bulletin.title}
+                        </option>
+                      )
+                    })}
                 </select>
               </div>
             </div>

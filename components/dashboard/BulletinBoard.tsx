@@ -199,7 +199,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           updatedAt: data.updatedAt?.toDate() || new Date(),
         }
         bulletinData.push(bulletin)
-        console.log(`📥 Loaded bulletin:`, bulletin)
+        console.log(`📥 Loaded bulletin:`, {
+          id: bulletin.id,
+          title: bulletin.title,
+          parentId: bulletin.parentId,
+          level: bulletin.level,
+          hasParent: !!bulletin.parentId
+        })
       })
       
       setBulletins(bulletinData)
@@ -398,58 +404,62 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
           </div>
 
           {/* 하위 게시판들 - 드롭다운 형태 */}
-          {hasChildren && isExpanded && (
-            <div className="mt-1 ml-4 border-l-2 border-gray-200 pl-2">
-              {getChildBulletins(bulletin.id).map((childBulletin) => {
-                const isChildSelected = selectedBulletinId === childBulletin.id
-                const childHasChildren = bulletins.some(b => b.parentId === childBulletin.id)
-                
-                return (
-                  <div key={childBulletin.id} className="mb-1">
-                    <div
-                      onClick={() => {
-                        setSelectedBulletinId(childBulletin.id)
-                        onBulletinSelect?.(childBulletin.id)
-                      }}
-                      className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-all duration-200 border ${
-                        isChildSelected 
-                          ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm' 
-                          : 'bg-white hover:bg-gray-50 border-gray-100'
-                      }`}
-                    >
-                      {/* 하위 게시판 아이콘 */}
-                      <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                        <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
-                      </div>
+          {hasChildren && isExpanded && (() => {
+            const children = getChildBulletins(bulletin.id)
+            console.log(`🎯 Rendering children for ${bulletin.title} (${bulletin.id}):`, children)
+            return (
+              <div className="mt-1 ml-4 border-l-2 border-gray-200 pl-2">
+                {children.map((childBulletin) => {
+                  const isChildSelected = selectedBulletinId === childBulletin.id
+                  const childHasChildren = bulletins.some(b => b.parentId === childBulletin.id)
+                  
+                  return (
+                    <div key={childBulletin.id} className="mb-1">
+                      <div
+                        onClick={() => {
+                          setSelectedBulletinId(childBulletin.id)
+                          onBulletinSelect?.(childBulletin.id)
+                        }}
+                        className={`flex items-center space-x-2 p-2 rounded-lg cursor-pointer transition-all duration-200 border ${
+                          isChildSelected 
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm' 
+                            : 'bg-white hover:bg-gray-50 border-gray-100'
+                        }`}
+                      >
+                        {/* 하위 게시판 아이콘 */}
+                        <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                          <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
+                        </div>
 
-                      {/* 하위 게시판 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <h4 className={`text-sm font-medium truncate ${
-                            isChildSelected ? 'text-blue-700' : 'text-gray-900'
-                          }`}>
-                            {childBulletin.title}
-                          </h4>
-                          {childHasChildren && (
-                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                              {bulletins.filter(b => b.parentId === childBulletin.id).length}
-                            </span>
+                        {/* 하위 게시판 정보 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <h4 className={`text-sm font-medium truncate ${
+                              isChildSelected ? 'text-blue-700' : 'text-gray-900'
+                            }`}>
+                              {childBulletin.title}
+                            </h4>
+                            {childHasChildren && (
+                              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                                {bulletins.filter(b => b.parentId === childBulletin.id).length}
+                              </span>
+                            )}
+                          </div>
+                          {childBulletin.description && (
+                            <p className={`text-xs mt-1 truncate ${
+                              isChildSelected ? 'text-blue-500' : 'text-gray-500'
+                            }`}>
+                              {childBulletin.description}
+                            </p>
                           )}
                         </div>
-                        {childBulletin.description && (
-                          <p className={`text-xs mt-1 truncate ${
-                            isChildSelected ? 'text-blue-500' : 'text-gray-500'
-                          }`}>
-                            {childBulletin.description}
-                          </p>
-                        )}
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       )
     })
@@ -489,6 +499,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
+      
+      console.log('🚀 Creating bulletin with data:', bulletinData)
 
       if (isTestMode) {
         const newBulletinItem: Bulletin = {

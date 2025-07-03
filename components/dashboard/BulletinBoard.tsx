@@ -214,7 +214,7 @@ function SortableBulletinItem({
             </h3>
             {/* 수정 가능한 게시판 표시 */}
             {(isAdmin || (user && bulletin.userId === user.uid)) && (
-              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200">
+              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
                 {isAdmin ? '관리' : '내 게시판'}
               </span>
             )}
@@ -240,35 +240,36 @@ function SortableBulletinItem({
           </div>
         )}
 
-        {/* 수정 권한 확인 (admin 또는 게시판 생성자) */}
-        {(isAdmin || (user && bulletin.userId === user.uid)) && (
-          <div className="flex-shrink-0 flex items-center space-x-2 ml-3">
+        {/* 수정/삭제 버튼 - 더 명확하게 표시 */}
+        <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
+          {/* 수정 버튼 (admin 또는 게시판 생성자) */}
+          {(isAdmin || (user && bulletin.userId === user.uid)) && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 onEdit()
               }}
-              className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200 border border-transparent hover:border-blue-200"
+              className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200 border border-transparent hover:border-blue-200"
               title={isAdmin ? "게시판 수정 (관리자)" : "게시판 수정 (내가 만든 게시판)"}
             >
-              <PencilIcon className="w-4 h-4" />
-              <span className="text-xs font-medium">수정</span>
+              <PencilIcon className="w-5 h-5" />
             </button>
-            {isAdmin && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete()
-                }}
-                className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 border border-transparent hover:border-red-200"
-                title="게시판 삭제 (관리자만 가능)"
-              >
-                <TrashIcon className="w-4 h-4" />
-                <span className="text-xs font-medium">삭제</span>
-              </button>
-            )}
-          </div>
-        )}
+          )}
+          
+          {/* 삭제 버튼 (admin만) */}
+          {isAdmin && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 border border-transparent hover:border-red-200"
+              title="게시판 삭제 (관리자만 가능)"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 하위 게시판들 - 드롭다운 형태 */}
@@ -1210,12 +1211,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               {/* 수정 방법 안내 */}
               <div className="flex items-center space-x-3 text-xs text-gray-500">
                 <div className="flex items-center space-x-1">
-                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200">내 게시판</span>
+                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">내 게시판</span>
                   <span>또는</span>
-                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200">관리</span>
+                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">관리</span>
                   <span>→</span>
-                  <PencilIcon className="w-3 h-3 text-blue-600" />
-                  <span>수정 버튼 클릭</span>
+                  <div className="flex items-center justify-center w-6 h-6 bg-blue-50 border border-blue-200 rounded">
+                    <PencilIcon className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <span>연필 아이콘 클릭</span>
                 </div>
               </div>
             </div>

@@ -289,6 +289,14 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
     return bulletins.filter(bulletin => !bulletin.parentId || bulletin.parentId === null || bulletin.parentId === undefined)
   }
 
+  // 게시판의 레벨을 계산하는 함수
+  const getBulletinLevel = (bulletinId: string): number => {
+    const bulletin = bulletins.find(b => b.id === bulletinId)
+    if (!bulletin || !bulletin.parentId) return 0
+    
+    return 1 + getBulletinLevel(bulletin.parentId)
+  }
+
   const formatDate = (date: Date) => {
     const now = new Date()
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
@@ -374,9 +382,21 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 <div className="w-5 h-5 flex items-center justify-center">
                   <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
                 </div>
-              ) : (
+              ) : level === 2 ? (
                 <div className="w-5 h-5 flex items-center justify-center">
                   <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
+                </div>
+              ) : level === 3 ? (
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-green-400 rounded-sm"></div>
+                </div>
+              ) : level === 4 ? (
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <div className="w-1 h-1 bg-purple-400 rounded-sm"></div>
+                </div>
+              ) : (
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <div className="w-1 h-1 bg-gray-400 rounded-sm"></div>
                 </div>
               )}
             </div>
@@ -463,7 +483,7 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         title: newBulletin.title.trim(),
         description: newBulletin.description.trim(),
         parentId: newBulletin.parentId || null,
-        level: newBulletin.parentId ? 1 : 0,
+        level: newBulletin.parentId ? getBulletinLevel(newBulletin.parentId) + 1 : 0,
         order: bulletins.length + 1,
         isActive: true,
         createdAt: serverTimestamp(),
@@ -617,11 +637,16 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">📁 최상위 게시판</option>
-                  {bulletins.filter(b => !b.parentId || b.parentId === null || b.parentId === undefined).map((bulletin) => (
-                    <option key={bulletin.id} value={bulletin.id}>
-                      📂 {bulletin.title}
-                    </option>
-                  ))}
+                  {bulletins.map((bulletin) => {
+                    const level = getBulletinLevel(bulletin.id)
+                    const indent = '  '.repeat(level)
+                    const icon = level === 0 ? '📂' : level === 1 ? '📄' : level === 2 ? '📋' : '📌'
+                    return (
+                      <option key={bulletin.id} value={bulletin.id}>
+                        {indent}{icon} {bulletin.title}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
             </div>
@@ -652,7 +677,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
               <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
               <span>최상위 게시판</span>
               <div className="w-3 h-3 bg-blue-400 rounded-sm ml-4"></div>
-              <span>하위 게시판 (클릭 시 드롭다운)</span>
+              <span>1단계 하위</span>
+              <div className="w-2 h-2 bg-blue-300 rounded-sm ml-4"></div>
+              <span>2단계 하위</span>
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-sm ml-4"></div>
+              <span>3단계 하위</span>
+              <div className="w-1 h-1 bg-purple-400 rounded-sm ml-4"></div>
+              <span>4단계+ 하위</span>
             </div>
           </div>
           <div className="p-2 h-full overflow-y-auto">

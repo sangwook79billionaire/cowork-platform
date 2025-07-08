@@ -50,6 +50,7 @@ interface BulletinBoardProps {
   onRefreshPosts?: () => void
   expandedBulletins?: Set<string>
   onExpandedBulletinsChange?: (expanded: Set<string>) => void
+  selectedBulletinId?: string | null
 }
 
 // 테스트 모드 확인
@@ -457,12 +458,16 @@ export function BulletinBoard({
   onBulletinSelect, 
   onRefreshPosts,
   expandedBulletins: externalExpandedBulletins,
-  onExpandedBulletinsChange 
+  onExpandedBulletinsChange,
+  selectedBulletinId: externalSelectedBulletinId
 }: BulletinBoardProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [posts, setPosts] = useState<BulletinPost[]>([])
-  const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
+  const [internalSelectedBulletinId, setInternalSelectedBulletinId] = useState<string | null>(null)
+  
+  // 외부에서 전달된 selectedBulletinId가 있으면 사용, 없으면 내부 상태 사용
+  const selectedBulletinId = externalSelectedBulletinId || internalSelectedBulletinId
   const [internalExpandedBulletins, setInternalExpandedBulletins] = useState<Set<string>>(new Set())
   
   // 외부에서 전달된 확장 상태가 있으면 사용, 없으면 내부 상태 사용
@@ -717,7 +722,7 @@ export function BulletinBoard({
           childCount={childCount}
           onToggleExpansion={() => toggleBulletinExpansion(bulletin.id)}
           onSelect={() => {
-            setSelectedBulletinId(bulletin.id)
+            setInternalSelectedBulletinId(bulletin.id)
             onBulletinSelect?.(bulletin.id)
             // 게시판 선택 시 해당 게시판의 게시글 가져오기
             fetchPosts(bulletin.id)
@@ -811,7 +816,7 @@ export function BulletinBoard({
         setExpandedBulletins(newExpanded)
         
         // 새로 생성된 게시판을 선택
-        setSelectedBulletinId(newBulletinItem.id)
+        setInternalSelectedBulletinId(newBulletinItem.id)
         onBulletinSelect?.(newBulletinItem.id)
         
         toast.success('게시판이 생성되었습니다.')
@@ -834,7 +839,7 @@ export function BulletinBoard({
         await fetchBulletins(currentExpandedState)
         
         // 새로 생성된 게시판을 선택
-        setSelectedBulletinId(docRef.id)
+        setInternalSelectedBulletinId(docRef.id)
         onBulletinSelect?.(docRef.id)
       }
 

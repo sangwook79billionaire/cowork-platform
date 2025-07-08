@@ -107,6 +107,7 @@ export function Dashboard() {
               onRefreshPosts={handleRefreshPosts}
               expandedBulletins={expandedBulletins}
               onExpandedBulletinsChange={handleExpandedBulletinsChange}
+              selectedBulletinId={selectedBulletinId}
             />
           </div>
         )}

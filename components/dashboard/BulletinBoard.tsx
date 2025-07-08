@@ -48,6 +48,8 @@ interface BulletinBoardProps {
   onCreatePost: () => void
   onBulletinSelect?: (bulletinId: string) => void
   onRefreshPosts?: () => void
+  expandedBulletins?: Set<string>
+  onExpandedBulletinsChange?: (expanded: Set<string>) => void
 }
 
 // 테스트 모드 확인
@@ -448,12 +450,24 @@ const mockPosts: BulletinPost[] = [
   },
 ]
 
-export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBulletinSelect, onRefreshPosts }: BulletinBoardProps) {
+export function BulletinBoard({ 
+  onSelectPost, 
+  selectedPostId, 
+  onCreatePost, 
+  onBulletinSelect, 
+  onRefreshPosts,
+  expandedBulletins: externalExpandedBulletins,
+  onExpandedBulletinsChange 
+}: BulletinBoardProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [posts, setPosts] = useState<BulletinPost[]>([])
   const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
-  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
+  const [internalExpandedBulletins, setInternalExpandedBulletins] = useState<Set<string>>(new Set())
+  
+  // 외부에서 전달된 확장 상태가 있으면 사용, 없으면 내부 상태 사용
+  const expandedBulletins = externalExpandedBulletins || internalExpandedBulletins
+  const setExpandedBulletins = onExpandedBulletinsChange || setInternalExpandedBulletins
   const [loading, setLoading] = useState(true)
   const [showCreateBulletin, setShowCreateBulletin] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -788,11 +802,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         
         // 부모 게시판이 있다면 부모 게시판을 펼친 상태로 설정
         if (bulletinData.parentId && typeof bulletinData.parentId === 'string') {
-          setExpandedBulletins(prev => new Set([...Array.from(prev), bulletinData.parentId as string]))
+          const newExpanded = new Set([...Array.from(expandedBulletins), bulletinData.parentId as string])
+          setExpandedBulletins(newExpanded)
         }
         
         // 새로 생성된 게시판을 펼친 상태로 설정
-        setExpandedBulletins(prev => new Set([...Array.from(prev), newBulletinItem.id]))
+        const newExpanded = new Set([...Array.from(expandedBulletins), newBulletinItem.id])
+        setExpandedBulletins(newExpanded)
         
         // 새로 생성된 게시판을 선택
         setSelectedBulletinId(newBulletinItem.id)
@@ -805,11 +821,13 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         
         // 부모 게시판이 있다면 부모 게시판을 펼친 상태로 설정
         if (bulletinData.parentId && typeof bulletinData.parentId === 'string') {
-          setExpandedBulletins(prev => new Set([...Array.from(prev), bulletinData.parentId as string]))
+          const newExpanded = new Set([...Array.from(expandedBulletins), bulletinData.parentId as string])
+          setExpandedBulletins(newExpanded)
         }
         
         // 새로 생성된 게시판을 펼친 상태로 설정
-        setExpandedBulletins(prev => new Set([...Array.from(prev), docRef.id]))
+        const newExpanded = new Set([...Array.from(expandedBulletins), docRef.id])
+        setExpandedBulletins(newExpanded)
         
         // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
         const currentExpandedState = new Set([...Array.from(expandedBulletins), docRef.id])

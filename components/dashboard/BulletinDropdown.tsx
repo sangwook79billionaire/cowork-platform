@@ -14,14 +14,25 @@ import {
 interface BulletinDropdownProps {
   selectedBulletinId: string | null
   onBulletinSelect: (bulletinId: string) => void
+  expandedBulletins?: Set<string>
+  onExpandedBulletinsChange?: (expanded: Set<string>) => void
 }
 
-export function BulletinDropdown({ selectedBulletinId, onBulletinSelect }: BulletinDropdownProps) {
+export function BulletinDropdown({ 
+  selectedBulletinId, 
+  onBulletinSelect, 
+  expandedBulletins: externalExpandedBulletins,
+  onExpandedBulletinsChange 
+}: BulletinDropdownProps) {
   const { user } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
-  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
+  const [internalExpandedBulletins, setInternalExpandedBulletins] = useState<Set<string>>(new Set())
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // 외부에서 전달된 확장 상태가 있으면 사용, 없으면 내부 상태 사용
+  const expandedBulletins = externalExpandedBulletins || internalExpandedBulletins
+  const setExpandedBulletins = onExpandedBulletinsChange || setInternalExpandedBulletins
 
   // 게시판 데이터 가져오기
   const fetchBulletins = async () => {
@@ -89,15 +100,13 @@ export function BulletinDropdown({ selectedBulletinId, onBulletinSelect }: Bulle
 
   // 확장/축소 토글
   const toggleBulletinExpansion = (bulletinId: string) => {
-    setExpandedBulletins(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(bulletinId)) {
-        newSet.delete(bulletinId)
-      } else {
-        newSet.add(bulletinId)
-      }
-      return newSet
-    })
+    const newSet = new Set(expandedBulletins)
+    if (newSet.has(bulletinId)) {
+      newSet.delete(bulletinId)
+    } else {
+      newSet.add(bulletinId)
+    }
+    setExpandedBulletins(newSet)
   }
 
   // 게시판 트리 렌더링

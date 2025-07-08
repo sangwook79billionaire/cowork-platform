@@ -16,6 +16,7 @@ export function Dashboard() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
+  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
 
   const handleSignOut = async () => {
     try {
@@ -42,6 +43,10 @@ export function Dashboard() {
 
   const handleBulletinSelect = (bulletinId: string) => {
     setSelectedBulletinId(bulletinId)
+  }
+
+  const handleExpandedBulletinsChange = (expanded: Set<string>) => {
+    setExpandedBulletins(expanded)
   }
 
   const handleRefreshPosts = () => {
@@ -72,6 +77,8 @@ export function Dashboard() {
               <BulletinDropdown 
                 selectedBulletinId={selectedBulletinId}
                 onBulletinSelect={handleBulletinSelect}
+                expandedBulletins={expandedBulletins}
+                onExpandedBulletinsChange={handleExpandedBulletinsChange}
               />
             </div>
             <div className="flex items-center space-x-4">
@@ -98,6 +105,8 @@ export function Dashboard() {
               onCreatePost={handleCreatePost}
               onBulletinSelect={handleBulletinSelect}
               onRefreshPosts={handleRefreshPosts}
+              expandedBulletins={expandedBulletins}
+              onExpandedBulletinsChange={handleExpandedBulletinsChange}
             />
           </div>
         )}

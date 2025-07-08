@@ -8,7 +8,7 @@ import { TodoItem } from '@/types/firebase'
 import toast from 'react-hot-toast'
 import {
   CheckCircleIcon,
-  CircleIcon,
+  EllipsisHorizontalIcon,
   PlusIcon,
   PencilIcon,
   TrashIcon,
@@ -202,7 +202,7 @@ export function TodoList() {
       description: todoForm.description,
       completed: false,
       priority: todoForm.priority,
-      dueDate: todoForm.dueDate ? new Date(todoForm.dueDate) : null,
+      dueDate: todoForm.dueDate ? new Date(todoForm.dueDate) : undefined,
       userId: user.uid,
       authorName: user.displayName || user.email || '익명',
       tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
@@ -372,7 +372,7 @@ export function TodoList() {
                   {todo.completed ? (
                     <CheckCircleIcon className="w-5 h-5 text-green-600" />
                   ) : (
-                    <CircleIcon className="w-5 h-5 text-gray-400 hover:text-green-600" />
+                    <EllipsisHorizontalIcon className="w-5 h-5 text-gray-400 hover:text-green-600" />
                   )}
                 </button>
 

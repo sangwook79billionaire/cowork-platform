@@ -349,6 +349,7 @@ const mockBulletins: Bulletin[] = [
     id: 'bulletin-1',
     title: '공지사항',
     description: '중요한 공지사항을 확인하세요',
+    parentId: '',
     level: 0,
     order: 1,
     isActive: true,
@@ -360,6 +361,7 @@ const mockBulletins: Bulletin[] = [
     id: 'bulletin-2',
     title: '자유게시판',
     description: '자유롭게 의견을 나누세요',
+    parentId: '',
     level: 0,
     order: 2,
     isActive: true,
@@ -371,6 +373,7 @@ const mockBulletins: Bulletin[] = [
     id: 'bulletin-3',
     title: '질문과 답변',
     description: '궁금한 점을 물어보세요',
+    parentId: '',
     level: 0,
     order: 3,
     isActive: true,
@@ -724,7 +727,7 @@ export function BulletinBoard({
           onSelect={() => {
             setInternalSelectedBulletinId(bulletin.id)
             onBulletinSelect?.(bulletin.id)
-            // 게시판 선택 시 해당 게시판의 게시글 가져오기
+            // 게시판 선택 시 해당 게시글 가져오기
             fetchPosts(bulletin.id)
           }}
           onEdit={() => setEditingBulletin(bulletin)}

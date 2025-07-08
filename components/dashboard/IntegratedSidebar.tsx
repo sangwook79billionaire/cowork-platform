@@ -17,6 +17,7 @@ interface IntegratedSidebarProps {
   onBulletinSelect: (bulletinId: string) => void
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
+  onCreateBulletin?: (parentId?: string) => void
 }
 
 export function IntegratedSidebar({
@@ -26,6 +27,7 @@ export function IntegratedSidebar({
   onBulletinSelect,
   expandedBulletins,
   onExpandedBulletinsChange,
+  onCreateBulletin,
 }: IntegratedSidebarProps) {
   const [showBulletinTree, setShowBulletinTree] = useState(true)
 
@@ -96,6 +98,7 @@ export function IntegratedSidebar({
             onBulletinSelect={onBulletinSelect}
             expandedBulletins={expandedBulletins}
             onExpandedBulletinsChange={onExpandedBulletinsChange}
+            onCreateBulletin={onCreateBulletin}
           />
         </div>
       )}

@@ -14,6 +14,7 @@ import {
   HeartIcon,
   PencilIcon,
   TrashIcon,
+  FolderPlusIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -21,12 +22,14 @@ interface BulletinContentProps {
   selectedBulletinId: string | null
   onSelectPost: (postId: string) => void
   onCreatePost: () => void
+  onCreateBulletin?: (parentId?: string) => void
 }
 
 export function BulletinContent({ 
   selectedBulletinId, 
   onSelectPost, 
-  onCreatePost 
+  onCreatePost,
+  onCreateBulletin
 }: BulletinContentProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
@@ -170,13 +173,22 @@ export function BulletinContent({
               <p className="text-sm text-gray-600 mt-1">{selectedBulletin.description}</p>
             )}
           </div>
-          <button
-            onClick={onCreatePost}
-            className="flex items-center space-x-2 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-          >
-            <PlusIcon className="w-4 h-4" />
-            <span className="text-sm">새 게시글</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onCreatePost}
+              className="flex items-center space-x-2 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span className="text-sm">새 게시글</span>
+            </button>
+            <button
+              onClick={() => onCreateBulletin?.(selectedBulletinId || undefined)}
+              className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              <FolderPlusIcon className="w-4 h-4" />
+              <span className="text-sm">새 게시판</span>
+            </button>
+          </div>
         </div>
       </div>
 

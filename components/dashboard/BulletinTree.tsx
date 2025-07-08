@@ -19,13 +19,15 @@ interface BulletinTreeProps {
   onBulletinSelect: (bulletinId: string) => void
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
+  onCreateBulletin?: (parentId?: string) => void
 }
 
 export function BulletinTree({ 
   selectedBulletinId, 
   onBulletinSelect, 
   expandedBulletins, 
-  onExpandedBulletinsChange 
+  onExpandedBulletinsChange,
+  onCreateBulletin
 }: BulletinTreeProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
@@ -106,6 +108,15 @@ export function BulletinTree({
     onExpandedBulletinsChange(newExpanded)
   }
 
+  // 게시판 생성 핸들러
+  const handleCreateBulletin = (parentId?: string) => {
+    if (onCreateBulletin) {
+      onCreateBulletin(parentId)
+    } else {
+      toast.success('새 게시판 생성 기능은 준비 중입니다.')
+    }
+  }
+
   // 게시판 트리 렌더링
   const renderBulletinTree = (
     bulletins: Bulletin[],
@@ -168,6 +179,20 @@ export function BulletinTree({
 
             {/* 게시판 제목 */}
             <span className="flex-1 text-sm truncate">{bulletin.title}</span>
+
+            {/* 새 게시판 생성 버튼 (선택된 게시판에만 표시) */}
+            {isSelected && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCreateBulletin(bulletin.id)
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                title="하위 게시판 생성"
+              >
+                <PlusIcon className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
           {/* 하위 게시판들 */}
@@ -201,10 +226,7 @@ export function BulletinTree({
           <h2 className="text-lg font-semibold text-gray-900">게시판</h2>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => {
-                // 새 게시판 생성 기능 (나중에 구현)
-                toast.success('새 게시판 생성 기능은 준비 중입니다.')
-              }}
+              onClick={() => handleCreateBulletin()}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="새 게시판 생성"
             >
@@ -220,4 +242,4 @@ export function BulletinTree({
       </div>
     </div>
   )
-} 
+}

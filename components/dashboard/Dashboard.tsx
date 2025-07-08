@@ -12,6 +12,7 @@ import { TodoList } from './TodoList'
 import { IntegratedSidebar } from './IntegratedSidebar'
 import { NotificationCenter } from './NotificationCenter'
 import { AccountSettings } from './AccountSettings'
+import { BulletinCreateModal } from './BulletinCreateModal'
 import { 
   ChatBubbleLeftRightIcon,
   BellIcon,
@@ -19,6 +20,7 @@ import {
   CheckCircleIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
 type ActiveFeature = 'bulletin' | 'calendar' | 'todo'
@@ -34,6 +36,8 @@ export function Dashboard() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [showNotificationCenter, setShowNotificationCenter] = useState(false)
   const [showAccountSettings, setShowAccountSettings] = useState(false)
+  const [showBulletinCreateModal, setShowBulletinCreateModal] = useState(false)
+  const [bulletinCreateParentId, setBulletinCreateParentId] = useState<string | undefined>()
 
   // 마우스 위치 감지
   useEffect(() => {
@@ -96,6 +100,21 @@ export function Dashboard() {
   const handleCreatePost = () => {
     setEditingPostId(null)
     setViewMode('create')
+  }
+
+  const handleCreateBulletin = (parentId?: string) => {
+    setBulletinCreateParentId(parentId)
+    setShowBulletinCreateModal(true)
+  }
+
+  const handleBulletinCreated = (bulletin: any) => {
+    // 게시판 생성 후 선택된 게시판을 새로 생성된 게시판으로 변경
+    setSelectedBulletinId(bulletin.id)
+    // 확장 상태에 부모 게시판 추가
+    if (bulletin.parentId) {
+      const newExpanded = new Set([...Array.from(expandedBulletins), bulletin.parentId])
+      setExpandedBulletins(newExpanded)
+    }
   }
 
   const handleBulletinSelect = (bulletinId: string) => {
@@ -176,6 +195,7 @@ export function Dashboard() {
                 onBulletinSelect={handleBulletinSelect}
                 expandedBulletins={expandedBulletins}
                 onExpandedBulletinsChange={handleExpandedBulletinsChange}
+                onCreateBulletin={handleCreateBulletin}
               />
             </div>
             
@@ -186,6 +206,7 @@ export function Dashboard() {
                   selectedBulletinId={selectedBulletinId}
                   onSelectPost={handleSelectPost}
                   onCreatePost={handleCreatePost}
+                  onCreateBulletin={handleCreateBulletin}
                 />
               )}
               {activeFeature === 'calendar' && (
@@ -263,6 +284,14 @@ export function Dashboard() {
       <AccountSettings
         isOpen={showAccountSettings}
         onClose={() => setShowAccountSettings(false)}
+      />
+
+      {/* 게시판 생성 모달 */}
+      <BulletinCreateModal
+        isOpen={showBulletinCreateModal}
+        onClose={() => setShowBulletinCreateModal(false)}
+        parentId={bulletinCreateParentId}
+        onBulletinCreated={handleBulletinCreated}
       />
     </div>
   )

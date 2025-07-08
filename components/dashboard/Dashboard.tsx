@@ -5,7 +5,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { DocumentEditor } from './DocumentEditor'
 import { BulletinBoard } from './BulletinBoard'
 import { PostViewer } from './PostViewer'
-import { BulletinDropdown } from './BulletinDropdown'
+import { BulletinTree } from './BulletinTree'
+import { BulletinContent } from './BulletinContent'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
@@ -74,12 +75,6 @@ export function Dashboard() {
                 <ChatBubbleLeftRightIcon className="w-8 h-8 text-primary-600 mr-3" />
                 Cowork Platform
               </h1>
-              <BulletinDropdown 
-                selectedBulletinId={selectedBulletinId}
-                onBulletinSelect={handleBulletinSelect}
-                expandedBulletins={expandedBulletins}
-                onExpandedBulletinsChange={handleExpandedBulletinsChange}
-              />
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
@@ -96,20 +91,28 @@ export function Dashboard() {
         </header>
 
       {/* 메인 콘텐츠 */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex">
         {viewMode === 'list' && (
-          <div className="w-full bg-white">
-            <BulletinBoard 
-              onSelectPost={handleSelectPost}
-              selectedPostId={selectedPostId}
-              onCreatePost={handleCreatePost}
-              onBulletinSelect={handleBulletinSelect}
-              onRefreshPosts={handleRefreshPosts}
-              expandedBulletins={expandedBulletins}
-              onExpandedBulletinsChange={handleExpandedBulletinsChange}
-              selectedBulletinId={selectedBulletinId}
-            />
-          </div>
+          <>
+            {/* 좌측 게시판 트리 */}
+            <div className="w-80 flex-shrink-0">
+              <BulletinTree 
+                selectedBulletinId={selectedBulletinId}
+                onBulletinSelect={handleBulletinSelect}
+                expandedBulletins={expandedBulletins}
+                onExpandedBulletinsChange={handleExpandedBulletinsChange}
+              />
+            </div>
+            
+            {/* 우측 콘텐츠 영역 */}
+            <div className="flex-1">
+              <BulletinContent 
+                selectedBulletinId={selectedBulletinId}
+                onSelectPost={handleSelectPost}
+                onCreatePost={handleCreatePost}
+              />
+            </div>
+          </>
         )}
 
         {viewMode === 'view' && selectedPostId && (

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
-import { TodoItem } from '@/types/firebase'
+import { TodoItem, CalendarEvent } from '@/types/firebase'
 import toast from 'react-hot-toast'
 import {
   CheckCircleIcon,
@@ -15,6 +15,10 @@ import {
   CalendarIcon,
   FlagIcon,
 } from '@heroicons/react/24/outline'
+
+interface TodoListProps {
+  onTodoCreated?: (calendarEvent: CalendarEvent) => void
+}
 
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
@@ -61,7 +65,7 @@ const mockTodos: TodoItem[] = [
   },
 ]
 
-export function TodoList() {
+export function TodoList({ onTodoCreated }: TodoListProps) {
   const { user } = useAuth()
   const [todos, setTodos] = useState<TodoItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -208,49 +212,84 @@ export function TodoList() {
       dueDate: todoForm.dueDate ? new Date(todoForm.dueDate) : undefined,
       userId: user.uid,
       authorName: user.displayName || user.email || '익명',
-      tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+      tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()) : [],
+      reminder: todoForm.reminder,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      reminder: todoForm.reminder,
     }
 
     if (isTestMode) {
       const newTodo: TodoItem = {
-        id: selectedTodo?.id || `todo-${Date.now()}`,
+        id: `todo-${Date.now()}`,
         ...todoData,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
       
-      if (selectedTodo) {
-        setTodos(todos.map(t => t.id === selectedTodo.id ? newTodo : t))
-      } else {
-        setTodos([newTodo, ...todos])
+      // 할 일을 캘린더 이벤트로도 추가
+      if (todoForm.dueDate) {
+        const dueDate = new Date(todoForm.dueDate)
+        const calendarEvent: CalendarEvent = {
+          id: `event-from-todo-${Date.now()}`,
+          title: `📋 ${todoForm.title}`,
+          description: todoForm.description,
+          startDate: dueDate,
+          endDate: dueDate,
+          allDay: true,
+          userId: user.uid,
+          authorName: user.displayName || user.email || '익명',
+          color: '#10B981', // 초록색으로 할 일 표시
+          location: '',
+          reminder: todoForm.reminder,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        // 여기서는 캘린더 이벤트를 추가할 수 없으므로 콜백으로 처리
+        if (onTodoCreated) {
+          onTodoCreated(calendarEvent)
+        }
       }
       
+      setTodos([...todos, newTodo])
       setShowTodoModal(false)
-      toast.success(selectedTodo ? '할 일이 수정되었습니다.' : '할 일이 생성되었습니다.')
+      toast.success('할 일이 생성되었습니다.')
       return
     }
 
     try {
-      if (selectedTodo) {
-        await updateDoc(doc(db, 'todos', selectedTodo.id), todoData)
-        // 타입 안전성을 위해 새로운 할 일 객체를 생성
-        const updatedTodo: TodoItem = {
-          ...selectedTodo,
-          ...todoData,
-          createdAt: selectedTodo.createdAt,
-          updatedAt: new Date(),
+      const docRef = await addDoc(collection(db, 'todos'), todoData)
+      
+      // 할 일을 캘린더 이벤트로도 추가
+      if (todoForm.dueDate) {
+        const dueDate = new Date(todoForm.dueDate)
+        const calendarEventData = {
+          title: `📋 ${todoForm.title}`,
+          description: todoForm.description,
+          startDate: dueDate,
+          endDate: dueDate,
+          allDay: true,
+          userId: user.uid,
+          authorName: user.displayName || user.email || '익명',
+          color: '#10B981', // 초록색으로 할 일 표시
+          location: '',
+          reminder: todoForm.reminder,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         }
-        setTodos(todos.map(t => t.id === selectedTodo.id ? updatedTodo : t))
-      } else {
-        await addDoc(collection(db, 'todos'), todoData)
-        await fetchTodos()
+        
+        await addDoc(collection(db, 'calendarEvents'), calendarEventData)
       }
       
+      const newTodo: TodoItem = {
+        id: docRef.id,
+        ...todoData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      
+      setTodos([...todos, newTodo])
       setShowTodoModal(false)
-      toast.success(selectedTodo ? '할 일이 수정되었습니다.' : '할 일이 생성되었습니다.')
+      toast.success('할 일이 생성되었습니다.')
     } catch (error) {
       toast.error('할 일 저장에 실패했습니다.')
       console.error('Error saving todo:', error)

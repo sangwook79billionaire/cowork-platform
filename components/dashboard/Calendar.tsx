@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, addDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
-import { CalendarEvent } from '@/types/firebase'
+import { CalendarEvent, TodoItem } from '@/types/firebase'
 import toast from 'react-hot-toast'
 import {
   CalendarIcon,
@@ -16,6 +16,7 @@ import {
   ClockIcon,
   MapPinIcon,
   UserGroupIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline'
 
 interface CalendarProps {
@@ -68,6 +69,8 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [calendarView, setCalendarView] = useState<CalendarView>('month')
   const [showEventModal, setShowEventModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [showTodoModal, setShowTodoModal] = useState(false)
+  const [selectedDateForTodo, setSelectedDateForTodo] = useState<Date | null>(null)
   const [eventForm, setEventForm] = useState({
     title: '',
     description: '',
@@ -79,6 +82,14 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     location: '',
     color: '#3B82F6',
     reminder: '15', // 15분 전 알림
+  })
+  const [todoForm, setTodoForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    dueDate: '',
+    tags: '',
+    reminder: '0',
   })
 
   useEffect(() => {
@@ -141,6 +152,20 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       reminder: '15',
     })
     setShowEventModal(true)
+  }
+
+  const handleCreateTodo = (date?: Date) => {
+    const targetDate = date || new Date()
+    setSelectedDateForTodo(targetDate)
+    setTodoForm({
+      title: '',
+      description: '',
+      priority: 'medium',
+      dueDate: targetDate.toISOString().split('T')[0],
+      tags: '',
+      reminder: '0',
+    })
+    setShowTodoModal(true)
   }
 
   const handleEditEvent = (event: CalendarEvent) => {
@@ -239,20 +264,120 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
         const updatedEvent: CalendarEvent = {
           ...selectedEvent,
           ...eventData,
-          createdAt: selectedEvent.createdAt,
           updatedAt: new Date(),
         }
         setEvents(events.map(e => e.id === selectedEvent.id ? updatedEvent : e))
+        toast.success('이벤트가 수정되었습니다.')
       } else {
-        await addDoc(collection(db, 'calendarEvents'), eventData)
-        await fetchEvents()
+        const docRef = await addDoc(collection(db, 'calendarEvents'), eventData)
+        const newEvent: CalendarEvent = {
+          id: docRef.id,
+          ...eventData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        setEvents([...events, newEvent])
+        toast.success('이벤트가 생성되었습니다.')
       }
       
       setShowEventModal(false)
-      toast.success(selectedEvent ? '이벤트가 수정되었습니다.' : '이벤트가 생성되었습니다.')
     } catch (error) {
       toast.error('이벤트 저장에 실패했습니다.')
       console.error('Error saving event:', error)
+    }
+  }
+
+  const handleSaveTodo = async () => {
+    if (!user || !todoForm.title.trim()) {
+      toast.error('제목을 입력해주세요.')
+      return
+    }
+
+    const todoData = {
+      title: todoForm.title,
+      description: todoForm.description,
+      completed: false,
+      priority: todoForm.priority,
+      dueDate: todoForm.dueDate ? new Date(todoForm.dueDate) : null,
+      userId: user.uid,
+      authorName: user.displayName || user.email || '익명',
+      tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()) : [],
+      reminder: todoForm.reminder,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    if (isTestMode) {
+      const newTodo: TodoItem = {
+        id: `todo-${Date.now()}`,
+        ...todoData,
+        dueDate: todoForm.dueDate ? new Date(todoForm.dueDate) : undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      
+      // 할 일을 캘린더 이벤트로도 추가
+      if (todoForm.dueDate) {
+        const dueDate = new Date(todoForm.dueDate)
+        const calendarEvent: CalendarEvent = {
+          id: `event-from-todo-${Date.now()}`,
+          title: `📋 ${todoForm.title}`,
+          description: todoForm.description,
+          startDate: dueDate,
+          endDate: dueDate,
+          allDay: true,
+          userId: user.uid,
+          authorName: user.displayName || user.email || '익명',
+          color: '#10B981', // 초록색으로 할 일 표시
+          location: '',
+          reminder: todoForm.reminder,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        setEvents([...events, calendarEvent])
+      }
+      
+      setShowTodoModal(false)
+      toast.success('할 일이 생성되었습니다.')
+      return
+    }
+
+    try {
+      const docRef = await addDoc(collection(db, 'todos'), todoData)
+      
+      // 할 일을 캘린더 이벤트로도 추가
+      if (todoForm.dueDate) {
+        const dueDate = new Date(todoForm.dueDate)
+        const calendarEventData = {
+          title: `📋 ${todoForm.title}`,
+          description: todoForm.description,
+          startDate: dueDate,
+          endDate: dueDate,
+          allDay: true,
+          userId: user.uid,
+          authorName: user.displayName || user.email || '익명',
+          color: '#10B981', // 초록색으로 할 일 표시
+          location: '',
+          reminder: todoForm.reminder,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        
+        const eventDocRef = await addDoc(collection(db, 'calendarEvents'), calendarEventData)
+        const newEvent: CalendarEvent = {
+          id: eventDocRef.id,
+          ...calendarEventData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        setEvents([...events, newEvent])
+      }
+      
+      setShowTodoModal(false)
+      toast.success('할 일이 생성되었습니다.')
+    } catch (error) {
+      toast.error('할 일 저장에 실패했습니다.')
+      console.error('Error saving todo:', error)
     }
   }
 
@@ -357,13 +482,22 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
             <CalendarIcon className="w-8 h-8 text-primary-600" />
             <h1 className="text-2xl font-bold text-gray-900">캘린더</h1>
           </div>
-          <button
-            onClick={handleCreateEvent}
-            className="btn-primary flex items-center space-x-2"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>일정 추가</span>
-          </button>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleCreateEvent}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <PlusIcon className="w-5 h-5" />
+              <span>일정 추가</span>
+            </button>
+            <button
+              onClick={() => handleCreateTodo()}
+              className="btn-secondary flex items-center space-x-2"
+            >
+              <CheckCircleIcon className="w-5 h-5" />
+              <span>할 일 추가</span>
+            </button>
+          </div>
         </div>
 
         {/* 뷰 선택 및 날짜 네비게이션 */}
@@ -506,6 +640,10 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                         onClick={() => {
                           setCurrentDate(day.date)
                           setCalendarView('day')
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          handleCreateTodo(day.date)
                         }}
                       >
                         <div className={`text-sm font-medium ${
@@ -838,6 +976,117 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
           </div>
         </div>
       )}
+
+      {/* 할 일 모달 */}
+      {showTodoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">새 할 일</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  제목 *
+                </label>
+                <input
+                  type="text"
+                  value={todoForm.title}
+                  onChange={(e) => setTodoForm({ ...todoForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="할 일 제목"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  설명
+                </label>
+                <textarea
+                  value={todoForm.description}
+                  onChange={(e) => setTodoForm({ ...todoForm, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  rows={3}
+                  placeholder="할 일 설명"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  마감일
+                </label>
+                <input
+                  type="date"
+                  value={todoForm.dueDate}
+                  onChange={(e) => setTodoForm({ ...todoForm, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  우선순위
+                </label>
+                <select
+                  value={todoForm.priority}
+                  onChange={(e) => setTodoForm({ ...todoForm, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="low">낮음</option>
+                  <option value="medium">보통</option>
+                  <option value="high">높음</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  태그
+                </label>
+                <input
+                  type="text"
+                  value={todoForm.tags}
+                  onChange={(e) => setTodoForm({ ...todoForm, tags: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="태그를 쉼표로 구분하여 입력"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  알림
+                </label>
+                <select
+                  value={todoForm.reminder}
+                  onChange={(e) => setTodoForm({ ...todoForm, reminder: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="0">알림 없음</option>
+                  <option value="5">5분 전</option>
+                  <option value="10">10분 전</option>
+                  <option value="15">15분 전</option>
+                  <option value="30">30분 전</option>
+                  <option value="60">1시간 전</option>
+                  <option value="1440">1일 전</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowTodoModal(false)}
+                className="btn-secondary"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveTodo}
+                className="btn-primary"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
-} 
+}

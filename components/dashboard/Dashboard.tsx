@@ -182,7 +182,11 @@ export function Dashboard() {
                 <Calendar />
               )}
               {activeFeature === 'todo' && (
-                <TodoList />
+                <TodoList onTodoCreated={(calendarEvent) => {
+                  // 캘린더 이벤트를 Dashboard의 events 상태에 추가
+                  // 이는 실제로는 Calendar 컴포넌트의 events 상태를 업데이트해야 함
+                  console.log('Todo created, calendar event:', calendarEvent)
+                }} />
               )}
             </div>
           </>

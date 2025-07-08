@@ -232,7 +232,14 @@ export function TodoList() {
     try {
       if (selectedTodo) {
         await updateDoc(doc(db, 'todos', selectedTodo.id), todoData)
-        setTodos(todos.map(t => t.id === selectedTodo.id ? { ...t, ...todoData } : t))
+        // 타입 안전성을 위해 새로운 할 일 객체를 생성
+        const updatedTodo: TodoItem = {
+          ...selectedTodo,
+          ...todoData,
+          createdAt: selectedTodo.createdAt,
+          updatedAt: new Date(),
+        }
+        setTodos(todos.map(t => t.id === selectedTodo.id ? updatedTodo : t))
       } else {
         await addDoc(collection(db, 'todos'), todoData)
         await fetchTodos()

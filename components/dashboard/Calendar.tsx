@@ -64,9 +64,39 @@ const mockEvents: CalendarEvent[] = [
   },
 ]
 
+const mockTodos: TodoItem[] = [
+  {
+    id: 'todo-1',
+    title: '프로젝트 기획서 작성',
+    description: '다음 주 미팅을 위한 기획서 완성',
+    completed: false,
+    priority: 'high',
+    dueDate: new Date('2024-01-18'),
+    userId: 'user-1',
+    authorName: '윤수',
+    tags: ['프로젝트', '기획'],
+    createdAt: new Date('2024-01-10'),
+    updatedAt: new Date('2024-01-10'),
+  },
+  {
+    id: 'todo-2',
+    title: '코드 리뷰',
+    description: '팀원들의 PR 검토 및 피드백',
+    completed: true,
+    priority: 'medium',
+    dueDate: new Date('2024-01-15'),
+    userId: 'user-2',
+    authorName: '상욱',
+    tags: ['개발', '리뷰'],
+    createdAt: new Date('2024-01-10'),
+    updatedAt: new Date('2024-01-10'),
+  },
+]
+
 export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const { user } = useAuth()
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [todos, setTodos] = useState<TodoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarView, setCalendarView] = useState<CalendarView>('month')
@@ -104,13 +134,28 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [selectedEventForDetail, setSelectedEventForDetail] = useState<CalendarEvent | null>(null)
   const [showTodoDetailModal, setShowTodoDetailModal] = useState(false)
   const [selectedTodoForDetail, setSelectedTodoForDetail] = useState<TodoItem | null>(null)
+  const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null)
+  const [draggedTodo, setDraggedTodo] = useState<TodoItem | null>(null)
+  const [showTimeChangeModal, setShowTimeChangeModal] = useState(false)
+  const [dragTargetDate, setDragTargetDate] = useState<Date | null>(null)
+  const [dragTargetItem, setDragTargetItem] = useState<{ type: 'event' | 'todo', item: CalendarEvent | TodoItem } | null>(null)
+  const [newTimeForm, setNewTimeForm] = useState({
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    dueDate: '',
+    dueTime: '',
+  })
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined
+    let todosUnsubscribe: (() => void) | undefined
 
     const initializeData = async () => {
       if (isTestMode) {
         setEvents(mockEvents)
+        setTodos(mockTodos)
         setLoading(false)
         return
       }
@@ -142,9 +187,39 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
           })
           
           setEvents(fetchedEvents)
-          setLoading(false)
         }, (error) => {
           console.error('실시간 이벤트 데이터 가져오기 오류:', error)
+          toast.error('실시간 업데이트에 실패했습니다.')
+        })
+
+        // todos 실시간 리스너 설정
+        const todosRef = collection(db, 'todos')
+        const todosQ = query(todosRef, orderBy('createdAt', 'desc'))
+        
+        todosUnsubscribe = onSnapshot(todosQ, (querySnapshot) => {
+          const fetchedTodos: TodoItem[] = []
+          querySnapshot.forEach((doc) => {
+            const data = doc.data()
+            fetchedTodos.push({
+              id: doc.id,
+              title: data.title,
+              description: data.description,
+              completed: data.completed || false,
+              priority: data.priority || 'medium',
+              dueDate: data.dueDate?.toDate(),
+              userId: data.userId,
+              authorName: data.authorName,
+              tags: data.tags || [],
+              reminder: data.reminder,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+            })
+          })
+          
+          setTodos(fetchedTodos)
+          setLoading(false)
+        }, (error) => {
+          console.error('실시간 할 일 데이터 가져오기 오류:', error)
           toast.error('실시간 업데이트에 실패했습니다.')
           setLoading(false)
         })
@@ -161,6 +236,9 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     return () => {
       if (unsubscribe) {
         unsubscribe()
+      }
+      if (todosUnsubscribe) {
+        todosUnsubscribe()
       }
     }
   }, [isTestMode])
@@ -468,6 +546,115 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       reminder: todo.reminder || '0',
     })
     setShowTodoModal(true)
+  }
+
+  const handleEventDragStart = (event: CalendarEvent, e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'event', id: event.id }))
+    setDraggedEvent(event)
+  }
+
+  const handleTodoDragStart = (todo: TodoItem, e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'todo', id: todo.id }))
+    setDraggedTodo(todo)
+  }
+
+  const handleDateDrop = (targetDate: Date, e: React.DragEvent) => {
+    e.preventDefault()
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+      const { type, id } = data
+      
+      if (type === 'event') {
+        const event = events.find(e => e.id === id)
+        if (event) {
+          setDragTargetItem({ type: 'event', item: event })
+          setDragTargetDate(targetDate)
+          setNewTimeForm({
+            startDate: targetDate.toISOString().split('T')[0],
+            startTime: event.allDay ? '09:00' : event.startDate.toTimeString().slice(0, 5),
+            endDate: targetDate.toISOString().split('T')[0],
+            endTime: event.allDay ? '10:00' : event.endDate.toTimeString().slice(0, 5),
+            dueDate: '',
+            dueTime: '',
+          })
+          setShowTimeChangeModal(true)
+        }
+      } else if (type === 'todo') {
+        const todo = todos.find(t => t.id === id)
+        if (todo) {
+          setDragTargetItem({ type: 'todo', item: todo })
+          setDragTargetDate(targetDate)
+          setNewTimeForm({
+            startDate: '',
+            startTime: '',
+            endDate: '',
+            endTime: '',
+            dueDate: targetDate.toISOString().split('T')[0],
+            dueTime: todo.dueDate ? todo.dueDate.toTimeString().slice(0, 5) : '09:00',
+          })
+          setShowTimeChangeModal(true)
+        }
+      }
+    } catch (error) {
+      console.error('드래그 데이터 파싱 오류:', error)
+    }
+  }
+
+  const handleDateDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleConfirmTimeChange = async () => {
+    if (!dragTargetItem || !dragTargetDate) return
+
+    try {
+      if (dragTargetItem.type === 'event') {
+        const event = dragTargetItem.item as CalendarEvent
+        const newStartDate = new Date(`${newTimeForm.startDate}T${newTimeForm.startTime}`)
+        const newEndDate = new Date(`${newTimeForm.endDate}T${newTimeForm.endTime}`)
+        
+        if (isTestMode) {
+          setEvents(events.map(e => 
+            e.id === event.id 
+              ? { ...e, startDate: newStartDate, endDate: newEndDate }
+              : e
+          ))
+          toast.success('일정이 이동되었습니다.')
+        } else {
+          await updateDoc(doc(db, 'calendarEvents', event.id), {
+            startDate: newStartDate,
+            endDate: newEndDate,
+            updatedAt: serverTimestamp()
+          })
+          toast.success('일정이 이동되었습니다.')
+        }
+      } else if (dragTargetItem.type === 'todo') {
+        const todo = dragTargetItem.item as TodoItem
+        const newDueDate = new Date(`${newTimeForm.dueDate}T${newTimeForm.dueTime}`)
+        
+        if (isTestMode) {
+          setTodos(todos.map(t => 
+            t.id === todo.id 
+              ? { ...t, dueDate: newDueDate }
+              : t
+          ))
+          toast.success('할 일이 이동되었습니다.')
+        } else {
+          await updateDoc(doc(db, 'todos', todo.id), {
+            dueDate: newDueDate,
+            updatedAt: serverTimestamp()
+          })
+          toast.success('할 일이 이동되었습니다.')
+        }
+      }
+      
+      setShowTimeChangeModal(false)
+      setDragTargetItem(null)
+      setDragTargetDate(null)
+    } catch (error) {
+      console.error('이동 중 오류:', error)
+      toast.error('이동에 실패했습니다.')
+    }
   }
 
   const generateICalFile = () => {
@@ -951,6 +1138,8 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                           e.preventDefault()
                           setContextMenu({ x: e.clientX, y: e.clientY, date: day.date })
                         }}
+                        onDrop={(e) => handleDateDrop(day.date, e)}
+                        onDragOver={handleDateDragOver}
                       >
                         <div className={`text-sm font-medium ${
                           day.isCurrentMonth 
@@ -974,6 +1163,8 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                                 border: `1px solid ${event.color}40`
                               }}
                               title={event.title}
+                              draggable
+                              onDragStart={(e) => handleEventDragStart(event, e)}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleEventClick(event)
@@ -1744,6 +1935,142 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                 className="btn-primary"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 시간대 변경 모달 */}
+      {showTimeChangeModal && dragTargetItem && dragTargetDate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">
+                {dragTargetItem.type === 'event' ? '일정 이동' : '할 일 이동'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowTimeChangeModal(false)
+                  setDragTargetItem(null)
+                  setDragTargetDate(null)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">
+                  {dragTargetItem.type === 'event' 
+                    ? (dragTargetItem.item as CalendarEvent).title 
+                    : (dragTargetItem.item as TodoItem).title
+                  }
+                </h3>
+                <p className="text-blue-800 text-sm">
+                  {dragTargetDate.toLocaleDateString('ko-KR')}로 이동하시겠습니까?
+                </p>
+              </div>
+
+              {dragTargetItem.type === 'event' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      시작 날짜
+                    </label>
+                    <input
+                      type="date"
+                      value={newTimeForm.startDate}
+                      onChange={(e) => setNewTimeForm({ ...newTimeForm, startDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      시작 시간
+                    </label>
+                    <input
+                      type="time"
+                      value={newTimeForm.startTime}
+                      onChange={(e) => setNewTimeForm({ ...newTimeForm, startTime: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      종료 날짜
+                    </label>
+                    <input
+                      type="date"
+                      value={newTimeForm.endDate}
+                      onChange={(e) => setNewTimeForm({ ...newTimeForm, endDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      종료 시간
+                    </label>
+                    <input
+                      type="time"
+                      value={newTimeForm.endTime}
+                      onChange={(e) => setNewTimeForm({ ...newTimeForm, endTime: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {dragTargetItem.type === 'todo' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      마감 날짜
+                    </label>
+                    <input
+                      type="date"
+                      value={newTimeForm.dueDate}
+                      onChange={(e) => setNewTimeForm({ ...newTimeForm, dueDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      마감 시간
+                    </label>
+                    <input
+                      type="time"
+                      value={newTimeForm.dueTime}
+                      onChange={(e) => setNewTimeForm({ ...newTimeForm, dueTime: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowTimeChangeModal(false)
+                  setDragTargetItem(null)
+                  setDragTargetDate(null)
+                }}
+                className="btn-secondary"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmTimeChange}
+                className="btn-primary"
+              >
+                이동
               </button>
             </div>
           </div>

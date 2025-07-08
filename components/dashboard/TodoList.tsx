@@ -441,6 +441,10 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
                 todo.completed ? 'opacity-75' : ''
               }`}
               onClick={() => handleTodoClick(todo)}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'todo', id: todo.id }))
+              }}
             >
               <div className="flex items-start space-x-3">
                 <button

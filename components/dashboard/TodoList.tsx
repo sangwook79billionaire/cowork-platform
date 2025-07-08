@@ -74,6 +74,7 @@ export function TodoList() {
     priority: 'medium' as 'low' | 'medium' | 'high',
     dueDate: '',
     tags: '',
+    reminder: '0', // 알림 없음
   })
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export function TodoList() {
       priority: 'medium',
       dueDate: '',
       tags: '',
+      reminder: '0',
     })
     setShowTodoModal(true)
   }
@@ -139,6 +141,7 @@ export function TodoList() {
       priority: todo.priority,
       dueDate: todo.dueDate ? todo.dueDate.toISOString().split('T')[0] : '',
       tags: todo.tags ? todo.tags.join(', ') : '',
+      reminder: todo.reminder || '0',
     })
     setShowTodoModal(true)
   }
@@ -208,6 +211,7 @@ export function TodoList() {
       tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      reminder: todoForm.reminder,
     }
 
     if (isTestMode) {
@@ -534,15 +538,35 @@ export function TodoList() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  태그 (쉼표로 구분)
+                  태그
                 </label>
                 <input
                   type="text"
                   value={todoForm.tags}
                   onChange={(e) => setTodoForm({ ...todoForm, tags: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="예: 프로젝트, 긴급, 회의"
+                  placeholder="태그를 쉼표로 구분하여 입력"
                 />
+              </div>
+
+              {/* 알림 설정 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  알림
+                </label>
+                <select
+                  value={todoForm.reminder}
+                  onChange={(e) => setTodoForm({ ...todoForm, reminder: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="0">알림 없음</option>
+                  <option value="5">5분 전</option>
+                  <option value="10">10분 전</option>
+                  <option value="15">15분 전</option>
+                  <option value="30">30분 전</option>
+                  <option value="60">1시간 전</option>
+                  <option value="1440">1일 전</option>
+                </select>
               </div>
             </div>
 

@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, addDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { CalendarEvent } from '@/types/firebase'
 import toast from 'react-hot-toast'
 import {
   CalendarIcon,
-  PlusIcon,
   PencilIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  PlusIcon,
   TrashIcon,
   ClockIcon,
   MapPinIcon,
@@ -20,6 +22,8 @@ interface CalendarProps {
   selectedDate?: Date
   onDateSelect?: (date: Date) => void
 }
+
+type CalendarView = 'month' | 'week' | 'day'
 
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
@@ -37,7 +41,7 @@ const mockEvents: CalendarEvent[] = [
     authorName: '윤수',
     color: '#3B82F6',
     location: '회의실 A',
-    attendees: ['user-1', 'user-2'],
+    reminder: '15',
     createdAt: new Date('2024-01-10'),
     updatedAt: new Date('2024-01-10'),
   },
@@ -61,6 +65,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [calendarView, setCalendarView] = useState<CalendarView>('month')
   const [showEventModal, setShowEventModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [eventForm, setEventForm] = useState({
@@ -73,6 +78,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     allDay: false,
     location: '',
     color: '#3B82F6',
+    reminder: '15', // 15분 전 알림
   })
 
   useEffect(() => {
@@ -105,7 +111,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
           authorName: data.authorName,
           color: data.color || '#3B82F6',
           location: data.location,
-          attendees: data.attendees,
+          reminder: data.reminder,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
         })
@@ -132,6 +138,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       allDay: false,
       location: '',
       color: '#3B82F6',
+      reminder: '15',
     })
     setShowEventModal(true)
   }
@@ -148,6 +155,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       allDay: event.allDay,
       location: event.location || '',
       color: event.color || '#3B82F6',
+      reminder: event.reminder || '15',
     })
     setShowEventModal(true)
   }
@@ -200,6 +208,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       authorName: user.displayName || user.email || '익명',
       color: eventForm.color,
       location: eventForm.location,
+      reminder: eventForm.reminder,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -297,6 +306,100 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
             <span>일정 추가</span>
           </button>
         </div>
+
+        {/* 뷰 선택 및 날짜 네비게이션 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCalendarView('month')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                calendarView === 'month' 
+                  ? 'bg-primary-100 text-primary-700' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              월
+            </button>
+            <button
+              onClick={() => setCalendarView('week')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                calendarView === 'week' 
+                  ? 'bg-primary-100 text-primary-700' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              주
+            </button>
+            <button
+              onClick={() => setCalendarView('day')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                calendarView === 'day' 
+                  ? 'bg-primary-100 text-primary-700' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              일
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                const newDate = new Date(currentDate)
+                if (calendarView === 'month') {
+                  newDate.setMonth(newDate.getMonth() - 1)
+                } else if (calendarView === 'week') {
+                  newDate.setDate(newDate.getDate() - 7)
+                } else {
+                  newDate.setDate(newDate.getDate() - 1)
+                }
+                setCurrentDate(newDate)
+              }}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+            
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              오늘
+            </button>
+            
+            <button
+              onClick={() => {
+                const newDate = new Date(currentDate)
+                if (calendarView === 'month') {
+                  newDate.setMonth(newDate.getMonth() + 1)
+                } else if (calendarView === 'week') {
+                  newDate.setDate(newDate.getDate() + 7)
+                } else {
+                  newDate.setDate(newDate.getDate() + 1)
+                }
+                setCurrentDate(newDate)
+              }}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* 현재 날짜 표시 */}
+        <div className="mt-2">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {calendarView === 'month' && (
+              `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월`
+            )}
+            {calendarView === 'week' && (
+              `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월 ${currentDate.getDate()}일 주`
+            )}
+            {calendarView === 'day' && (
+              `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월 ${currentDate.getDate()}일`
+            )}
+          </h2>
+        </div>
       </div>
 
       {/* 캘린더 내용 */}
@@ -349,10 +452,10 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                   </div>
                 )}
                 
-                {event.attendees && event.attendees.length > 0 && (
+                {event.reminder && event.reminder !== '0' && (
                   <div className="flex items-center space-x-2">
-                    <UserGroupIcon className="w-4 h-4" />
-                    <span>{event.attendees.length}명 참석</span>
+                    <ClockIcon className="w-4 h-4" />
+                    <span>{event.reminder}분 전 알림</span>
                   </div>
                 )}
               </div>
@@ -487,17 +590,38 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                 )}
               </div>
 
+              {/* 위치 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  장소
+                  위치
                 </label>
                 <input
                   type="text"
                   value={eventForm.location}
                   onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="장소"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="위치를 입력하세요"
                 />
+              </div>
+
+              {/* 알림 설정 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  알림
+                </label>
+                <select
+                  value={eventForm.reminder}
+                  onChange={(e) => setEventForm({ ...eventForm, reminder: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="0">알림 없음</option>
+                  <option value="5">5분 전</option>
+                  <option value="10">10분 전</option>
+                  <option value="15">15분 전</option>
+                  <option value="30">30분 전</option>
+                  <option value="60">1시간 전</option>
+                  <option value="1440">1일 전</option>
+                </select>
               </div>
 
               <div>

@@ -81,13 +81,13 @@ export interface CalendarEvent {
   startDate: Date
   endDate: Date
   allDay: boolean
+  location?: string
+  color: string
   userId: string
   authorName: string
-  color?: string
-  location?: string
-  attendees?: string[]
   createdAt: Date
   updatedAt: Date
+  reminder?: string // 알림 설정 (분 단위)
 }
 
 export interface TodoItem {
@@ -100,6 +100,21 @@ export interface TodoItem {
   userId: string
   authorName: string
   tags?: string[]
+  createdAt: Date
+  updatedAt: Date
+  reminder?: string // 알림 설정 (분 단위)
+}
+
+export interface Notification {
+  id: string
+  type: 'event' | 'todo'
+  title: string
+  message: string
+  eventId?: string
+  todoId?: string
+  userId: string
+  isRead: boolean
+  scheduledFor: Date
   createdAt: Date
   updatedAt: Date
 } 

@@ -9,11 +9,13 @@ import { BulletinTree } from './BulletinTree'
 import { BulletinContent } from './BulletinContent'
 import { Calendar } from './Calendar'
 import { TodoList } from './TodoList'
+import { IntegratedSidebar } from './IntegratedSidebar'
+import { NotificationCenter } from './NotificationCenter'
 import { 
   ChatBubbleLeftRightIcon,
+  BellIcon,
   CalendarIcon,
   CheckCircleIcon,
-  ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
@@ -28,7 +30,7 @@ export function Dashboard() {
   const [selectedBulletinId, setSelectedBulletinId] = useState<string | null>(null)
   const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
   const [showSidebar, setShowSidebar] = useState(false)
-  const [showFeatureDropdown, setShowFeatureDropdown] = useState(false)
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false)
 
   // 마우스 위치 감지
   useEffect(() => {
@@ -59,15 +61,15 @@ export function Dashboard() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element
       if (!target.closest('.feature-dropdown')) {
-        setShowFeatureDropdown(false)
+        // setShowFeatureDropdown(false) // This line is removed as per the edit hint
       }
     }
 
-    if (showFeatureDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showFeatureDropdown])
+    // if (showFeatureDropdown) { // This line is removed as per the edit hint
+    //   document.addEventListener('mousedown', handleClickOutside) // This line is removed as per the edit hint
+    //   return () => document.removeEventListener('mousedown', handleClickOutside) // This line is removed as per the edit hint
+    // } // This line is removed as per the edit hint
+  }, []) // This line is changed as per the edit hint
 
   const handleSignOut = async () => {
     try {
@@ -128,79 +130,16 @@ export function Dashboard() {
               <ChatBubbleLeftRightIcon className="w-8 h-8 text-primary-600 mr-3" />
               윤수&상욱 공동작업장
             </h1>
-            
-            {/* 기능 선택 드롭다운 */}
-            <div className="relative feature-dropdown">
-              <button
-                onClick={() => setShowFeatureDropdown(!showFeatureDropdown)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                {activeFeature === 'bulletin' && (
-                  <>
-                    <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">게시판</span>
-                  </>
-                )}
-                {activeFeature === 'calendar' && (
-                  <>
-                    <CalendarIcon className="w-5 h-5 text-green-600" />
-                    <span className="font-medium">캘린더</span>
-                  </>
-                )}
-                {activeFeature === 'todo' && (
-                  <>
-                    <CheckCircleIcon className="w-5 h-5 text-purple-600" />
-                    <span className="font-medium">할 일</span>
-                  </>
-                )}
-                <ChevronDownIcon className="w-4 h-4 text-gray-500" />
-              </button>
-
-              {showFeatureDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setActiveFeature('bulletin')
-                        setShowFeatureDropdown(false)
-                      }}
-                      className={`w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-gray-50 ${
-                        activeFeature === 'bulletin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                      <span>게시판</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveFeature('calendar')
-                        setShowFeatureDropdown(false)
-                      }}
-                      className={`w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-gray-50 ${
-                        activeFeature === 'calendar' ? 'bg-green-50 text-green-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <CalendarIcon className="w-5 h-5" />
-                      <span>캘린더</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveFeature('todo')
-                        setShowFeatureDropdown(false)
-                      }}
-                      className={`w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-gray-50 ${
-                        activeFeature === 'todo' ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <CheckCircleIcon className="w-5 h-5" />
-                      <span>할 일</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowNotificationCenter(true)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
+            >
+              <BellIcon className="w-5 h-5" />
+              {/* 알림 표시기 */}
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+            </button>
             <span className="text-sm text-gray-600">
               {user?.email}
             </span>
@@ -218,17 +157,17 @@ export function Dashboard() {
       <div className="flex-1 flex">
         {viewMode === 'list' && (
           <>
-            {/* 좌측 사이드바 (게시판일 때만) */}
-            {activeFeature === 'bulletin' && (
-              <div className="w-80 flex-shrink-0">
-                <BulletinTree 
-                  selectedBulletinId={selectedBulletinId}
-                  onBulletinSelect={handleBulletinSelect}
-                  expandedBulletins={expandedBulletins}
-                  onExpandedBulletinsChange={handleExpandedBulletinsChange}
-                />
-              </div>
-            )}
+            {/* 좌측 통합 사이드바 */}
+            <div className="w-80 flex-shrink-0">
+              <IntegratedSidebar
+                activeFeature={activeFeature}
+                onFeatureChange={setActiveFeature}
+                selectedBulletinId={selectedBulletinId}
+                onBulletinSelect={handleBulletinSelect}
+                expandedBulletins={expandedBulletins}
+                onExpandedBulletinsChange={handleExpandedBulletinsChange}
+              />
+            </div>
             
             {/* 우측 콘텐츠 영역 */}
             <div className="flex-1">
@@ -259,7 +198,9 @@ export function Dashboard() {
               style={{ top: '73px' }} // 헤더 높이만큼 아래로
             >
               <div className="w-80 h-full bg-white shadow-lg border-r border-gray-200">
-                <BulletinTree 
+                <IntegratedSidebar
+                  activeFeature={activeFeature}
+                  onFeatureChange={setActiveFeature}
                   selectedBulletinId={selectedBulletinId}
                   onBulletinSelect={handleBulletinSelect}
                   expandedBulletins={expandedBulletins}
@@ -297,6 +238,12 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* 알림 센터 */}
+      <NotificationCenter 
+        isOpen={showNotificationCenter}
+        onClose={() => setShowNotificationCenter(false)}
+      />
     </div>
   )
 } 

@@ -17,6 +17,7 @@ import {
   MapPinIcon,
   UserGroupIcon,
   CheckCircleIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import { useRef } from 'react'
 
@@ -72,6 +73,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [showTodoModal, setShowTodoModal] = useState(false)
   const [selectedDateForTodo, setSelectedDateForTodo] = useState<Date | null>(null)
+  const [showSyncModal, setShowSyncModal] = useState(false)
   const [eventForm, setEventForm] = useState({
     title: '',
     description: '',
@@ -404,6 +406,57 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     setShowEventModal(true)
   }
 
+  const generateICalFile = () => {
+    const now = new Date()
+    const calendarName = '윤수&상욱 공동작업장'
+    
+    let icalContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//윤수&상욱 공동작업장//Calendar//KO',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      `X-WR-CALNAME:${calendarName}`,
+      `X-WR-CALDESC:${calendarName} 캘린더`,
+      ''
+    ]
+
+    // 이벤트 추가
+    events.forEach((event) => {
+      const startDate = event.startDate
+      const endDate = event.endDate
+      
+      icalContent.push(
+        'BEGIN:VEVENT',
+        `UID:${event.id}@cowork-platform.com`,
+        `DTSTAMP:${now.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+        `DTSTART:${startDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+        `DTEND:${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+        `SUMMARY:${event.title}`,
+        event.description ? `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}` : '',
+        event.location ? `LOCATION:${event.location}` : '',
+        'STATUS:CONFIRMED',
+        'SEQUENCE:0',
+        'END:VEVENT'
+      )
+    })
+
+    icalContent.push('END:VCALENDAR')
+
+    // 파일 다운로드
+    const blob = new Blob([icalContent.join('\r\n')], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${calendarName}_캘린더.ics`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    toast.success('캘린더 파일이 다운로드되었습니다.')
+  }
+
   const getEventsForDate = (date: Date) => {
     return events.filter(event => {
       const eventStart = new Date(event.startDate)
@@ -531,6 +584,14 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
             >
               <CheckCircleIcon className="w-5 h-5" />
               <span>할 일 추가</span>
+            </button>
+            <button
+              onClick={() => setShowSyncModal(true)}
+              className="btn-secondary flex items-center space-x-2"
+              title="휴대전화 캘린더와 동기화"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              <span>동기화</span>
             </button>
           </div>
         </div>
@@ -1160,6 +1221,63 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
           >
             <PlusIcon className="w-4 h-4 inline-block mr-2 text-blue-500" /> 일정 추가
           </button>
+        </div>
+      )}
+
+      {/* 동기화 안내 모달 */}
+      {showSyncModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">휴대전화 캘린더 동기화</h2>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">📱 동기화 방법</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                  <li>아래 "캘린더 다운로드" 버튼을 클릭하세요</li>
+                  <li>다운로드된 .ics 파일을 휴대전화로 전송하세요</li>
+                  <li>휴대전화에서 파일을 열어 캘린더 앱에 추가하세요</li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="font-semibold text-yellow-900 mb-2">⚠️ 주의사항</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-yellow-800">
+                  <li>이 파일에는 현재 캘린더의 모든 일정이 포함됩니다</li>
+                  <li>휴대전화에서 기존 일정과 중복될 수 있습니다</li>
+                  <li>정기적으로 새로운 파일을 다운로드하여 최신 상태를 유지하세요</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 className="font-semibold text-green-900 mb-2">✅ 지원되는 앱</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-green-800">
+                  <li>iPhone: 기본 캘린더 앱</li>
+                  <li>Android: Google 캘린더, 삼성 캘린더</li>
+                  <li>기타: Outlook, Apple Calendar 등</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowSyncModal(false)}
+                className="btn-secondary"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  generateICalFile()
+                  setShowSyncModal(false)
+                }}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                <span>캘린더 다운로드</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

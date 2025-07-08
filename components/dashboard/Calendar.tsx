@@ -18,6 +18,7 @@ import {
   UserGroupIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline'
+import { useRef } from 'react'
 
 interface CalendarProps {
   selectedDate?: Date
@@ -91,6 +92,8 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     tags: '',
     reminder: '0',
   })
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; date: Date } | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchEvents()
@@ -264,6 +267,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
         const updatedEvent: CalendarEvent = {
           ...selectedEvent,
           ...eventData,
+          createdAt: selectedEvent.createdAt,
           updatedAt: new Date(),
         }
         setEvents(events.map(e => e.id === selectedEvent.id ? updatedEvent : e))
@@ -381,6 +385,23 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     }
   }
 
+  const handleCreateEventWithDate = (date: Date) => {
+    setSelectedEvent(null)
+    setEventForm({
+      title: '',
+      description: '',
+      startDate: date.toISOString().split('T')[0],
+      startTime: '09:00',
+      endDate: date.toISOString().split('T')[0],
+      endTime: '10:00',
+      allDay: false,
+      location: '',
+      color: '#3B82F6',
+      reminder: '15',
+    })
+    setShowEventModal(true)
+  }
+
   const getEventsForDate = (date: Date) => {
     return events.filter(event => {
       const eventStart = new Date(event.startDate)
@@ -464,6 +485,18 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
 
     return days
   }
+
+  // 컨텍스트 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!contextMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [contextMenu])
 
   if (loading) {
     return (
@@ -643,7 +676,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                         }}
                         onContextMenu={(e) => {
                           e.preventDefault()
-                          handleCreateTodo(day.date)
+                          setContextMenu({ x: e.clientX, y: e.clientY, date: day.date })
                         }}
                       >
                         <div className={`text-sm font-medium ${
@@ -1085,6 +1118,34 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 컨텍스트 메뉴 */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-50 bg-white border border-gray-200 rounded shadow-lg py-1 w-36"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+            onClick={() => {
+              setContextMenu(null)
+              handleCreateTodo(contextMenu.date)
+            }}
+          >
+            <CheckCircleIcon className="w-4 h-4 inline-block mr-2 text-green-500" /> 할 일 추가
+          </button>
+          <button
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+            onClick={() => {
+              setContextMenu(null)
+              handleCreateEventWithDate(contextMenu.date)
+            }}
+          >
+            <PlusIcon className="w-4 h-4 inline-block mr-2 text-blue-500" /> 일정 추가
+          </button>
         </div>
       )}
     </div>

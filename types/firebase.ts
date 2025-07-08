@@ -37,14 +37,14 @@ export interface UserProfile {
 export interface Bulletin {
   id: string
   title: string
-  description?: string
-  parentId?: string // 상위 게시판 ID (없으면 최상위)
-  level: number // 깊이 레벨 (0: 최상위, 1: 하위, 2: 하하위...)
-  order: number // 정렬 순서
-  isActive: boolean
-  userId: string // 게시판 생성자 ID
+  description: string
+  parentId: string
+  level: number
+  userId: string
   createdAt: Date
   updatedAt: Date
+  isActive: boolean
+  order: number
 }
 
 export interface BulletinPost {
@@ -59,7 +59,7 @@ export interface BulletinPost {
   viewCount: number
   likeCount: number
   tags?: string[]
-  attachments?: string[] // FileData ID 배열
+  attachments?: string[]
   createdAt: Date
   updatedAt: Date
 }
@@ -70,7 +70,36 @@ export interface BulletinComment {
   content: string
   userId: string
   authorName: string
-  parentId?: string // 대댓글용
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  description?: string
+  startDate: Date
+  endDate: Date
+  allDay: boolean
+  userId: string
+  authorName: string
+  color?: string
+  location?: string
+  attendees?: string[]
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TodoItem {
+  id: string
+  title: string
+  description?: string
+  completed: boolean
+  priority: 'low' | 'medium' | 'high'
+  dueDate?: Date
+  userId: string
+  authorName: string
+  tags?: string[]
   createdAt: Date
   updatedAt: Date
 } 

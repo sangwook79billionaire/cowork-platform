@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, getUserNickname } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { TodoItem, CalendarEvent } from '@/types/firebase'
 import toast from 'react-hot-toast'
@@ -231,6 +231,9 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       return
     }
 
+    // 사용자 닉네임 가져오기
+    const authorNickname = await getUserNickname(user.uid)
+    
     const todoData = {
       title: todoForm.title,
       description: todoForm.description,
@@ -238,7 +241,7 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       priority: todoForm.priority,
       dueDate: todoForm.dueDate ? new Date(`${todoForm.dueDate}T${todoForm.dueTime}`) : undefined,
       userId: user.uid,
-      authorName: user.displayName || user.email || '익명',
+      authorName: authorNickname,
       tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()) : [],
       reminder: todoForm.reminder,
       createdAt: serverTimestamp(),

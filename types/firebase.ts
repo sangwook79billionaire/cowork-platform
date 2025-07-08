@@ -26,9 +26,9 @@ export interface FileData {
 export interface UserProfile {
   id: string
   email: string
-  name: string
-  avatarUrl?: string
-  role: 'user' | 'admin' // 사용자 역할 추가
+  nickname: string
+  phoneNumber?: string
+  countryCode?: string
   createdAt: Date
   updatedAt: Date
 }

@@ -11,11 +11,13 @@ import { Calendar } from './Calendar'
 import { TodoList } from './TodoList'
 import { IntegratedSidebar } from './IntegratedSidebar'
 import { NotificationCenter } from './NotificationCenter'
+import { AccountSettings } from './AccountSettings'
 import { 
   ChatBubbleLeftRightIcon,
   BellIcon,
   CalendarIcon,
   CheckCircleIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
@@ -31,6 +33,7 @@ export function Dashboard() {
   const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
   const [showSidebar, setShowSidebar] = useState(false)
   const [showNotificationCenter, setShowNotificationCenter] = useState(false)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
 
   // 마우스 위치 감지
   useEffect(() => {
@@ -140,6 +143,13 @@ export function Dashboard() {
               {/* 알림 표시기 */}
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
             </button>
+            <button
+              onClick={() => setShowAccountSettings(true)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="계정 설정"
+            >
+              <UserIcon className="w-5 h-5" />
+            </button>
             <span className="text-sm text-gray-600">
               {user?.email}
             </span>
@@ -247,6 +257,12 @@ export function Dashboard() {
       <NotificationCenter 
         isOpen={showNotificationCenter}
         onClose={() => setShowNotificationCenter(false)}
+      />
+
+      {/* 계정 설정 */}
+      <AccountSettings
+        isOpen={showAccountSettings}
+        onClose={() => setShowAccountSettings(false)}
       />
     </div>
   )

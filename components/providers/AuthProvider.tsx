@@ -19,8 +19,9 @@ interface AuthContextType {
   loading: boolean
   isAdmin: boolean // admin 권한 확인
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, name: string) => Promise<void>
+  signUp: (email: string, password: string, nickname: string) => Promise<void>
   signOut: () => Promise<void>
+  updateProfile: (profile: Partial<UserProfile>) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -66,25 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile(userDoc.data() as UserProfile)
           } else {
             // 프로필이 없으면 자동 생성
-            const userProfileData: any = {
+            const userProfileData: UserProfile = {
               id: user.uid,
               email: user.email || '',
-              name: user.displayName || user.email?.split('@')[0] || '사용자',
-              role: 'user', // 기본 역할은 user
+              nickname: user.displayName || user.email?.split('@')[0] || '사용자',
               createdAt: new Date(),
               updatedAt: new Date(),
             }
             
-            // avatarUrl이 있을 때만 추가
-            if (user.photoURL) {
-              userProfileData.avatarUrl = user.photoURL
-            }
-            
-            const userProfile: UserProfile = userProfileData
-            
             try {
-              await setDoc(doc(db, 'users', user.uid), userProfile)
-              setUserProfile(userProfile)
+              await setDoc(doc(db, 'users', user.uid), userProfileData)
+              setUserProfile(userProfileData)
             } catch (createError) {
               console.error('Error creating user profile:', createError)
             }
@@ -116,8 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const adminProfile: UserProfile = {
         id: 'admin',
         email: 'admin@admin.com',
-        name: '관리자',
-        role: 'admin',
+        nickname: '관리자',
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -151,11 +143,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, nickname: string) => {
     if (isTestMode) {
       // 테스트 모드: 항상 성공
-      const newUser = { ...mockUser, email, displayName: name } as unknown as User
-      const newProfile = { ...mockUserProfile, email, name }
+      const newUser = { ...mockUser, email, displayName: nickname } as unknown as User
+      const newProfile = { ...mockUserProfile, email, nickname }
       setUser(newUser)
       setUserProfile(newProfile)
       return
@@ -173,9 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userProfile: UserProfile = {
         id: user.uid,
         email: user.email || '',
-        name,
-        role: 'user', // 기본 역할은 user
-        avatarUrl: user.photoURL || undefined,
+        nickname,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -183,6 +173,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setDoc(doc(db, 'users', user.uid), userProfile)
     } catch (error: any) {
       throw new Error(error.message)
+    }
+  }
+
+  const updateProfile = async (profile: Partial<UserProfile>) => {
+    if (!user || !db) {
+      throw new Error('User not authenticated or Firebase not initialized')
+    }
+
+    try {
+      const updatedProfile = {
+        ...userProfile,
+        ...profile,
+        updatedAt: new Date(),
+      } as UserProfile
+
+      await setDoc(doc(db, 'users', user.uid), updatedProfile)
+      setUserProfile(updatedProfile)
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw new Error('프로필 업데이트에 실패했습니다.')
     }
   }
 
@@ -205,11 +215,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // admin 권한 확인
-  const isAdmin = userProfile?.role === 'admin'
+  // admin 권한 확인 (이메일이 admin@admin.com이거나 admin인 경우)
+  const isAdmin = user?.email === 'admin@admin.com' || user?.uid === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      userProfile,
+      loading,
+      isAdmin,
+      signIn,
+      signUp,
+      signOut,
+      updateProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   )

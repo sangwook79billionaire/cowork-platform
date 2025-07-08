@@ -5,30 +5,43 @@ import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { UserProfile } from '@/types/firebase'
 
+// Firebase 설정
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'test-api-key',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'test.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'test-project',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'test.appspot.com',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:test',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-// 브라우저 환경에서만 Firebase 초기화
-let app: any = null
-let auth: any = null
-let db: any = null
-let storage: any = null
+// Firebase 초기화
+const app = initializeApp(firebaseConfig)
 
-if (typeof window !== 'undefined') {
-  // 클라이언트 사이드에서만 실행
-  app = initializeApp(firebaseConfig)
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
+// 서비스 내보내기
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const storage = getStorage(app)
+
+// 사용자 프로필 가져오기 함수
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  try {
+    const { doc, getDoc } = await import('firebase/firestore')
+    const userDoc = await getDoc(doc(db, 'users', userId))
+    if (userDoc.exists()) {
+      return userDoc.data() as UserProfile
+    }
+    return null
+  } catch (error) {
+    console.error('Error fetching user profile:', error)
+    return null
+  }
 }
 
-// Firebase 서비스 내보내기
-export { auth, db, storage }
-export default app 
+// 사용자 닉네임 가져오기 함수
+export const getUserNickname = async (userId: string): Promise<string> => {
+  const profile = await getUserProfile(userId)
+  return profile?.nickname || '익명'
+} 

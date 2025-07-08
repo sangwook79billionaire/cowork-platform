@@ -4,9 +4,9 @@ import { Document, UserProfile } from '@/types/firebase'
 export const mockUserProfile: UserProfile = {
   id: 'test-user-id',
   email: 'test@example.com',
-  name: '테스트 사용자',
-  role: 'user',
-  avatarUrl: undefined,
+  nickname: '테스트 사용자',
+  phoneNumber: '010-1234-5678',
+  countryCode: '+82',
   createdAt: new Date(),
   updatedAt: new Date(),
 }

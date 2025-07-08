@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, getUserNickname } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { CalendarEvent, TodoItem } from '@/types/firebase'
 import toast from 'react-hot-toast'
@@ -330,6 +330,9 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       return
     }
 
+    // 사용자 닉네임 가져오기
+    const authorNickname = await getUserNickname(user.uid)
+    
     const eventData = {
       title: eventForm.title,
       description: eventForm.description,
@@ -337,7 +340,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       endDate: endDateTime,
       allDay: eventForm.allDay,
       userId: user.uid,
-      authorName: user.displayName || user.email || '익명',
+      authorName: authorNickname,
       color: eventForm.color,
       location: eventForm.location,
       reminder: eventForm.reminder,
@@ -401,6 +404,9 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       return
     }
 
+    // 사용자 닉네임 가져오기
+    const authorNickname = await getUserNickname(user.uid)
+    
     const todoData = {
       title: todoForm.title,
       description: todoForm.description,
@@ -408,7 +414,7 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       priority: todoForm.priority,
       dueDate: todoForm.dueDate ? new Date(`${todoForm.dueDate}T${todoForm.dueTime}`) : undefined,
       userId: user.uid,
-      authorName: user.displayName || user.email || '익명',
+      authorName: authorNickname,
       tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()) : [],
       reminder: todoForm.reminder,
       createdAt: serverTimestamp(),

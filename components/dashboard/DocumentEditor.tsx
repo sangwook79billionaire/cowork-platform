@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, getUserNickname } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Document } from '@/types/firebase'
 import { mockDocuments } from '@/lib/mockData'
@@ -232,12 +232,15 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
           return
         }
 
+        // 사용자 닉네임 가져오기
+        const authorNickname = await getUserNickname(user.uid)
+        
         const postData = {
           bulletinId: bulletinId,
           title: title.trim(),
           content: content,
           userId: user.uid,
-          authorName: user.displayName || user.email || '익명',
+          authorName: authorNickname,
           isPinned: false,
           isLocked: false,
           viewCount: 0,

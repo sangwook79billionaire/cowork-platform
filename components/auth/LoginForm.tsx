@@ -8,7 +8,7 @@ export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
+  const [nickname, setNickname] = useState('')
   const [loading, setLoading] = useState(false)
   const { signIn, signUp } = useAuth()
 
@@ -18,7 +18,7 @@ export function LoginForm() {
 
     try {
       if (isSignUp) {
-        await signUp(email, password, name)
+        await signUp(email, password, nickname)
         toast.success('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
       } else {
         await signIn(email, password)
@@ -43,18 +43,18 @@ export function LoginForm() {
           <div className="rounded-md shadow-sm -space-y-px">
             {isSignUp && (
               <div>
-                <label htmlFor="name" className="sr-only">
-                  이름
+                <label htmlFor="nickname" className="sr-only">
+                  닉네임
                 </label>
                 <input
-                  id="name"
-                  name="name"
+                  id="nickname"
+                  name="nickname"
                   type="text"
                   required={isSignUp}
                   className="input-field rounded-t-lg"
-                  placeholder="이름"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  placeholder="닉네임"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
                 />
               </div>
             )}

@@ -23,7 +23,7 @@ interface CalendarProps {
   onDateSelect?: (date: Date) => void
 }
 
-type CalendarView = 'month' | 'week' | 'day'
+type CalendarView = 'month' | 'week' | 'day' | 'list'
 
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
@@ -262,23 +262,82 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       const eventEnd = new Date(event.endDate)
       const checkDate = new Date(date)
       
-      return eventStart <= checkDate && eventEnd >= checkDate
+      // 날짜만 비교 (시간 제외)
+      checkDate.setHours(0, 0, 0, 0)
+      eventStart.setHours(0, 0, 0, 0)
+      eventEnd.setHours(0, 0, 0, 0)
+      
+      return checkDate >= eventStart && checkDate <= eventEnd
     })
   }
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString('ko-KR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
     })
   }
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleTimeString('ko-KR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
     })
+  }
+
+  // 달력 그리드 생성 함수들
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate()
+  }
+
+  const getFirstDayOfMonth = (year: number, month: number) => {
+    return new Date(year, month, 1).getDay()
+  }
+
+  const getCalendarDays = (year: number, month: number) => {
+    const daysInMonth = getDaysInMonth(year, month)
+    const firstDay = getFirstDayOfMonth(year, month)
+    const days = []
+
+    // 이전 달의 마지막 날들
+    const prevMonth = month === 0 ? 11 : month - 1
+    const prevYear = month === 0 ? year - 1 : year
+    const prevMonthDays = getDaysInMonth(prevYear, prevMonth)
+    
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        date: new Date(prevYear, prevMonth, prevMonthDays - i),
+        isCurrentMonth: false,
+        isToday: false
+      })
+    }
+
+    // 현재 달의 날들
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day)
+      const today = new Date()
+      days.push({
+        date,
+        isCurrentMonth: true,
+        isToday: date.toDateString() === today.toDateString()
+      })
+    }
+
+    // 다음 달의 첫 날들
+    const remainingDays = 42 - days.length // 6주 x 7일 = 42
+    const nextMonth = month === 11 ? 0 : month + 1
+    const nextYear = month === 11 ? year + 1 : year
+    
+    for (let day = 1; day <= remainingDays; day++) {
+      days.push({
+        date: new Date(nextYear, nextMonth, day),
+        isCurrentMonth: false,
+        isToday: false
+      })
+    }
+
+    return days
   }
 
   if (loading) {
@@ -339,6 +398,16 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
               }`}
             >
               일
+            </button>
+            <button
+              onClick={() => setCalendarView('list')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                calendarView === 'list' 
+                  ? 'bg-primary-100 text-primary-700' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              목록
             </button>
           </div>
 
@@ -402,89 +471,198 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
         </div>
       </div>
 
-      {/* 캘린더 내용 */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
-            <div
-              key={event.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">{event.title}</h3>
-                  {event.description && (
-                    <p className="text-sm text-gray-600 mb-2">{event.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEditEvent(event)}
-                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEvent(event.id)}
-                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <ClockIcon className="w-4 h-4" />
-                  <span>
-                    {event.allDay ? (
-                      `${formatDate(event.startDate)}${event.startDate.toDateString() !== event.endDate.toDateString() ? ` ~ ${formatDate(event.endDate)}` : ''} (종일)`
-                    ) : (
-                      `${formatDate(event.startDate)} ${formatTime(event.startDate)} ~ ${formatTime(event.endDate)}`
-                    )}
-                  </span>
-                </div>
-                
-                {event.location && (
-                  <div className="flex items-center space-x-2">
-                    <MapPinIcon className="w-4 h-4" />
-                    <span>{event.location}</span>
-                  </div>
-                )}
-                
-                {event.reminder && event.reminder !== '0' && (
-                  <div className="flex items-center space-x-2">
-                    <ClockIcon className="w-4 h-4" />
-                    <span>{event.reminder}분 전 알림</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">{event.authorName}</span>
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: event.color }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {events.length === 0 && (
-          <div className="text-center py-12">
-            <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">일정이 없습니다</h3>
-            <p className="text-gray-500 mb-4">새로운 일정을 추가해보세요!</p>
-            <button
-              onClick={handleCreateEvent}
-              className="btn-primary"
-            >
-              일정 추가하기
-            </button>
+      {/* 캘린더 콘텐츠 */}
+      <div className="flex-1 p-6">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
+        ) : (
+          <>
+            {/* 월별 달력 뷰 */}
+            {calendarView === 'month' && (
+              <div className="space-y-4">
+                {/* 요일 헤더 */}
+                <div className="grid grid-cols-7 gap-1">
+                  {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
+                    <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 달력 그리드 */}
+                <div className="grid grid-cols-7 gap-1">
+                  {getCalendarDays(currentDate.getFullYear(), currentDate.getMonth()).map((day, index) => {
+                    const dayEvents = getEventsForDate(day.date)
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[100px] p-2 border border-gray-200 ${
+                          day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
+                        } ${
+                          day.isToday ? 'ring-2 ring-primary-500' : ''
+                        } hover:bg-gray-50 transition-colors cursor-pointer`}
+                        onClick={() => {
+                          setCurrentDate(day.date)
+                          setCalendarView('day')
+                        }}
+                      >
+                        <div className={`text-sm font-medium ${
+                          day.isCurrentMonth 
+                            ? day.isToday 
+                              ? 'text-primary-600' 
+                              : 'text-gray-900'
+                            : 'text-gray-400'
+                        }`}>
+                          {day.date.getDate()}
+                        </div>
+                        
+                        {/* 이벤트 표시 */}
+                        <div className="mt-1 space-y-1">
+                          {dayEvents.slice(0, 2).map((event) => (
+                            <div
+                              key={event.id}
+                              className="text-xs p-1 rounded truncate"
+                              style={{ 
+                                backgroundColor: event.color + '20',
+                                color: event.color,
+                                border: `1px solid ${event.color}40`
+                              }}
+                              title={event.title}
+                            >
+                              {event.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 2 && (
+                            <div className="text-xs text-gray-500">
+                              +{dayEvents.length - 2}개 더
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 주별 뷰 */}
+            {calendarView === 'week' && (
+              <div className="space-y-4">
+                <div className="text-center py-8">
+                  <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">주별 뷰</h3>
+                  <p className="text-gray-500">주별 뷰 기능이 곧 추가됩니다.</p>
+                </div>
+              </div>
+            )}
+
+            {/* 일별 뷰 */}
+            {calendarView === 'day' && (
+              <div className="space-y-4">
+                <div className="text-center py-8">
+                  <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">일별 뷰</h3>
+                  <p className="text-gray-500">일별 뷰 기능이 곧 추가됩니다.</p>
+                </div>
+              </div>
+            )}
+
+            {/* 이벤트 목록 (기존) */}
+            {calendarView === 'list' && (
+              <div className="space-y-4">
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-2">{event.title}</h3>
+                        {event.description && (
+                          <p className="text-gray-600 text-sm mb-3">{event.description}</p>
+                        )}
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <div className="flex items-center space-x-1">
+                            <CalendarIcon className="w-4 h-4" />
+                            <span>{formatDate(event.startDate)}</span>
+                            {!event.allDay && (
+                              <span> {formatTime(event.startDate)}</span>
+                            )}
+                          </div>
+                          
+                          {event.endDate && event.endDate.getTime() !== event.startDate.getTime() && (
+                            <div className="flex items-center space-x-1">
+                              <span>~</span>
+                              <span>{formatDate(event.endDate)}</span>
+                              {!event.allDay && (
+                                <span> {formatTime(event.endDate)}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {event.location && (
+                          <div className="flex items-center space-x-2 mt-2">
+                            <MapPinIcon className="w-4 h-4" />
+                            <span>{event.location}</span>
+                          </div>
+                        )}
+                        
+                        {event.reminder && event.reminder !== '0' && (
+                          <div className="flex items-center space-x-2 mt-2">
+                            <ClockIcon className="w-4 h-4" />
+                            <span>{event.reminder}분 전 알림</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2 ml-4">
+                        <button
+                          onClick={() => handleEditEvent(event)}
+                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEvent(event.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">{event.authorName}</span>
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: event.color }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {events.length === 0 && (
+                  <div className="text-center py-12">
+                    <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">일정이 없습니다</h3>
+                    <p className="text-gray-500 mb-4">새로운 일정을 추가해보세요!</p>
+                    <button
+                      onClick={handleCreateEvent}
+                      className="btn-primary"
+                    >
+                      일정 추가하기
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

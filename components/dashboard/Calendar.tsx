@@ -18,6 +18,7 @@ import {
   UserGroupIcon,
   CheckCircleIcon,
   ArrowDownTrayIcon,
+  FlagIcon,
 } from '@heroicons/react/24/outline'
 import { useRef } from 'react'
 
@@ -99,6 +100,10 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   })
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; date: Date } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  const [showEventDetailModal, setShowEventDetailModal] = useState(false)
+  const [selectedEventForDetail, setSelectedEventForDetail] = useState<CalendarEvent | null>(null)
+  const [showTodoDetailModal, setShowTodoDetailModal] = useState(false)
+  const [selectedTodoForDetail, setSelectedTodoForDetail] = useState<TodoItem | null>(null)
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined
@@ -421,6 +426,48 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
       reminder: '15',
     })
     setShowEventModal(true)
+  }
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEventForDetail(event)
+    setShowEventDetailModal(true)
+  }
+
+  const handleTodoClick = (todo: TodoItem) => {
+    setSelectedTodoForDetail(todo)
+    setShowTodoDetailModal(true)
+  }
+
+  const handleEventRightClick = (event: CalendarEvent, e: React.MouseEvent) => {
+    e.preventDefault()
+    setSelectedEvent(event)
+    setEventForm({
+      title: event.title,
+      description: event.description || '',
+      startDate: event.startDate.toISOString().split('T')[0],
+      startTime: event.allDay ? '09:00' : event.startDate.toTimeString().slice(0, 5),
+      endDate: event.endDate.toISOString().split('T')[0],
+      endTime: event.allDay ? '10:00' : event.endDate.toTimeString().slice(0, 5),
+      allDay: event.allDay,
+      location: event.location || '',
+      color: event.color || '#3B82F6',
+      reminder: event.reminder || '15',
+    })
+    setShowEventModal(true)
+  }
+
+  const handleTodoRightClick = (todo: TodoItem, e: React.MouseEvent) => {
+    e.preventDefault()
+    setTodoForm({
+      title: todo.title,
+      description: todo.description || '',
+      priority: todo.priority,
+      dueDate: todo.dueDate ? todo.dueDate.toISOString().split('T')[0] : '',
+      dueTime: todo.dueDate ? todo.dueDate.toTimeString().slice(0, 5) : '09:00',
+      tags: todo.tags ? todo.tags.join(', ') : '',
+      reminder: todo.reminder || '0',
+    })
+    setShowTodoModal(true)
   }
 
   const generateICalFile = () => {
@@ -920,13 +967,22 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                           {dayEvents.slice(0, 2).map((event) => (
                             <div
                               key={event.id}
-                              className="text-xs p-1 rounded truncate"
+                              className="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
                               style={{ 
                                 backgroundColor: event.color + '20',
                                 color: event.color,
                                 border: `1px solid ${event.color}40`
                               }}
                               title={event.title}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEventClick(event)
+                              }}
+                              onContextMenu={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleEventRightClick(event, e)
+                              }}
                             >
                               {event.title}
                             </div>
@@ -1505,6 +1561,189 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
                 className="btn-secondary"
               >
                 취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이벤트 세부 내용 모달 */}
+      {showEventDetailModal && selectedEventForDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">일정 세부사항</h2>
+              <button
+                onClick={() => setShowEventDetailModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg mb-2" style={{ color: selectedEventForDetail.color }}>
+                  {selectedEventForDetail.title}
+                </h3>
+                {selectedEventForDetail.description && (
+                  <p className="text-gray-600 mb-3">{selectedEventForDetail.description}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <ClockIcon className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {selectedEventForDetail.allDay ? (
+                      `${formatDate(selectedEventForDetail.startDate)} (종일)`
+                    ) : (
+                      `${formatDate(selectedEventForDetail.startDate)} ${formatTime(selectedEventForDetail.startDate)} - ${formatTime(selectedEventForDetail.endDate)}`
+                    )}
+                  </span>
+                </div>
+
+                {selectedEventForDetail.location && (
+                  <div className="flex items-center space-x-2">
+                    <MapPinIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">{selectedEventForDetail.location}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <UserGroupIcon className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">작성자: {selectedEventForDetail.authorName}</span>
+                </div>
+
+                {selectedEventForDetail.reminder && selectedEventForDetail.reminder !== '0' && (
+                  <div className="flex items-center space-x-2">
+                    <ClockIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      알림: {selectedEventForDetail.reminder}분 전
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowEventDetailModal(false)
+                  handleEventRightClick(selectedEventForDetail, {} as React.MouseEvent)
+                }}
+                className="btn-secondary flex items-center space-x-2"
+              >
+                <PencilIcon className="w-4 h-4" />
+                <span>수정</span>
+              </button>
+              <button
+                onClick={() => setShowEventDetailModal(false)}
+                className="btn-primary"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 할 일 세부 내용 모달 */}
+      {showTodoDetailModal && selectedTodoForDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">할 일 세부사항</h2>
+              <button
+                onClick={() => setShowTodoDetailModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  {selectedTodoForDetail.title}
+                </h3>
+                {selectedTodoForDetail.description && (
+                  <p className="text-gray-600 mb-3">{selectedTodoForDetail.description}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <CheckCircleIcon className={`w-4 h-4 ${selectedTodoForDetail.completed ? 'text-green-500' : 'text-gray-400'}`} />
+                  <span className={`text-sm ${selectedTodoForDetail.completed ? 'text-green-600' : 'text-gray-600'}`}>
+                    {selectedTodoForDetail.completed ? '완료됨' : '미완료'}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <FlagIcon className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    우선순위: {selectedTodoForDetail.priority === 'high' ? '높음' : selectedTodoForDetail.priority === 'medium' ? '보통' : '낮음'}
+                  </span>
+                </div>
+
+                {selectedTodoForDetail.dueDate && (
+                  <div className="flex items-center space-x-2">
+                    <CalendarIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      마감일: {formatDate(selectedTodoForDetail.dueDate)}
+                    </span>
+                  </div>
+                )}
+
+                {selectedTodoForDetail.tags && selectedTodoForDetail.tags.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">태그:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedTodoForDetail.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <UserGroupIcon className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">작성자: {selectedTodoForDetail.authorName}</span>
+                </div>
+
+                {selectedTodoForDetail.reminder && selectedTodoForDetail.reminder !== '0' && (
+                  <div className="flex items-center space-x-2">
+                    <ClockIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      알림: {selectedTodoForDetail.reminder}분 전
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowTodoDetailModal(false)
+                  handleTodoRightClick(selectedTodoForDetail, {} as React.MouseEvent)
+                }}
+                className="btn-secondary flex items-center space-x-2"
+              >
+                <PencilIcon className="w-4 h-4" />
+                <span>수정</span>
+              </button>
+              <button
+                onClick={() => setShowTodoDetailModal(false)}
+                className="btn-primary"
+              >
+                닫기
               </button>
             </div>
           </div>

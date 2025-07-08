@@ -14,6 +14,8 @@ import {
   TrashIcon,
   CalendarIcon,
   FlagIcon,
+  UserGroupIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 
 interface TodoListProps {
@@ -81,6 +83,8 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
     tags: '',
     reminder: '0',
   })
+  const [showTodoDetailModal, setShowTodoDetailModal] = useState(false)
+  const [selectedTodoForDetail, setSelectedTodoForDetail] = useState<TodoItem | null>(null)
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined
@@ -166,6 +170,11 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       reminder: todo.reminder || '0',
     })
     setShowTodoModal(true)
+  }
+
+  const handleTodoClick = (todo: TodoItem) => {
+    setSelectedTodoForDetail(todo)
+    setShowTodoDetailModal(true)
   }
 
   const handleToggleTodo = async (todoId: string) => {
@@ -428,13 +437,17 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
           {filteredTodos.map((todo) => (
             <div
               key={todo.id}
-              className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${
+              className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
                 todo.completed ? 'opacity-75' : ''
               }`}
+              onClick={() => handleTodoClick(todo)}
             >
               <div className="flex items-start space-x-3">
                 <button
-                  onClick={() => handleToggleTodo(todo.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleTodo(todo.id)
+                  }}
                   className="flex-shrink-0 mt-1"
                 >
                   {todo.completed ? (
@@ -466,13 +479,19 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
                         {getPriorityText(todo.priority)}
                       </span>
                       <button
-                        onClick={() => handleEditTodo(todo)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditTodo(todo)
+                        }}
                         className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteTodo(todo.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteTodo(todo.id)
+                        }}
                         className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                       >
                         <TrashIcon className="w-4 h-4" />
@@ -651,6 +670,108 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
                 className="btn-primary"
               >
                 {selectedTodo ? '수정' : '생성'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 할 일 세부 내용 모달 */}
+      {showTodoDetailModal && selectedTodoForDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">할 일 세부사항</h2>
+              <button
+                onClick={() => setShowTodoDetailModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  {selectedTodoForDetail.title}
+                </h3>
+                {selectedTodoForDetail.description && (
+                  <p className="text-gray-600 mb-3">{selectedTodoForDetail.description}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <CheckCircleIcon className={`w-4 h-4 ${selectedTodoForDetail.completed ? 'text-green-500' : 'text-gray-400'}`} />
+                  <span className={`text-sm ${selectedTodoForDetail.completed ? 'text-green-600' : 'text-gray-600'}`}>
+                    {selectedTodoForDetail.completed ? '완료됨' : '미완료'}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <FlagIcon className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    우선순위: {selectedTodoForDetail.priority === 'high' ? '높음' : selectedTodoForDetail.priority === 'medium' ? '보통' : '낮음'}
+                  </span>
+                </div>
+
+                {selectedTodoForDetail.dueDate && (
+                  <div className="flex items-center space-x-2">
+                    <CalendarIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      마감일: {formatDate(selectedTodoForDetail.dueDate)}
+                    </span>
+                  </div>
+                )}
+
+                {selectedTodoForDetail.tags && selectedTodoForDetail.tags.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">태그:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedTodoForDetail.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <UserGroupIcon className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">작성자: {selectedTodoForDetail.authorName}</span>
+                </div>
+
+                {selectedTodoForDetail.reminder && selectedTodoForDetail.reminder !== '0' && (
+                  <div className="flex items-center space-x-2">
+                    <ClockIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      알림: {selectedTodoForDetail.reminder}분 전
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowTodoDetailModal(false)
+                  handleEditTodo(selectedTodoForDetail)
+                }}
+                className="btn-secondary flex items-center space-x-2"
+              >
+                <PencilIcon className="w-4 h-4" />
+                <span>수정</span>
+              </button>
+              <button
+                onClick={() => setShowTodoDetailModal(false)}
+                className="btn-primary"
+              >
+                닫기
               </button>
             </div>
           </div>

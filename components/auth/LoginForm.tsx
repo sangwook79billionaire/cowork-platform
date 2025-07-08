@@ -34,13 +34,10 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isSignUp ? '회원가입' : '로그인'}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Cowork Platform에 오신 것을 환영합니다
-          </p>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            윤수&상욱 공동작업장에 오신 것을 환영합니다
+          </h1>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">

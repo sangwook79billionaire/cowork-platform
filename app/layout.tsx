@@ -12,8 +12,8 @@ const AuthProvider = dynamic(() => import('@/components/providers/AuthProvider')
 })
 
 export const metadata: Metadata = {
-  title: 'Cowork Platform',
-  description: 'A modern collaboration platform for teams',
+  title: '윤수&상욱 공동작업장',
+  description: '윤수&상욱 공동작업장 - 협업을 위한 플랫폼',
 }
 
 export default function RootLayout({

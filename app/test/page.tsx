@@ -10,12 +10,11 @@ export default function TestPage() {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gray-50">
-        {/* 테스트 컨트롤 */}
-        <div className="bg-white border-b border-gray-200 p-4">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-gray-900">
-              Cowork Platform - 테스트 모드
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              윤수&상욱 공동작업장 - 테스트 모드
             </h1>
             <div className="flex items-center space-x-4">
               <button

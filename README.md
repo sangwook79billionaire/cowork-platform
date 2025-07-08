@@ -1,4 +1,4 @@
-# Cowork Platform
+# 윤수&상욱 공동작업장
 
 Notion을 벤치마킹한 소규모 웹 기반 협업 툴입니다.
 

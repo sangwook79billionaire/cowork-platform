@@ -101,7 +101,7 @@ export function Dashboard() {
           <div className="flex items-center space-x-6">
             <h1 className="text-2xl font-bold text-gray-900 flex items-center">
               <ChatBubbleLeftRightIcon className="w-8 h-8 text-primary-600 mr-3" />
-              Cowork Platform
+              윤수&상욱 공동작업장
             </h1>
           </div>
           <div className="flex items-center space-x-4">

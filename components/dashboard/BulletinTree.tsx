@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, orderBy, getDocs } from 'firebase/firestore'
+import { collection, query, orderBy, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin } from '@/types/firebase'
@@ -13,6 +13,27 @@ import {
   FolderPlusIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface BulletinTreeProps {
   selectedBulletinId: string | null
@@ -20,6 +41,127 @@ interface BulletinTreeProps {
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
   onCreateBulletin?: (parentId?: string) => void
+}
+
+// 드래그 가능한 게시판 아이템 컴포넌트
+function SortableBulletinItem({ 
+  bulletin, 
+  level, 
+  hasChildren, 
+  isExpanded, 
+  isSelected, 
+  onToggleExpansion, 
+  onSelect, 
+  onCreateBulletin,
+  onBulletinSelect
+}: {
+  bulletin: Bulletin
+  level: number
+  hasChildren: boolean
+  isExpanded: boolean
+  isSelected: boolean
+  onToggleExpansion: () => void
+  onSelect: () => void
+  onCreateBulletin?: (parentId?: string) => void
+  onBulletinSelect: (bulletinId: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: bulletin.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="mb-1">
+      <div
+        onClick={onSelect}
+        className={`flex items-center space-x-2 px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-md transition-colors ${
+          isSelected ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'text-gray-700'
+        }`}
+        style={{ paddingLeft: `${level * 16 + 12}px` }}
+      >
+        {/* 드래그 핸들 */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 w-4 h-4 cursor-grab active:cursor-grabbing mr-2"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="w-full h-full flex flex-col justify-center items-center">
+            <div className="w-3 h-0.5 bg-gray-400 mb-0.5"></div>
+            <div className="w-3 h-0.5 bg-gray-400 mb-0.5"></div>
+            <div className="w-3 h-0.5 bg-gray-400"></div>
+          </div>
+        </div>
+
+        {/* 확장/축소 버튼 */}
+        <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+          {hasChildren ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleExpansion()
+              }}
+              className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDownIcon className="w-3 h-3" />
+              ) : (
+                <ChevronRightIcon className="w-3 h-3" />
+              )}
+            </button>
+          ) : (
+            <div className="w-3 h-3"></div>
+          )}
+        </div>
+
+        {/* 게시판 아이콘 */}
+        <div className="flex-shrink-0">
+          {level === 0 ? (
+            <ChatBubbleLeftRightIcon className="w-4 h-4 text-blue-600" />
+          ) : level === 1 ? (
+            <div className="w-4 h-4 flex items-center justify-center">
+              <div className="w-2.5 h-2.5 bg-blue-400 rounded-sm"></div>
+            </div>
+          ) : level === 2 ? (
+            <div className="w-4 h-4 flex items-center justify-center">
+              <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
+            </div>
+          ) : (
+            <div className="w-4 h-4 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-gray-400 rounded-sm"></div>
+            </div>
+          )}
+        </div>
+
+        {/* 게시판 제목 */}
+        <span className="flex-1 text-sm truncate">{bulletin.title}</span>
+
+        {/* 새 게시판 생성 버튼 (선택된 게시판에만 표시) */}
+        {isSelected && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onCreateBulletin?.(bulletin.id)
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+            title="하위 게시판 생성"
+          >
+            <PlusIcon className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function BulletinTree({ 
@@ -32,12 +174,20 @@ export function BulletinTree({
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // 게시판 데이터 가져오기
   const fetchBulletins = async () => {
     try {
       const bulletinsRef = collection(db, 'bulletins')
-      const q = query(bulletinsRef, orderBy('createdAt', 'asc'))
+      const q = query(bulletinsRef, orderBy('order', 'asc'))
       const querySnapshot = await getDocs(q)
       
       const fetchedBulletins: Bulletin[] = []
@@ -117,6 +267,44 @@ export function BulletinTree({
     }
   }
 
+  // 드래그 시작 핸들러
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  // 드래그 종료 핸들러
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      const oldIndex = bulletins.findIndex(bulletin => bulletin.id === active.id)
+      const newIndex = bulletins.findIndex(bulletin => bulletin.id === over?.id)
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newBulletins = arrayMove(bulletins, oldIndex, newIndex)
+        setBulletins(newBulletins)
+
+        // 순서 업데이트
+        try {
+          const updatePromises = newBulletins.map((bulletin, index) => 
+            updateDoc(doc(db, 'bulletins', bulletin.id), { 
+              order: index,
+              updatedAt: new Date()
+            })
+          )
+          await Promise.all(updatePromises)
+          toast.success('게시판 순서가 변경되었습니다.')
+        } catch (error) {
+          console.error('Error updating bulletin order:', error)
+          toast.error('게시판 순서 변경에 실패했습니다.')
+        }
+      }
+    }
+    setActiveId(null)
+  }
+
+
+
   // 게시판 트리 렌더링
   const renderBulletinTree = (
     bulletins: Bulletin[],
@@ -130,70 +318,17 @@ export function BulletinTree({
 
       return (
         <div key={bulletin.id}>
-          <div
-            onClick={() => onBulletinSelect(bulletin.id)}
-            className={`flex items-center space-x-2 px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-md transition-colors ${
-              isSelected ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'text-gray-700'
-            }`}
-            style={{ paddingLeft: `${level * 16 + 12}px` }}
-          >
-            {/* 확장/축소 버튼 */}
-            <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-              {hasChildren ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleBulletinExpansion(bulletin.id)
-                  }}
-                  className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                >
-                  {isExpanded ? (
-                    <ChevronDownIcon className="w-3 h-3" />
-                  ) : (
-                    <ChevronRightIcon className="w-3 h-3" />
-                  )}
-                </button>
-              ) : (
-                <div className="w-3 h-3"></div>
-              )}
-            </div>
-
-            {/* 게시판 아이콘 */}
-            <div className="flex-shrink-0">
-              {level === 0 ? (
-                <ChatBubbleLeftRightIcon className="w-4 h-4 text-blue-600" />
-              ) : level === 1 ? (
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-2.5 h-2.5 bg-blue-400 rounded-sm"></div>
-                </div>
-              ) : level === 2 ? (
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
-                </div>
-              ) : (
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-sm"></div>
-                </div>
-              )}
-            </div>
-
-            {/* 게시판 제목 */}
-            <span className="flex-1 text-sm truncate">{bulletin.title}</span>
-
-            {/* 새 게시판 생성 버튼 (선택된 게시판에만 표시) */}
-            {isSelected && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleCreateBulletin(bulletin.id)
-                }}
-                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                title="하위 게시판 생성"
-              >
-                <PlusIcon className="w-3 h-3" />
-              </button>
-            )}
-          </div>
+          <SortableBulletinItem
+            bulletin={bulletin}
+            level={level}
+            hasChildren={hasChildren}
+            isExpanded={isExpanded}
+            isSelected={isSelected}
+            onToggleExpansion={() => toggleBulletinExpansion(bulletin.id)}
+            onSelect={() => onBulletinSelect(bulletin.id)}
+            onCreateBulletin={handleCreateBulletin}
+            onBulletinSelect={onBulletinSelect}
+          />
 
           {/* 하위 게시판들 */}
           {hasChildren && isExpanded && (
@@ -236,10 +371,31 @@ export function BulletinTree({
         </div>
       </div>
 
-      {/* 게시판 트리 */}
-      <div className="flex-1 overflow-y-auto p-2">
-        {renderBulletinTree(getTopLevelBulletins())}
-      </div>
+              {/* 게시판 트리 */}
+        <div className="flex-1 overflow-y-auto p-2">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            onDragStart={handleDragStart}
+          >
+            <SortableContext
+              items={getTopLevelBulletins().map(bulletin => bulletin.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {renderBulletinTree(getTopLevelBulletins())}
+            </SortableContext>
+            <DragOverlay>
+              {activeId ? (
+                <div className="bg-white shadow-lg rounded-lg p-3 border border-gray-200">
+                  <span className="text-sm font-medium">
+                    {bulletins.find(b => b.id === activeId)?.title}
+                  </span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
     </div>
   )
 }

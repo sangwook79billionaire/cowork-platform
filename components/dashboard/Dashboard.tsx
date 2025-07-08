@@ -158,7 +158,11 @@ export function Dashboard() {
             </div>
             
             {/* 우측 게시글 뷰어 */}
-            <div className="flex-1">
+            <div 
+              className={`flex-1 transition-transform duration-300 ease-in-out ${
+                showSidebar ? 'translate-x-80' : 'translate-x-0'
+              }`}
+            >
               <PostViewer 
                 postId={selectedPostId}
                 onEditPost={handleEditPost}

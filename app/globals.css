@@ -98,3 +98,235 @@
     @apply text-gray-300;
   }
 } 
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* 모바일 최적화 스타일 */
+@media (max-width: 768px) {
+  /* 터치 친화적 버튼 크기 */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* 모바일에서 스크롤 최적화 */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 모바일에서 텍스트 선택 방지 */
+  .select-none {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* 모바일에서 드래그 앤 드롭 최적화 */
+  [draggable="true"] {
+    -webkit-user-drag: element;
+  }
+}
+
+/* 모바일 하단 탭 네비게이션을 위한 패딩 */
+.mobile-bottom-padding {
+  padding-bottom: 80px;
+}
+
+/* 모바일 사이드바 오버레이 */
+.mobile-sidebar-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+/* 모바일에서 터치 스크롤 최적화 */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* 모바일에서 버튼 터치 영역 확대 */
+.mobile-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 모바일에서 텍스트 크기 조정 */
+@media (max-width: 640px) {
+  .text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  
+  .text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  .text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+
+/* 모바일에서 그리드 레이아웃 최적화 */
+@media (max-width: 768px) {
+  .mobile-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .mobile-flex-col {
+    flex-direction: column;
+  }
+  
+  .mobile-w-full {
+    width: 100%;
+  }
+  
+  .mobile-text-center {
+    text-align: center;
+  }
+}
+
+/* 모바일에서 모달 최적화 */
+@media (max-width: 768px) {
+  .mobile-modal {
+    margin: 0;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .mobile-modal-content {
+    padding: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* 모바일에서 테이블 반응형 처리 */
+@media (max-width: 768px) {
+  .mobile-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  .mobile-table-responsive {
+    min-width: 600px;
+  }
+}
+
+/* 모바일에서 폼 요소 최적화 */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px; /* iOS에서 줌 방지 */
+  }
+  
+  .mobile-form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .mobile-form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+}
+
+/* 모바일에서 네비게이션 최적화 */
+@media (max-width: 768px) {
+  .mobile-nav-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .mobile-nav-item:last-child {
+    border-bottom: none;
+  }
+}
+
+/* 모바일에서 카드 레이아웃 최적화 */
+@media (max-width: 768px) {
+  .mobile-card {
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .mobile-card-header {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .mobile-card-body {
+    padding: 1rem;
+  }
+}
+
+/* 모바일에서 아이콘 크기 조정 */
+@media (max-width: 768px) {
+  .mobile-icon-sm {
+    width: 1rem;
+    height: 1rem;
+  }
+  
+  .mobile-icon-md {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  
+  .mobile-icon-lg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/* 모바일에서 애니메이션 최적화 */
+@media (max-width: 768px) {
+  .mobile-transition {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .mobile-transform {
+    transform: translateX(0);
+  }
+  
+  .mobile-transform-hidden {
+    transform: translateX(-100%);
+  }
+} 

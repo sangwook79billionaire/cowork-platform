@@ -5,6 +5,7 @@ import {
   ChatBubbleLeftRightIcon,
   CalendarIcon,
   CheckCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
@@ -18,6 +19,8 @@ interface IntegratedSidebarProps {
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
   onCreateBulletin?: (parentId?: string) => void
+  isMobile?: boolean
+  onClose?: () => void
 }
 
 export function IntegratedSidebar({
@@ -28,6 +31,8 @@ export function IntegratedSidebar({
   expandedBulletins,
   onExpandedBulletinsChange,
   onCreateBulletin,
+  isMobile = false,
+  onClose,
 }: IntegratedSidebarProps) {
   const [showBulletinTree, setShowBulletinTree] = useState(true)
 
@@ -60,6 +65,19 @@ export function IntegratedSidebar({
 
   return (
     <div className="h-full flex flex-col bg-white border-r border-gray-200">
+      {/* 모바일 헤더 */}
+      {isMobile && (
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">메뉴</h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* 기능 선택 탭 */}
       <div className="p-4 border-b border-gray-200">
         <div className="space-y-2">
@@ -76,7 +94,7 @@ export function IntegratedSidebar({
                     setShowBulletinTree(true)
                   }
                 }}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                className={`w-full flex items-center space-x-3 px-3 py-3 md:py-2 rounded-lg transition-colors ${
                   isActive 
                     ? `${feature.bgColor} ${feature.color} border ${feature.borderColor}` 
                     : 'text-gray-600 hover:bg-gray-50'
@@ -99,6 +117,7 @@ export function IntegratedSidebar({
             expandedBulletins={expandedBulletins}
             onExpandedBulletinsChange={onExpandedBulletinsChange}
             onCreateBulletin={onCreateBulletin}
+            isMobile={isMobile}
           />
         </div>
       )}

@@ -23,13 +23,15 @@ interface BulletinContentProps {
   onSelectPost: (postId: string) => void
   onCreatePost: () => void
   onCreateBulletin?: (parentId?: string) => void
+  isMobile?: boolean
 }
 
 export function BulletinContent({ 
   selectedBulletinId, 
   onSelectPost, 
   onCreatePost,
-  onCreateBulletin
+  onCreateBulletin,
+  isMobile = false
 }: BulletinContentProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
@@ -166,14 +168,14 @@ export function BulletinContent({
     <div className="flex-1 flex flex-col bg-white">
       {/* 헤더 */}
       <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">{selectedBulletin?.title}</h2>
+        <div className={`flex items-center ${isMobile ? 'flex-col space-y-3' : 'justify-between'}`}>
+          <div className={`${isMobile ? 'w-full text-center' : ''}`}>
+            <h2 className={`font-semibold text-gray-900 ${isMobile ? 'text-lg' : 'text-xl'}`}>{selectedBulletin?.title}</h2>
             {selectedBulletin?.description && (
               <p className="text-sm text-gray-600 mt-1">{selectedBulletin.description}</p>
             )}
           </div>
-          <div className="flex items-center space-x-2">
+          <div className={`flex items-center ${isMobile ? 'w-full justify-center space-x-2' : 'space-x-2'}`}>
             <button
               onClick={onCreatePost}
               className="flex items-center space-x-2 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
@@ -203,7 +205,7 @@ export function BulletinContent({
             </div>
           </div>
         ) : (
-          <div className="p-4">
+          <div className={`p-4 ${isMobile ? 'pb-20' : ''}`}>
             {/* 하위 게시판 */}
             {childBulletins.length > 0 && (
               <div className="mb-6">

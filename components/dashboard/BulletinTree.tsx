@@ -41,6 +41,7 @@ interface BulletinTreeProps {
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
   onCreateBulletin?: (parentId?: string) => void
+  isMobile?: boolean
 }
 
 // 드래그 가능한 게시판 아이템 컴포넌트
@@ -171,7 +172,8 @@ export function BulletinTree({
   onBulletinSelect, 
   expandedBulletins, 
   onExpandedBulletinsChange,
-  onCreateBulletin
+  onCreateBulletin,
+  isMobile = false
 }: BulletinTreeProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])

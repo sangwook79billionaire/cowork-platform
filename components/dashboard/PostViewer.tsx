@@ -21,9 +21,10 @@ import {
 
 interface PostViewerProps {
   postId: string
-  bulletinId?: string | null
-  onEditPost?: (postId: string) => void
-  onBackToList?: () => void
+  bulletinId: string | null
+  onEditPost: (postId: string) => void
+  onBackToList: () => void
+  isMobile?: boolean
 }
 
 // 테스트 모드 확인
@@ -82,7 +83,7 @@ const mockComments: BulletinComment[] = [
   },
 ]
 
-export function PostViewer({ postId, bulletinId, onEditPost, onBackToList }: PostViewerProps) {
+export function PostViewer({ postId, bulletinId, onEditPost, onBackToList, isMobile = false }: PostViewerProps) {
   const { user } = useAuth()
   const [post, setPost] = useState<BulletinPost | null>(null)
   const [comments, setComments] = useState<BulletinComment[]>([])

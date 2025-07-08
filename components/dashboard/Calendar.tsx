@@ -25,6 +25,7 @@ import { useRef } from 'react'
 interface CalendarProps {
   selectedDate?: Date
   onDateSelect?: (date: Date) => void
+  isMobile?: boolean
 }
 
 type CalendarView = 'month' | 'week' | 'day' | 'list'
@@ -93,7 +94,7 @@ const mockTodos: TodoItem[] = [
   },
 ]
 
-export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
+export function Calendar({ selectedDate, onDateSelect, isMobile = false }: CalendarProps) {
   const { user } = useAuth()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [todos, setTodos] = useState<TodoItem[]>([])

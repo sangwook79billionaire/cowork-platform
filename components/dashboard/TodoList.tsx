@@ -20,6 +20,7 @@ import {
 
 interface TodoListProps {
   onTodoCreated?: (calendarEvent: CalendarEvent) => void
+  isMobile?: boolean
 }
 
 // 테스트 모드 확인
@@ -67,7 +68,7 @@ const mockTodos: TodoItem[] = [
   },
 ]
 
-export function TodoList({ onTodoCreated }: TodoListProps) {
+export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
   const { user } = useAuth()
   const [todos, setTodos] = useState<TodoItem[]>([])
   const [loading, setLoading] = useState(true)

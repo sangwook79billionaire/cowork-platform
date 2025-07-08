@@ -23,16 +23,17 @@ import {
 interface DocumentEditorProps {
   documentId: string
   isPostEditor?: boolean
-  bulletinId?: string // 게시판 ID 추가
-  onBack?: () => void
-  onSave?: () => void
+  bulletinId?: string
+  onBack: () => void
+  onSave: () => void
   onRefreshPosts?: () => void
+  isMobile?: boolean
 }
 
 // 테스트 모드 확인
 const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 
-export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, onSave, onRefreshPosts }: DocumentEditorProps) {
+export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, onSave, onRefreshPosts, isMobile = false }: DocumentEditorProps) {
   const { user } = useAuth()
   const [document, setDocument] = useState<Document | null>(null)
   const [title, setTitle] = useState('')

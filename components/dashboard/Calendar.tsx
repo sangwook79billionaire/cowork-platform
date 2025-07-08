@@ -226,7 +226,14 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     try {
       if (selectedEvent) {
         await updateDoc(doc(db, 'calendarEvents', selectedEvent.id), eventData)
-        setEvents(events.map(e => e.id === selectedEvent.id ? { ...e, ...eventData } : e))
+        // 타입 안전성을 위해 새로운 이벤트 객체를 생성
+        const updatedEvent: CalendarEvent = {
+          ...selectedEvent,
+          ...eventData,
+          createdAt: selectedEvent.createdAt,
+          updatedAt: new Date(),
+        }
+        setEvents(events.map(e => e.id === selectedEvent.id ? updatedEvent : e))
       } else {
         await addDoc(collection(db, 'calendarEvents'), eventData)
         await fetchEvents()

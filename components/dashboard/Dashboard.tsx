@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { DocumentEditor } from './DocumentEditor'
 import { BulletinBoard } from './BulletinBoard'
 import { PostViewer } from './PostViewer'
-import { Sidebar } from './Sidebar'
+import { BulletinDropdown } from './BulletinDropdown'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
@@ -60,21 +60,20 @@ export function Dashboard() {
   }
 
   return (
-    <div className="h-screen flex bg-gray-50">
-      {/* 사이드바 */}
-      <Sidebar 
-        onSignOut={handleSignOut}
-        user={user}
-      />
-      
-      {/* 메인 콘텐츠 */}
-      <div className="flex-1 flex flex-col">
-        {/* 헤더 */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* 헤더 */}
+              <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Cowork Platform
-            </h1>
+            <div className="flex items-center space-x-6">
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <ChatBubbleLeftRightIcon className="w-8 h-8 text-primary-600 mr-3" />
+                Cowork Platform
+              </h1>
+              <BulletinDropdown 
+                selectedBulletinId={selectedBulletinId}
+                onBulletinSelect={handleBulletinSelect}
+              />
+            </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
                 {user?.email}
@@ -89,43 +88,42 @@ export function Dashboard() {
           </div>
         </header>
 
-        {/* 콘텐츠 영역 */}
-        <div className="flex-1 flex flex-col lg:flex-row">
-          {viewMode === 'list' && (
-            <div className="w-full bg-white">
-              <BulletinBoard 
-                onSelectPost={handleSelectPost}
-                selectedPostId={selectedPostId}
-                onCreatePost={handleCreatePost}
-                onBulletinSelect={handleBulletinSelect}
-                onRefreshPosts={handleRefreshPosts}
-              />
-            </div>
-          )}
+      {/* 메인 콘텐츠 */}
+      <div className="flex-1 flex flex-col">
+        {viewMode === 'list' && (
+          <div className="w-full bg-white">
+            <BulletinBoard 
+              onSelectPost={handleSelectPost}
+              selectedPostId={selectedPostId}
+              onCreatePost={handleCreatePost}
+              onBulletinSelect={handleBulletinSelect}
+              onRefreshPosts={handleRefreshPosts}
+            />
+          </div>
+        )}
 
-          {viewMode === 'view' && selectedPostId && (
-            <div className="flex-1">
-              <PostViewer 
-                postId={selectedPostId}
-                onEditPost={handleEditPost}
-                onBackToList={handleBackToList}
-              />
-            </div>
-          )}
+        {viewMode === 'view' && selectedPostId && (
+          <div className="flex-1">
+            <PostViewer 
+              postId={selectedPostId}
+              onEditPost={handleEditPost}
+              onBackToList={handleBackToList}
+            />
+          </div>
+        )}
 
-          {(viewMode === 'edit' || viewMode === 'create') && (
-            <div className="flex-1">
-              <DocumentEditor 
-                documentId={editingPostId || 'new'}
-                isPostEditor={true}
-                bulletinId={selectedBulletinId || undefined}
-                onBack={viewMode === 'edit' ? handleBackToView : handleBackToList}
-                onSave={handleBackToList}
-                onRefreshPosts={handleRefreshPosts}
-              />
-            </div>
-          )}
-        </div>
+        {(viewMode === 'edit' || viewMode === 'create') && (
+          <div className="flex-1">
+            <DocumentEditor 
+              documentId={editingPostId || 'new'}
+              isPostEditor={true}
+              bulletinId={selectedBulletinId || undefined}
+              onBack={viewMode === 'edit' ? handleBackToView : handleBackToList}
+              onSave={handleBackToList}
+              onRefreshPosts={handleRefreshPosts}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

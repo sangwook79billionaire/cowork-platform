@@ -1114,34 +1114,8 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
       {/* 헤더 */}
       <div className="p-3 lg:p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-base lg:text-lg font-semibold text-gray-900">게시판</h2>
+          <h2 className="text-base lg:text-lg font-semibold text-gray-900">게시글 목록</h2>
           <div className="flex items-center space-x-1 lg:space-x-2">
-            <button
-              onClick={toggleAllBulletins}
-              className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="전체 펼치기/접기"
-            >
-              {expandedBulletins.size > 0 ? (
-                <ChevronUpIcon className="w-4 h-4" />
-              ) : (
-                <ChevronDownIcon className="w-4 h-4" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                // 현재 선택된 게시판을 기본 상위 게시판으로 설정
-                setNewBulletin({
-                  title: '',
-                  description: '',
-                  parentId: selectedBulletinId || '',
-                })
-                setShowCreateBulletin(true)
-              }}
-              className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="새 게시판 생성"
-            >
-              <FolderPlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-            </button>
             {selectedBulletinId && (
               <button
                 onClick={onCreatePost}
@@ -1149,14 +1123,6 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
                 title="새 게시글 작성"
               >
                 <PlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-              </button>
-            )}
-            {isAdmin && selectedBulletinIds.size > 0 && (
-              <button
-                onClick={handleBulkDeleteBulletins}
-                className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
-              >
-                선택 게시판 삭제
               </button>
             )}
           </div>
@@ -1370,207 +1336,150 @@ export function BulletinBoard({ onSelectPost, selectedPostId, onCreatePost, onBu
         </div>
       )}
 
-      <div className="flex-1 flex flex-col lg:flex-row">
-        {/* 게시판 목록 */}
-        <div className="w-full lg:w-full border-b lg:border-b-0 lg:border-r border-gray-200">
-          {/* 게시판 구조 및 수정 안내 */}
-          <div className="p-3 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
-                <span>최상위 게시판</span>
-                <div className="w-3 h-3 bg-blue-400 rounded-sm ml-4"></div>
-                <span>1단계 하위</span>
-                <div className="w-2 h-2 bg-blue-300 rounded-sm ml-4"></div>
-                <span>2단계 하위</span>
-                <div className="w-1.5 h-1.5 bg-green-400 rounded-sm ml-4"></div>
-                <span>3단계 하위</span>
-                <div className="w-1 h-1 bg-purple-400 rounded-sm ml-4"></div>
-                <span>4단계+ 하위</span>
+        {/* 게시글 목록 */}
+        <div className="flex-1 flex flex-col">
+          {selectedBulletinId ? (
+            <>
+              <div className="p-3 lg:p-4 border-b border-gray-200">
+                <h3 className="text-sm lg:text-md font-semibold text-gray-900">
+                  {bulletins.find(b => b.id === selectedBulletinId)?.title}
+                </h3>
               </div>
-              
-              {/* 수정 방법 안내 */}
-              <div className="flex items-center space-x-3 text-xs text-gray-500">
-                <div className="flex items-center space-x-1">
-                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">내 게시판</span>
-                  <span>또는</span>
-                  <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">관리</span>
-                  <span>→</span>
-                  <div className="flex items-center justify-center w-6 h-6 bg-blue-50 border border-blue-200 rounded">
-                    <PencilIcon className="w-3 h-3 text-blue-600" />
-                  </div>
-                  <span>편집 가능</span>
-                  <span>|</span>
-                  <div className="flex items-center justify-center w-6 h-6 bg-gray-50 border border-gray-200 rounded">
-                    <PencilIcon className="w-3 h-3 text-gray-400" />
-                  </div>
-                  <span>읽기 전용</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 h-full overflow-y-auto overflow-x-auto">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={bulletins.map(b => b.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="min-w-max">
-                  {renderBulletinTree(getTopLevelBulletins(), bulletins, 0)}
-                </div>
-              </SortableContext>
-              <DragOverlay>
-                {activeId ? (
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg opacity-80">
-                    {bulletins.find(b => b.id === activeId)?.title}
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </div>
-        </div>
-
-        {/* 게시글 목록 - 선택된 게시판이 있을 때만 표시 */}
-        {selectedBulletinId && (
-          <div className="w-full lg:w-1/2 flex flex-col border-l border-gray-200">
-            <div className="p-3 lg:p-4 border-b border-gray-200">
-              <h3 className="text-sm lg:text-md font-semibold text-gray-900">
-                {bulletins.find(b => b.id === selectedBulletinId)?.title}
-              </h3>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {posts.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  <ChatBubbleLeftRightIcon className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-xs lg:text-sm">게시글이 없습니다</p>
-                  <button
-                    onClick={onCreatePost}
-                    className="mt-2 text-primary-600 hover:text-primary-700 text-xs lg:text-sm font-medium"
-                  >
-                    첫 번째 게시글 작성하기
-                  </button>
-                </div>
-              ) : (
-                <div className="p-2">
-                  {isAdmin && selectedPostIds.size > 0 && (
+              <div className="flex-1 overflow-y-auto">
+                {posts.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <ChatBubbleLeftRightIcon className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="text-xs lg:text-sm">게시글이 없습니다</p>
                     <button
-                      onClick={handleBulkDeletePosts}
-                      className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                      onClick={onCreatePost}
+                      className="mt-2 text-primary-600 hover:text-primary-700 text-xs lg:text-sm font-medium"
                     >
-                      선택 게시글 삭제
+                      첫 번째 게시글 작성하기
                     </button>
-                  )}
-                  {posts.map((post) => (
-                    <div
-                      key={post.id}
-                      onClick={() => onSelectPost(post.id)}
-                      className={`p-2 lg:p-3 rounded-lg cursor-pointer transition-colors ${
-                        selectedPostId === post.id
-                          ? 'bg-primary-50 border border-primary-200'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-start space-x-2 lg:space-x-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-1 lg:space-x-2">
-                            {post.isPinned && (
-                              <StarIcon className="w-3 h-3 lg:w-4 lg:h-4 text-red-500" />
-                            )}
-                            {post.isLocked && (
-                              <LockClosedIcon className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
-                            )}
-                            <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
-                              {post.title}
-                            </h3>
-                            {/* 수정 가능한 게시글 표시 */}
-                            {(isAdmin || (user && post.userId === user.uid)) && (
-                              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
-                                {isAdmin ? '관리' : '내 글'}
-                              </span>
-                            )}
-                            {/* 게시글 수정/삭제 버튼 (admin 또는 게시글 작성자) */}
-                            {(isAdmin || (user && post.userId === user.uid)) && (
-                              <div className="flex items-center space-x-1 ml-auto">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setEditingPost(post)
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title={isAdmin ? "게시글 수정 (관리자)" : "게시글 수정 (내가 쓴 글)"}
-                                >
-                                  <PencilIcon className="w-3 h-3" />
-                                </button>
-                                {isAdmin && (
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    {isAdmin && selectedPostIds.size > 0 && (
+                      <button
+                        onClick={handleBulkDeletePosts}
+                        className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                      >
+                        선택 게시글 삭제
+                      </button>
+                    )}
+                    {posts.map((post) => (
+                      <div
+                        key={post.id}
+                        onClick={() => onSelectPost(post.id)}
+                        className={`p-2 lg:p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedPostId === post.id
+                            ? 'bg-primary-50 border border-primary-200'
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-2 lg:space-x-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-1 lg:space-x-2">
+                              {post.isPinned && (
+                                <StarIcon className="w-3 h-3 lg:w-4 lg:h-4 text-red-500" />
+                              )}
+                              {post.isLocked && (
+                                <LockClosedIcon className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
+                              )}
+                              <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
+                                {post.title}
+                              </h3>
+                              {/* 수정 가능한 게시글 표시 */}
+                              {(isAdmin || (user && post.userId === user.uid)) && (
+                                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
+                                  {isAdmin ? '관리' : '내 글'}
+                                </span>
+                              )}
+                              {/* 게시글 수정/삭제 버튼 (admin 또는 게시글 작성자) */}
+                              {(isAdmin || (user && post.userId === user.uid)) && (
+                                <div className="flex items-center space-x-1 ml-auto">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      handleDeletePost(post.id)
+                                      setEditingPost(post)
                                     }}
-                                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                    title="게시글 삭제 (관리자만 가능)"
+                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title={isAdmin ? "게시글 수정 (관리자)" : "게시글 수정 (내가 쓴 글)"}
                                   >
-                                    <TrashIcon className="w-3 h-3" />
+                                    <PencilIcon className="w-3 h-3" />
                                   </button>
-                                )}
+                                  {isAdmin && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDeletePost(post.id)
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      title="게시글 삭제 (관리자만 가능)"
+                                    >
+                                      <TrashIcon className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
+                              <span className="truncate">{post.authorName}</span>
+                              <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
+                              <div className="flex items-center space-x-1">
+                                <EyeIcon className="w-3 h-3" />
+                                <span className="hidden lg:inline">{post.viewCount}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <HeartIcon className="w-3 h-3" />
+                                <span className="hidden lg:inline">{post.likeCount}</span>
+                              </div>
+                            </div>
+                            {post.tags && post.tags.length > 0 && (
+                              <div className="flex space-x-1 mt-1">
+                                {post.tags.map((tag, index) => (
+                                  <span
+                                    key={index}
+                                    className="px-1 lg:px-2 py-0.5 lg:py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
-                            <span className="truncate">{post.authorName}</span>
-                            <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
-                            <div className="flex items-center space-x-1">
-                              <EyeIcon className="w-3 h-3" />
-                              <span className="hidden lg:inline">{post.viewCount}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <HeartIcon className="w-3 h-3" />
-                              <span className="hidden lg:inline">{post.likeCount}</span>
-                            </div>
-                          </div>
-                          {post.tags && post.tags.length > 0 && (
-                            <div className="flex space-x-1 mt-1">
-                              {post.tags.map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="px-1 lg:px-2 py-0.5 lg:py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
                         </div>
+                        {isAdmin && (
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            checked={selectedPostIds.has(post.id)}
+                            onChange={e => {
+                              e.stopPropagation()
+                              setSelectedPostIds(prev => {
+                                const next = new Set(prev)
+                                if (e.target.checked) next.add(post.id)
+                                else next.delete(post.id)
+                                return next
+                              })
+                            }}
+                          />
+                        )}
                       </div>
-                      {isAdmin && (
-                        <input
-                          type="checkbox"
-                          className="mr-2"
-                          checked={selectedPostIds.has(post.id)}
-                          onChange={e => {
-                            e.stopPropagation()
-                            setSelectedPostIds(prev => {
-                              const next = new Set(prev)
-                              if (e.target.checked) next.add(post.id)
-                              else next.delete(post.id)
-                              return next
-                            })
-                          }}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-sm">게시판을 선택해주세요</p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
     </div>
   )
 } 

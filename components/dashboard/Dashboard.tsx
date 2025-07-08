@@ -24,11 +24,16 @@ export function Dashboard() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (viewMode === 'view') {
-        // 왼쪽 50px 이내에 마우스가 있으면 사이드바 표시
-        if (e.clientX <= 50) {
+        // 왼쪽 100px 이내에 마우스가 있으면 사이드바 표시 (기존 50px에서 2배로 확장)
+        if (e.clientX <= 100) {
           setShowSidebar(true)
         } else {
-          setShowSidebar(false)
+          // 게시판 트리가 표시된 상태에서 트리 영역 내에 마우스가 있으면 숨기지 않음
+          if (showSidebar && e.clientX <= 400) { // 320px(트리 너비) + 80px(여유 공간)
+            setShowSidebar(true)
+          } else {
+            setShowSidebar(false)
+          }
         }
       }
     }
@@ -37,7 +42,7 @@ export function Dashboard() {
       document.addEventListener('mousemove', handleMouseMove)
       return () => document.removeEventListener('mousemove', handleMouseMove)
     }
-  }, [viewMode])
+  }, [viewMode, showSidebar])
 
   const handleSignOut = async () => {
     try {

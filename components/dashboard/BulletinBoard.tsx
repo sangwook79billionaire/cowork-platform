@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
@@ -499,10 +499,80 @@ export function BulletinBoard({
   )
 
   useEffect(() => {
-    if (user) {
-      fetchBulletins()
-      // 기존 게시판들의 userId를 현재 사용자로 업데이트
-      updateExistingBulletinsUserId()
+    let bulletinsUnsubscribe: (() => void) | undefined
+    let postsUnsubscribe: (() => void) | undefined
+
+    const initializeData = async () => {
+      if (user) {
+        // 게시판 실시간 리스너 설정
+        if (isTestMode) {
+          setBulletins(mockBulletins)
+          setLoading(false)
+        } else {
+          try {
+            const q = query(
+              collection(db, 'bulletins')
+              // 임시로 복합 쿼리 제거 (인덱스 빌드 중)
+              // where('isActive', '==', true),
+              // orderBy('order', 'asc')
+            )
+            
+            bulletinsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+              const bulletinData: Bulletin[] = []
+              
+              querySnapshot.forEach((doc) => {
+                const data = doc.data()
+                const bulletin = {
+                  id: doc.id,
+                  title: data.title,
+                  description: data.description,
+                  parentId: data.parentId,
+                  level: data.level,
+                  order: data.order,
+                  isActive: data.isActive,
+                  userId: data.userId || 'unknown',
+                  createdAt: data.createdAt?.toDate() || new Date(),
+                  updatedAt: data.updatedAt?.toDate() || new Date(),
+                }
+                bulletinData.push(bulletin)
+                console.log(`📥 Loaded bulletin:`, {
+                  id: bulletin.id,
+                  title: bulletin.title,
+                  parentId: bulletin.parentId,
+                  level: bulletin.level,
+                  hasParent: !!bulletin.parentId
+                })
+              })
+              
+              setBulletins(bulletinData)
+              setLoading(false)
+            }, (error) => {
+              console.error('실시간 게시판 데이터 가져오기 오류:', error)
+              toast.error('실시간 업데이트에 실패했습니다.')
+              setLoading(false)
+            })
+          } catch (error: any) {
+            toast.error('게시판을 불러오는데 실패했습니다.')
+            console.error('Error fetching bulletins:', error)
+            setLoading(false)
+          }
+        }
+
+        // 기존 게시판들의 userId를 현재 사용자로 업데이트
+        updateExistingBulletinsUserId()
+      }
+    }
+
+    initializeData()
+
+    // 컴포넌트 언마운트 시 리스너 해제
+    return () => {
+      if (bulletinsUnsubscribe) {
+        bulletinsUnsubscribe()
+      }
+      if (postsUnsubscribe) {
+        postsUnsubscribe()
+      }
     }
   }, [user])
 
@@ -514,8 +584,74 @@ export function BulletinBoard({
   }, [bulletins])
 
   useEffect(() => {
-    if (selectedBulletinId) {
-      fetchPosts(selectedBulletinId)
+    let postsUnsubscribe: (() => void) | undefined
+
+    const initializePosts = async () => {
+      if (selectedBulletinId) {
+        if (isTestMode) {
+          const bulletinPosts = mockPosts.filter(post => post.bulletinId === selectedBulletinId)
+          setPosts(bulletinPosts)
+        } else {
+          try {
+            const q = query(
+              collection(db, 'bulletinPosts'),
+              where('bulletinId', '==', selectedBulletinId)
+            )
+            
+            postsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+              const postData: BulletinPost[] = []
+              
+              querySnapshot.forEach((doc) => {
+                const data = doc.data()
+                postData.push({
+                  id: doc.id,
+                  bulletinId: data.bulletinId,
+                  title: data.title,
+                  content: data.content,
+                  userId: data.userId,
+                  authorName: data.authorName,
+                  isPinned: data.isPinned || false,
+                  isLocked: data.isLocked || false,
+                  viewCount: data.viewCount || 0,
+                  likeCount: data.likeCount || 0,
+                  tags: data.tags || [],
+                  createdAt: data.createdAt?.toDate() || new Date(),
+                  updatedAt: data.updatedAt?.toDate() || new Date(),
+                })
+              })
+              
+              // 클라이언트 사이드에서 정렬
+              postData.sort((a, b) => {
+                if (a.isPinned !== b.isPinned) {
+                  return b.isPinned ? 1 : -1
+                }
+                return b.createdAt.getTime() - a.createdAt.getTime()
+              })
+              
+              setPosts(postData)
+            }, (error) => {
+              console.error('실시간 게시글 데이터 가져오기 오류:', error)
+              toast.error('실시간 업데이트에 실패했습니다.')
+            })
+          } catch (error: any) {
+            console.error('Error fetching posts:', error)
+            if (error.code === 'unavailable' || error.message?.includes('QUIC_PROTOCOL_ERROR')) {
+              console.warn('Firestore connection error, setting empty posts array')
+              setPosts([])
+            } else {
+              toast.error('게시글을 불러오는데 실패했습니다.')
+            }
+          }
+        }
+      }
+    }
+
+    initializePosts()
+
+    return () => {
+      if (postsUnsubscribe) {
+        postsUnsubscribe()
+      }
     }
   }, [selectedBulletinId, refreshTrigger])
 
@@ -541,125 +677,10 @@ export function BulletinBoard({
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises)
         console.log(`🔄 Updated ${updatePromises.length} bulletins with userId: ${user.uid}`)
-        // 현재 확장된 게시판 상태를 보존하면서 게시판 목록 새로고침
-        const currentExpandedState = new Set(expandedBulletins)
-        await fetchBulletins(currentExpandedState)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       }
     } catch (error: any) {
       console.error('Error updating bulletin user IDs:', error)
-    }
-  }
-
-  const fetchBulletins = async (preserveExpandedState?: Set<string>) => {
-    if (isTestMode) {
-      setBulletins(mockBulletins)
-      setLoading(false)
-      return
-    }
-
-    try {
-      const q = query(
-        collection(db, 'bulletins')
-        // 임시로 복합 쿼리 제거 (인덱스 빌드 중)
-        // where('isActive', '==', true),
-        // orderBy('order', 'asc')
-      )
-      
-      const querySnapshot = await getDocs(q)
-      const bulletinData: Bulletin[] = []
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data()
-        const bulletin = {
-          id: doc.id,
-          title: data.title,
-          description: data.description,
-          parentId: data.parentId,
-          level: data.level,
-          order: data.order,
-          isActive: data.isActive,
-          userId: data.userId || 'unknown',
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        }
-        bulletinData.push(bulletin)
-        console.log(`📥 Loaded bulletin:`, {
-          id: bulletin.id,
-          title: bulletin.title,
-          parentId: bulletin.parentId,
-          level: bulletin.level,
-          hasParent: !!bulletin.parentId
-        })
-      })
-      
-      setBulletins(bulletinData)
-      
-      // 확장 상태를 보존해야 하는 경우
-      if (preserveExpandedState) {
-        setExpandedBulletins(preserveExpandedState)
-      }
-    } catch (error: any) {
-      toast.error('게시판을 불러오는데 실패했습니다.')
-      console.error('Error fetching bulletins:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchPosts = async (bulletinId: string) => {
-    if (isTestMode) {
-      const bulletinPosts = mockPosts.filter(post => post.bulletinId === bulletinId)
-      setPosts(bulletinPosts)
-      return
-    }
-
-    try {
-      // 임시로 단순한 쿼리 사용 (인덱스 오류 해결을 위해)
-      const q = query(
-        collection(db, 'bulletinPosts'),
-        where('bulletinId', '==', bulletinId)
-      )
-      
-      const querySnapshot = await getDocs(q)
-      const postData: BulletinPost[] = []
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data()
-        postData.push({
-          id: doc.id,
-          bulletinId: data.bulletinId,
-          title: data.title,
-          content: data.content,
-          userId: data.userId,
-          authorName: data.authorName,
-          isPinned: data.isPinned || false,
-          isLocked: data.isLocked || false,
-          viewCount: data.viewCount || 0,
-          likeCount: data.likeCount || 0,
-          tags: data.tags || [],
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        })
-      })
-      
-      // 클라이언트 사이드에서 정렬
-      postData.sort((a, b) => {
-        if (a.isPinned !== b.isPinned) {
-          return b.isPinned ? 1 : -1
-        }
-        return b.createdAt.getTime() - a.createdAt.getTime()
-      })
-      
-      setPosts(postData)
-    } catch (error: any) {
-      console.error('Error fetching posts:', error)
-      // Firestore 연결 오류 시 빈 배열로 설정
-      if (error.code === 'unavailable' || error.message?.includes('QUIC_PROTOCOL_ERROR')) {
-        console.warn('Firestore connection error, setting empty posts array')
-        setPosts([])
-      } else {
-        toast.error('게시글을 불러오는데 실패했습니다.')
-      }
     }
   }
 
@@ -727,8 +748,6 @@ export function BulletinBoard({
           onSelect={() => {
             setInternalSelectedBulletinId(bulletin.id)
             onBulletinSelect?.(bulletin.id)
-            // 게시판 선택 시 해당 게시글 가져오기
-            fetchPosts(bulletin.id)
           }}
           onEdit={() => setEditingBulletin(bulletin)}
           onDelete={() => handleDeleteBulletin(bulletin.id)}
@@ -839,7 +858,7 @@ export function BulletinBoard({
         
         // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
         const currentExpandedState = new Set([...Array.from(expandedBulletins), docRef.id])
-        await fetchBulletins(currentExpandedState)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
         
         // 새로 생성된 게시판을 선택
         setInternalSelectedBulletinId(docRef.id)
@@ -873,9 +892,7 @@ export function BulletinBoard({
       })
       setEditingBulletin(null)
       
-      // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
-      const currentExpandedState = new Set(expandedBulletins)
-      await fetchBulletins(currentExpandedState)
+      // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       
       toast.success('게시판이 수정되었습니다.')
     } catch (error: any) {
@@ -904,7 +921,7 @@ export function BulletinBoard({
       const currentExpandedState = new Set(
         Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
       )
-      await fetchBulletins(currentExpandedState)
+      // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       
       toast.success('게시판이 삭제되었습니다.')
     } catch (error: any) {
@@ -942,10 +959,10 @@ export function BulletinBoard({
       
       // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
       if (selectedBulletinId) {
-        fetchPosts(selectedBulletinId)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       } else {
         // selectedBulletinId가 없으면 post의 bulletinId로 새로고침
-        fetchPosts(post.bulletinId)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       }
       
       toast.success('게시글이 수정되었습니다.')
@@ -980,10 +997,10 @@ export function BulletinBoard({
       
       // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
       if (selectedBulletinId) {
-        fetchPosts(selectedBulletinId)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       } else {
         // selectedBulletinId가 없으면 post의 bulletinId로 새로고침
-        fetchPosts(postToDelete.bulletinId)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       }
       
       toast.success('게시글이 삭제되었습니다.')
@@ -1012,9 +1029,7 @@ export function BulletinBoard({
       const currentExpandedState = new Set(
         Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
       )
-      
-      // 게시판 목록 새로고침
-      await fetchBulletins()
+      // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       
       toast.success('선택한 게시판이 삭제되었습니다.')
     } catch (e) {
@@ -1040,7 +1055,7 @@ export function BulletinBoard({
       
       // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
       if (selectedBulletinId) {
-        fetchPosts(selectedBulletinId)
+        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
       }
       
       toast.success('선택한 게시글이 삭제되었습니다.')
@@ -1103,9 +1118,7 @@ export function BulletinBoard({
           updatedAt: serverTimestamp(),
         }, { merge: true })
         
-        // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
-        const currentExpandedState = new Set(expandedBulletins)
-        await fetchBulletins(currentExpandedState)
+              // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
         
         toast.success('게시판 위치가 변경되었습니다.')
       }

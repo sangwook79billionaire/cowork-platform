@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, addDoc, deleteDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { CalendarEvent, TodoItem } from '@/types/firebase'
@@ -101,49 +101,64 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetchEvents()
-  }, [])
+    let unsubscribe: (() => void) | undefined
 
-  const fetchEvents = async () => {
-    if (isTestMode) {
-      setEvents(mockEvents)
-      setLoading(false)
-      return
-    }
+    const initializeData = async () => {
+      if (isTestMode) {
+        setEvents(mockEvents)
+        setLoading(false)
+        return
+      }
 
-    try {
-      const eventsRef = collection(db, 'calendarEvents')
-      const q = query(eventsRef, orderBy('startDate', 'asc'))
-      const querySnapshot = await getDocs(q)
-      
-      const fetchedEvents: CalendarEvent[] = []
-      querySnapshot.forEach((doc) => {
-        const data = doc.data()
-        fetchedEvents.push({
-          id: doc.id,
-          title: data.title,
-          description: data.description,
-          startDate: data.startDate?.toDate() || new Date(),
-          endDate: data.endDate?.toDate() || new Date(),
-          allDay: data.allDay || false,
-          userId: data.userId,
-          authorName: data.authorName,
-          color: data.color || '#3B82F6',
-          location: data.location,
-          reminder: data.reminder,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
+      try {
+        const eventsRef = collection(db, 'calendarEvents')
+        const q = query(eventsRef, orderBy('startDate', 'asc'))
+        
+        // 실시간 리스너 설정
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const fetchedEvents: CalendarEvent[] = []
+          querySnapshot.forEach((doc) => {
+            const data = doc.data()
+            fetchedEvents.push({
+              id: doc.id,
+              title: data.title,
+              description: data.description,
+              startDate: data.startDate?.toDate() || new Date(),
+              endDate: data.endDate?.toDate() || new Date(),
+              allDay: data.allDay || false,
+              userId: data.userId,
+              authorName: data.authorName,
+              color: data.color || '#3B82F6',
+              location: data.location,
+              reminder: data.reminder,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+            })
+          })
+          
+          setEvents(fetchedEvents)
+          setLoading(false)
+        }, (error) => {
+          console.error('실시간 이벤트 데이터 가져오기 오류:', error)
+          toast.error('실시간 업데이트에 실패했습니다.')
+          setLoading(false)
         })
-      })
-      
-      setEvents(fetchedEvents)
-    } catch (error) {
-      console.error('이벤트 데이터 가져오기 오류:', error)
-      toast.error('이벤트를 불러오는데 실패했습니다.')
-    } finally {
-      setLoading(false)
+      } catch (error) {
+        console.error('이벤트 데이터 가져오기 오류:', error)
+        toast.error('이벤트를 불러오는데 실패했습니다.')
+        setLoading(false)
+      }
     }
-  }
+
+    initializeData()
+
+    // 컴포넌트 언마운트 시 리스너 해제
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
+  }, [isTestMode])
 
   const handleCreateEvent = () => {
     setSelectedEvent(null)

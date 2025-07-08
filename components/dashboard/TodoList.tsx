@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { TodoItem, CalendarEvent } from '@/types/firebase'
@@ -83,47 +83,62 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
   })
 
   useEffect(() => {
-    fetchTodos()
-  }, [])
+    let unsubscribe: (() => void) | undefined
 
-  const fetchTodos = async () => {
-    if (isTestMode) {
-      setTodos(mockTodos)
-      setLoading(false)
-      return
-    }
+    const initializeData = async () => {
+      if (isTestMode) {
+        setTodos(mockTodos)
+        setLoading(false)
+        return
+      }
 
-    try {
-      const todosRef = collection(db, 'todos')
-      const q = query(todosRef, orderBy('createdAt', 'desc'))
-      const querySnapshot = await getDocs(q)
-      
-      const fetchedTodos: TodoItem[] = []
-      querySnapshot.forEach((doc) => {
-        const data = doc.data()
-        fetchedTodos.push({
-          id: doc.id,
-          title: data.title,
-          description: data.description,
-          completed: data.completed || false,
-          priority: data.priority || 'medium',
-          dueDate: data.dueDate?.toDate(),
-          userId: data.userId,
-          authorName: data.authorName,
-          tags: data.tags || [],
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
+      try {
+        const todosRef = collection(db, 'todos')
+        const q = query(todosRef, orderBy('createdAt', 'desc'))
+        
+        // 실시간 리스너 설정
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const fetchedTodos: TodoItem[] = []
+          querySnapshot.forEach((doc) => {
+            const data = doc.data()
+            fetchedTodos.push({
+              id: doc.id,
+              title: data.title,
+              description: data.description,
+              completed: data.completed || false,
+              priority: data.priority || 'medium',
+              dueDate: data.dueDate?.toDate(),
+              userId: data.userId,
+              authorName: data.authorName,
+              tags: data.tags || [],
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+            })
+          })
+          
+          setTodos(fetchedTodos)
+          setLoading(false)
+        }, (error) => {
+          console.error('실시간 할 일 데이터 가져오기 오류:', error)
+          toast.error('실시간 업데이트에 실패했습니다.')
+          setLoading(false)
         })
-      })
-      
-      setTodos(fetchedTodos)
-    } catch (error) {
-      console.error('할 일 데이터 가져오기 오류:', error)
-      toast.error('할 일을 불러오는데 실패했습니다.')
-    } finally {
-      setLoading(false)
+      } catch (error) {
+        console.error('할 일 데이터 가져오기 오류:', error)
+        toast.error('할 일을 불러오는데 실패했습니다.')
+        setLoading(false)
+      }
     }
-  }
+
+    initializeData()
+
+    // 컴포넌트 언마운트 시 리스너 해제
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
+  }, [])
 
   const handleCreateTodo = () => {
     setSelectedTodo(null)

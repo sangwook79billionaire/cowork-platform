@@ -53,7 +53,8 @@ function SortableBulletinItem({
   onToggleExpansion, 
   onSelect, 
   onCreateBulletin,
-  onBulletinSelect
+  onBulletinSelect,
+  isOver
 }: {
   bulletin: Bulletin
   level: number
@@ -64,6 +65,7 @@ function SortableBulletinItem({
   onSelect: () => void
   onCreateBulletin?: (parentId?: string) => void
   onBulletinSelect: (bulletinId: string) => void
+  isOver?: boolean
 }) {
   const {
     attributes,
@@ -86,7 +88,7 @@ function SortableBulletinItem({
         onClick={onSelect}
         className={`flex items-center space-x-2 px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-md transition-colors ${
           isSelected ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'text-gray-700'
-        }`}
+        } ${isOver ? 'bg-blue-50 border-2 border-blue-300' : ''}`}
         style={{ paddingLeft: `${level * 16 + 12}px` }}
       >
         {/* 드래그 핸들 */}
@@ -175,6 +177,7 @@ export function BulletinTree({
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -272,35 +275,71 @@ export function BulletinTree({
     setActiveId(event.active.id as string)
   }
 
+  // 드래그 오버 핸들러
+  const handleDragOver = (event: DragEndEvent) => {
+    const { over } = event
+    setOverId(over?.id as string || null)
+  }
+
   // 드래그 종료 핸들러
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (active.id !== over?.id) {
-      const oldIndex = bulletins.findIndex(bulletin => bulletin.id === active.id)
-      const newIndex = bulletins.findIndex(bulletin => bulletin.id === over?.id)
+      const draggedBulletin = bulletins.find(b => b.id === active.id)
+      const targetBulletin = bulletins.find(b => b.id === over?.id)
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newBulletins = arrayMove(bulletins, oldIndex, newIndex)
-        setBulletins(newBulletins)
+      if (draggedBulletin && targetBulletin) {
+        // 자기 자신을 부모로 설정하는 것을 방지
+        if (draggedBulletin.id === targetBulletin.id) {
+          setActiveId(null)
+          return
+        }
 
-        // 순서 업데이트
+        // 드래그된 게시판이 타겟의 하위 게시판인지 확인 (순환 참조 방지)
+        const isDescendant = (parentId: string, childId: string): boolean => {
+          const children = getChildBulletins(parentId)
+          for (const child of children) {
+            if (child.id === childId) return true
+            if (isDescendant(child.id, childId)) return true
+          }
+          return false
+        }
+
+        if (isDescendant(draggedBulletin.id, targetBulletin.id)) {
+          toast.error('자기 자신의 하위 게시판으로 이동할 수 없습니다.')
+          setActiveId(null)
+          return
+        }
+
+        // 새로운 부모 설정
+        const newParentId = targetBulletin.id
+        const newLevel = getBulletinLevel(targetBulletin.id) + 1
+
         try {
-          const updatePromises = newBulletins.map((bulletin, index) => 
-            updateDoc(doc(db, 'bulletins', bulletin.id), { 
-              order: index,
-              updatedAt: new Date()
-            })
-          )
-          await Promise.all(updatePromises)
-          toast.success('게시판 순서가 변경되었습니다.')
+          // 드래그된 게시판의 부모와 레벨 업데이트
+          await updateDoc(doc(db, 'bulletins', draggedBulletin.id), {
+            parentId: newParentId,
+            level: newLevel,
+            updatedAt: new Date()
+          })
+
+          // 타겟 게시판을 확장 상태로 설정
+          const newExpanded = new Set([...Array.from(expandedBulletins), targetBulletin.id])
+          onExpandedBulletinsChange(newExpanded)
+
+          toast.success('게시판 구조가 변경되었습니다.')
+          
+          // 게시판 데이터 새로고침
+          fetchBulletins()
         } catch (error) {
-          console.error('Error updating bulletin order:', error)
-          toast.error('게시판 순서 변경에 실패했습니다.')
+          console.error('Error updating bulletin hierarchy:', error)
+          toast.error('게시판 구조 변경에 실패했습니다.')
         }
       }
     }
     setActiveId(null)
+    setOverId(null)
   }
 
 
@@ -315,6 +354,7 @@ export function BulletinTree({
       const hasChildren = children.length > 0
       const isExpanded = expandedBulletins.has(bulletin.id)
       const isSelected = selectedBulletinId === bulletin.id
+      const isOver = overId === bulletin.id
 
       return (
         <div key={bulletin.id}>
@@ -328,6 +368,7 @@ export function BulletinTree({
             onSelect={() => onBulletinSelect(bulletin.id)}
             onCreateBulletin={handleCreateBulletin}
             onBulletinSelect={onBulletinSelect}
+            isOver={isOver}
           />
 
           {/* 하위 게시판들 */}
@@ -378,6 +419,7 @@ export function BulletinTree({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
           >
             <SortableContext
               items={getTopLevelBulletins().map(bulletin => bulletin.id)}
@@ -394,6 +436,14 @@ export function BulletinTree({
                 </div>
               ) : null}
             </DragOverlay>
+            {/* 드롭 인디케이터 */}
+            {overId && activeId && overId !== activeId && (
+              <div className="fixed pointer-events-none z-50">
+                <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                  여기에 드롭하여 하위 게시판으로 이동
+                </div>
+              </div>
+            )}
           </DndContext>
         </div>
     </div>

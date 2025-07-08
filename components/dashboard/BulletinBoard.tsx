@@ -798,7 +798,7 @@ export function BulletinBoard({
           id: `bulletin-${Date.now()}`,
           title: bulletinData.title,
           description: bulletinData.description,
-          parentId: bulletinData.parentId || undefined,
+          parentId: bulletinData.parentId || '',
           level: bulletinData.level,
           order: bulletinData.order,
           isActive: bulletinData.isActive,

@@ -74,6 +74,8 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [showTodoModal, setShowTodoModal] = useState(false)
   const [selectedDateForTodo, setSelectedDateForTodo] = useState<Date | null>(null)
   const [showSyncModal, setShowSyncModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [eventForm, setEventForm] = useState({
     title: '',
     description: '',
@@ -457,6 +459,144 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
     toast.success('캘린더 파일이 다운로드되었습니다.')
   }
 
+  const parseICalFile = (content: string) => {
+    const events: CalendarEvent[] = []
+    const lines = content.split(/\r?\n/)
+    let currentEvent: any = {}
+    let inEvent = false
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      
+      if (line === 'BEGIN:VEVENT') {
+        inEvent = true
+        currentEvent = {}
+      } else if (line === 'END:VEVENT') {
+        inEvent = false
+        if (currentEvent.summary && currentEvent.dtstart) {
+          // 이벤트 데이터 변환
+          const event: CalendarEvent = {
+            id: currentEvent.uid || `imported-${Date.now()}-${Math.random()}`,
+            title: currentEvent.summary,
+            description: currentEvent.description || '',
+            startDate: new Date(currentEvent.dtstart),
+            endDate: new Date(currentEvent.dtend || currentEvent.dtstart),
+            allDay: currentEvent.dtstart.includes('T') ? false : true,
+            userId: user?.uid || '',
+            authorName: user?.displayName || user?.email || '가져온 일정',
+            color: '#3B82F6',
+            location: currentEvent.location || '',
+            reminder: '15',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+          events.push(event)
+        }
+      } else if (inEvent) {
+        const [key, value] = line.split(':', 2)
+        if (key && value) {
+          switch (key) {
+            case 'UID':
+              currentEvent.uid = value
+              break
+            case 'SUMMARY':
+              currentEvent.summary = value
+              break
+            case 'DESCRIPTION':
+              currentEvent.description = value.replace(/\\n/g, '\n')
+              break
+            case 'DTSTART':
+            case 'DTSTART;VALUE=DATE':
+              currentEvent.dtstart = value.replace(/[TZ]/g, '')
+              break
+            case 'DTEND':
+            case 'DTEND;VALUE=DATE':
+              currentEvent.dtend = value.replace(/[TZ]/g, '')
+              break
+            case 'LOCATION':
+              currentEvent.location = value
+              break
+          }
+        }
+      }
+    }
+
+    return events
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.ics')) {
+      toast.error('iCal 파일(.ics)만 업로드 가능합니다.')
+      return
+    }
+
+    try {
+      const content = await file.text()
+      const importedEvents = parseICalFile(content)
+      
+      if (importedEvents.length === 0) {
+        toast.error('파일에서 일정을 찾을 수 없습니다.')
+        return
+      }
+
+      // 중복 체크 (제목과 시작 시간으로)
+      const existingEvents = events.filter(existing => 
+        importedEvents.some(imported => 
+          imported.title === existing.title && 
+          imported.startDate.getTime() === existing.startDate.getTime()
+        )
+      )
+
+      if (existingEvents.length > 0) {
+        const shouldOverwrite = confirm(
+          `${existingEvents.length}개의 중복 일정이 있습니다. 덮어쓰시겠습니까?`
+        )
+        if (!shouldOverwrite) return
+      }
+
+      // 이벤트 저장
+      if (isTestMode) {
+        setEvents([...events, ...importedEvents])
+        toast.success(`${importedEvents.length}개의 일정을 가져왔습니다.`)
+      } else {
+        // Firestore에 저장
+        for (const event of importedEvents) {
+          const eventData = {
+            title: event.title,
+            description: event.description,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            allDay: event.allDay,
+            userId: user?.uid || '',
+            authorName: event.authorName,
+            color: event.color,
+            location: event.location,
+            reminder: event.reminder,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }
+          
+          const docRef = await addDoc(collection(db, 'calendarEvents'), eventData)
+          event.id = docRef.id
+        }
+        
+        setEvents([...events, ...importedEvents])
+        toast.success(`${importedEvents.length}개의 일정을 가져왔습니다.`)
+      }
+
+      setShowImportModal(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    } catch (error) {
+      console.error('파일 파싱 오류:', error)
+      toast.error('파일을 읽는 중 오류가 발생했습니다.')
+    }
+  }
+
   const getEventsForDate = (date: Date) => {
     return events.filter(event => {
       const eventStart = new Date(event.startDate)
@@ -592,6 +732,14 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
             >
               <ArrowDownTrayIcon className="w-5 h-5" />
               <span>동기화</span>
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn-secondary flex items-center space-x-2"
+              title="휴대전화 캘린더 가져오기"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5 rotate-180" />
+              <span>가져오기</span>
             </button>
           </div>
         </div>
@@ -1275,6 +1423,73 @@ export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
               >
                 <ArrowDownTrayIcon className="w-4 h-4" />
                 <span>캘린더 다운로드</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 가져오기 모달 */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">휴대전화 캘린더 가져오기</h2>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">📱 가져오기 방법</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                  <li>휴대전화에서 캘린더를 iCal 파일로 내보내세요</li>
+                  <li>파일을 컴퓨터로 전송하세요</li>
+                  <li>아래 "파일 선택" 버튼을 클릭하여 업로드하세요</li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="font-semibold text-yellow-900 mb-2">⚠️ 주의사항</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-yellow-800">
+                  <li>iCal 파일(.ics)만 지원됩니다</li>
+                  <li>중복된 일정이 있으면 덮어쓰기 여부를 확인합니다</li>
+                  <li>가져온 일정은 현재 사용자 계정에 저장됩니다</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 className="font-semibold text-green-900 mb-2">✅ 지원되는 앱</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-green-800">
+                  <li>iPhone: 설정 → 캘린더 → 계정 → 캘린더 내보내기</li>
+                  <li>Android: Google 캘린더 → 설정 → 캘린더 내보내기</li>
+                  <li>기타: Outlook, Apple Calendar 등</li>
+                </ul>
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".ics"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn-primary flex items-center space-x-2 mx-auto"
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5 rotate-180" />
+                  <span>파일 선택</span>
+                </button>
+                <p className="text-sm text-gray-500 mt-2">
+                  .ics 파일을 선택하세요
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="btn-secondary"
+              >
+                취소
               </button>
             </div>
           </div>

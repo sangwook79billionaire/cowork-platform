@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
-import { BulletinPost, BulletinComment } from '@/types/firebase'
+import { BulletinPost, BulletinComment, Bulletin } from '@/types/firebase'
 import toast from 'react-hot-toast'
 import {
   HeartIcon,
@@ -16,10 +16,12 @@ import {
   CalendarIcon,
   PencilIcon,
   ArrowLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline'
 
 interface PostViewerProps {
   postId: string
+  bulletinId?: string | null
   onEditPost?: (postId: string) => void
   onBackToList?: () => void
 }
@@ -80,20 +82,79 @@ const mockComments: BulletinComment[] = [
   },
 ]
 
-export function PostViewer({ postId, onEditPost, onBackToList }: PostViewerProps) {
+export function PostViewer({ postId, bulletinId, onEditPost, onBackToList }: PostViewerProps) {
   const { user } = useAuth()
   const [post, setPost] = useState<BulletinPost | null>(null)
   const [comments, setComments] = useState<BulletinComment[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [isLiked, setIsLiked] = useState(false)
+  const [bulletins, setBulletins] = useState<Bulletin[]>([])
+  const [bulletinPath, setBulletinPath] = useState<Bulletin[]>([])
 
   useEffect(() => {
     if (postId) {
       fetchPost()
       fetchComments()
     }
-  }, [postId])
+    if (bulletinId) {
+      fetchBulletins()
+    }
+  }, [postId, bulletinId])
+
+  // 게시판 데이터 가져오기
+  const fetchBulletins = async () => {
+    try {
+      const bulletinsRef = collection(db, 'bulletins')
+      const q = query(bulletinsRef, orderBy('createdAt', 'asc'))
+      const querySnapshot = await getDocs(q)
+      
+      const fetchedBulletins: Bulletin[] = []
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        fetchedBulletins.push({
+          id: doc.id,
+          title: data.title || '',
+          description: data.description || '',
+          parentId: data.parentId || '',
+          level: data.level || 0,
+          userId: data.userId || '',
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+          isActive: data.isActive !== false,
+          order: data.order || 0,
+        })
+      })
+      
+      setBulletins(fetchedBulletins)
+      
+      // 게시판 경로 계산
+      if (bulletinId) {
+        const path = calculateBulletinPath(bulletinId, fetchedBulletins)
+        setBulletinPath(path)
+      }
+    } catch (error) {
+      console.error('게시판 데이터 가져오기 오류:', error)
+    }
+  }
+
+  // 게시판 경로 계산
+  const calculateBulletinPath = (bulletinId: string, allBulletins: Bulletin[]): Bulletin[] => {
+    const path: Bulletin[] = []
+    let currentId = bulletinId
+    
+    while (currentId) {
+      const bulletin = allBulletins.find(b => b.id === currentId)
+      if (bulletin) {
+        path.unshift(bulletin)
+        currentId = bulletin.parentId || ''
+      } else {
+        break
+      }
+    }
+    
+    return path
+  }
 
   const fetchPost = async () => {
     if (isTestMode) {
@@ -244,6 +305,22 @@ export function PostViewer({ postId, onEditPost, onBackToList }: PostViewerProps
       <div className="border-b border-gray-200 p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
+            {/* 브레드크럼 */}
+            {bulletinPath.length > 0 && (
+              <div className="flex items-center space-x-2 mb-3 text-sm text-gray-500">
+                {bulletinPath.map((bulletin, index) => (
+                  <div key={bulletin.id} className="flex items-center">
+                    <span className="hover:text-gray-700 transition-colors">
+                      {bulletin.title}
+                    </span>
+                    {index < bulletinPath.length - 1 && (
+                      <ChevronRightIcon className="w-4 h-4 mx-1" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center space-x-2 mb-2">
               {onBackToList && (
                 <button

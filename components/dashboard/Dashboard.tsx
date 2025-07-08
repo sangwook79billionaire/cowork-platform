@@ -170,6 +170,7 @@ export function Dashboard() {
             >
               <PostViewer 
                 postId={selectedPostId}
+                bulletinId={selectedBulletinId}
                 onEditPost={handleEditPost}
                 onBackToList={handleBackToList}
               />

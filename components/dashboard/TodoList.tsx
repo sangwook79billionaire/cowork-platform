@@ -77,8 +77,9 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
     description: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
     dueDate: '',
+    dueTime: '09:00',
     tags: '',
-    reminder: '0', // 알림 없음
+    reminder: '0',
   })
 
   useEffect(() => {
@@ -131,6 +132,7 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       description: '',
       priority: 'medium',
       dueDate: '',
+      dueTime: '09:00',
       tags: '',
       reminder: '0',
     })
@@ -144,6 +146,7 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       description: todo.description || '',
       priority: todo.priority,
       dueDate: todo.dueDate ? todo.dueDate.toISOString().split('T')[0] : '',
+      dueTime: todo.dueDate ? todo.dueDate.toISOString().split('T')[1] : '09:00',
       tags: todo.tags ? todo.tags.join(', ') : '',
       reminder: todo.reminder || '0',
     })
@@ -209,7 +212,7 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       description: todoForm.description,
       completed: false,
       priority: todoForm.priority,
-      dueDate: todoForm.dueDate ? new Date(todoForm.dueDate) : undefined,
+      dueDate: todoForm.dueDate ? new Date(`${todoForm.dueDate}T${todoForm.dueTime}`) : undefined,
       userId: user.uid,
       authorName: user.displayName || user.email || '익명',
       tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()) : [],
@@ -228,14 +231,14 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       
       // 할 일을 캘린더 이벤트로도 추가
       if (todoForm.dueDate) {
-        const dueDate = new Date(todoForm.dueDate)
+        const dueDateTime = new Date(`${todoForm.dueDate}T${todoForm.dueTime}`)
         const calendarEvent: CalendarEvent = {
           id: `event-from-todo-${Date.now()}`,
           title: `📋 ${todoForm.title}`,
           description: todoForm.description,
-          startDate: dueDate,
-          endDate: dueDate,
-          allDay: true,
+          startDate: dueDateTime,
+          endDate: dueDateTime,
+          allDay: false,
           userId: user.uid,
           authorName: user.displayName || user.email || '익명',
           color: '#10B981', // 초록색으로 할 일 표시
@@ -261,13 +264,13 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
       
       // 할 일을 캘린더 이벤트로도 추가
       if (todoForm.dueDate) {
-        const dueDate = new Date(todoForm.dueDate)
+        const dueDateTime = new Date(`${todoForm.dueDate}T${todoForm.dueTime}`)
         const calendarEventData = {
           title: `📋 ${todoForm.title}`,
           description: todoForm.description,
-          startDate: dueDate,
-          endDate: dueDate,
-          allDay: true,
+          startDate: dueDateTime,
+          endDate: dueDateTime,
+          allDay: false,
           userId: user.uid,
           authorName: user.displayName || user.email || '익명',
           color: '#10B981', // 초록색으로 할 일 표시
@@ -571,6 +574,18 @@ export function TodoList({ onTodoCreated }: TodoListProps) {
                   type="date"
                   value={todoForm.dueDate}
                   onChange={(e) => setTodoForm({ ...todoForm, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  마감 시간
+                </label>
+                <input
+                  type="time"
+                  value={todoForm.dueTime}
+                  onChange={(e) => setTodoForm({ ...todoForm, dueTime: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>

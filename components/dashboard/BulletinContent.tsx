@@ -15,6 +15,8 @@ import {
   PencilIcon,
   TrashIcon,
   FolderPlusIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -128,6 +130,40 @@ export function BulletinContent({
     return bulletins.filter(bulletin => bulletin.parentId === parentId && bulletin.isActive !== false)
   }
 
+  // 게시판 경로 계산
+  const getBulletinPath = (bulletinId: string): Bulletin[] => {
+    const path: Bulletin[] = []
+    let currentBulletin = bulletins.find(b => b.id === bulletinId)
+    
+    while (currentBulletin) {
+      path.unshift(currentBulletin)
+      const parentId = currentBulletin.parentId
+      currentBulletin = parentId ? bulletins.find(b => b.id === parentId) || undefined : undefined
+    }
+    
+    return path
+  }
+
+  // 형제 게시판 가져오기
+  const getSiblingBulletins = (bulletinId: string): Bulletin[] => {
+    const currentBulletin = bulletins.find(b => b.id === bulletinId)
+    if (!currentBulletin) return []
+    
+    return bulletins.filter(b => 
+      b.parentId === currentBulletin.parentId && 
+      b.id !== bulletinId && 
+      b.isActive !== false
+    )
+  }
+
+  // 부모 게시판 가져오기
+  const getParentBulletin = (bulletinId: string): Bulletin | null => {
+    const currentBulletin = bulletins.find(b => b.id === bulletinId)
+    if (!currentBulletin || !currentBulletin.parentId) return null
+    
+    return bulletins.find(b => b.id === currentBulletin.parentId) || null
+  }
+
   useEffect(() => {
     fetchBulletins()
   }, [])
@@ -153,6 +189,9 @@ export function BulletinContent({
 
   const selectedBulletin = bulletins.find(b => b.id === selectedBulletinId)
   const childBulletins = selectedBulletinId ? getChildBulletins(selectedBulletinId) : []
+  const bulletinPath = selectedBulletinId ? getBulletinPath(selectedBulletinId) : []
+  const siblingBulletins = selectedBulletinId ? getSiblingBulletins(selectedBulletinId) : []
+  const parentBulletin = selectedBulletinId ? getParentBulletin(selectedBulletinId) : null
 
   if (!selectedBulletinId) {
     return (
@@ -170,6 +209,31 @@ export function BulletinContent({
     <div className="flex-1 flex flex-col bg-white">
       {/* 헤더 */}
       <div className="p-4 border-b border-gray-200">
+        {/* 브레드크럼 네비게이션 */}
+        {bulletinPath.length > 1 && (
+          <div className="mb-3">
+            <nav className="flex items-center space-x-2 text-sm">
+              {bulletinPath.map((bulletin, index) => (
+                <div key={bulletin.id} className="flex items-center">
+                  {index > 0 && (
+                    <ChevronRightIcon className="w-4 h-4 text-gray-400 mx-1" />
+                  )}
+                  <button
+                    onClick={() => onBulletinSelect?.(bulletin.id)}
+                    className={`px-2 py-1 rounded hover:bg-gray-100 transition-colors ${
+                      bulletin.id === selectedBulletinId 
+                        ? 'text-primary-600 font-medium' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {bulletin.title}
+                  </button>
+                </div>
+              ))}
+            </nav>
+          </div>
+        )}
+
         <div className={`flex items-center ${isMobile ? 'flex-col space-y-3' : 'justify-between'}`}>
           <div className={`${isMobile ? 'w-full text-center' : ''}`}>
             <h2 className={`font-semibold text-gray-900 ${isMobile ? 'text-lg' : 'text-xl'}`}>{selectedBulletin?.title}</h2>
@@ -208,6 +272,37 @@ export function BulletinContent({
           </div>
         ) : (
           <div className={`p-4 ${isMobile ? 'pb-20' : ''}`}>
+            {/* 관련 게시판 네비게이션 */}
+            {(parentBulletin || siblingBulletins.length > 0) && (
+              <div className="mb-6 p-3 bg-gray-50 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">관련 게시판</h4>
+                <div className="flex flex-wrap gap-2">
+                  {/* 부모 게시판 */}
+                  {parentBulletin && (
+                    <button
+                      onClick={() => onBulletinSelect?.(parentBulletin.id)}
+                      className="flex items-center space-x-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                    >
+                      <ChevronUpIcon className="w-3 h-3" />
+                      <span>{parentBulletin.title}</span>
+                    </button>
+                  )}
+                  
+                  {/* 형제 게시판 */}
+                  {siblingBulletins.map((bulletin) => (
+                    <button
+                      key={bulletin.id}
+                      onClick={() => onBulletinSelect?.(bulletin.id)}
+                      className="flex items-center space-x-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                    >
+                      <ChatBubbleLeftRightIcon className="w-3 h-3 text-gray-500" />
+                      <span>{bulletin.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 하위 게시판 */}
             {childBulletins.length > 0 && (
               <div className="mb-6">

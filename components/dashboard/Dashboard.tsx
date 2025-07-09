@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
+import { useScheduler } from '@/hooks/useScheduler'
 import { 
   BellIcon, 
   UserIcon,
@@ -13,6 +14,7 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   SparklesIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { BulletinBoard } from './BulletinBoard'
@@ -26,12 +28,14 @@ import { NotificationCenter } from './NotificationCenter'
 import { AccountSettings } from './AccountSettings'
 import { BulletinCreateModal } from './BulletinCreateModal'
 import GeminiWriter from './GeminiWriter'
+import Scheduler from './Scheduler'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler'
 
 export function Dashboard() {
   const { user, userProfile } = useAuth()
+  const scheduler = useScheduler()
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
@@ -318,6 +322,11 @@ export function Dashboard() {
                   />
                 </div>
               )}
+              {activeFeature === 'scheduler' && (
+                <div className="p-4 md:p-6">
+                  <Scheduler isMobile={isMobile} />
+                </div>
+              )}
             </div>
           </>
         )}
@@ -390,6 +399,7 @@ export function Dashboard() {
               { id: 'calendar', name: '캘린더', icon: CalendarIcon },
               { id: 'todo', name: '할 일', icon: CheckCircleIcon },
               { id: 'ai', name: 'AI', icon: SparklesIcon },
+              { id: 'scheduler', name: '반복', icon: ClockIcon },
             ].map((feature) => {
               const Icon = feature.icon
               const isActive = activeFeature === feature.id

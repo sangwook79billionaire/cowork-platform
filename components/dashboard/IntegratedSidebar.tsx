@@ -7,10 +7,11 @@ import {
   CheckCircleIcon,
   XMarkIcon,
   SparklesIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -73,6 +74,14 @@ export function IntegratedSidebar({
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200',
+    },
+    {
+      id: 'scheduler' as ActiveFeature,
+      name: '반복 작업',
+      icon: ClockIcon,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      borderColor: 'border-indigo-200',
     },
   ]
 
@@ -166,6 +175,17 @@ export function IntegratedSidebar({
             <SparklesIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">AI 글쓰기</h3>
             <p className="text-gray-500">AI로 글을 작성하세요</p>
+          </div>
+        </div>
+      )}
+
+      {/* 반복 작업 사이드바 (스케줄러 선택 시에만 표시) */}
+      {activeFeature === 'scheduler' && (
+        <div className="flex-1 p-4">
+          <div className="text-center py-8">
+            <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">반복 작업</h3>
+            <p className="text-gray-500">자동화된 작업을 관리하세요</p>
           </div>
         </div>
       )}

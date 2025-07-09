@@ -13,6 +13,7 @@ import {
   CalendarIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
 import { BulletinBoard } from './BulletinBoard'
 import { PostViewer } from './PostViewer'
 import { DocumentEditor } from './DocumentEditor'
@@ -132,6 +133,16 @@ export function Dashboard() {
   const handleCreateBulletin = (parentId?: string) => {
     setBulletinCreateParentId(parentId)
     setShowBulletinCreateModal(true)
+  }
+
+  const handleEditBulletin = (bulletinId: string) => {
+    // 게시판 편집 모달 표시 (향후 구현)
+    toast.success('게시판 편집 기능은 준비 중입니다.')
+  }
+
+  const handleDeleteBulletin = (bulletinId: string) => {
+    // 게시판 삭제 확인 모달 표시 (향후 구현)
+    toast.success('게시판 삭제 기능은 준비 중입니다.')
   }
 
   const handleBulletinCreated = (bulletin: any) => {
@@ -257,6 +268,8 @@ export function Dashboard() {
                   expandedBulletins={expandedBulletins}
                   onExpandedBulletinsChange={handleExpandedBulletinsChange}
                   onCreateBulletin={handleCreateBulletin}
+                  onEditBulletin={handleEditBulletin}
+                  onDeleteBulletin={handleDeleteBulletin}
                   isMobile={isMobile}
                   onClose={() => setShowSidebar(false)}
                 />
@@ -309,6 +322,8 @@ export function Dashboard() {
                     onBulletinSelect={handleBulletinSelect}
                     expandedBulletins={expandedBulletins}
                     onExpandedBulletinsChange={handleExpandedBulletinsChange}
+                    onEditBulletin={handleEditBulletin}
+                    onDeleteBulletin={handleDeleteBulletin}
                     isMobile={isMobile}
                   />
                 </div>

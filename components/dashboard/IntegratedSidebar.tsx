@@ -19,6 +19,8 @@ interface IntegratedSidebarProps {
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
   onCreateBulletin?: (parentId?: string) => void
+  onEditBulletin?: (bulletinId: string) => void
+  onDeleteBulletin?: (bulletinId: string) => void
   isMobile?: boolean
   onClose?: () => void
 }
@@ -31,6 +33,8 @@ export function IntegratedSidebar({
   expandedBulletins,
   onExpandedBulletinsChange,
   onCreateBulletin,
+  onEditBulletin,
+  onDeleteBulletin,
   isMobile = false,
   onClose,
 }: IntegratedSidebarProps) {
@@ -117,6 +121,8 @@ export function IntegratedSidebar({
             expandedBulletins={expandedBulletins}
             onExpandedBulletinsChange={onExpandedBulletinsChange}
             onCreateBulletin={onCreateBulletin}
+            onEditBulletin={onEditBulletin}
+            onDeleteBulletin={onDeleteBulletin}
             isMobile={isMobile}
           />
         </div>

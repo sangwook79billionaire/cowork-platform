@@ -11,6 +11,9 @@ import {
   ChatBubbleLeftRightIcon,
   PlusIcon,
   FolderPlusIcon,
+  PencilIcon,
+  TrashIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import {
@@ -41,6 +44,8 @@ interface BulletinTreeProps {
   expandedBulletins: Set<string>
   onExpandedBulletinsChange: (expanded: Set<string>) => void
   onCreateBulletin?: (parentId?: string) => void
+  onEditBulletin?: (bulletinId: string) => void
+  onDeleteBulletin?: (bulletinId: string) => void
   isMobile?: boolean
 }
 
@@ -55,6 +60,8 @@ function SortableBulletinItem({
   onSelect, 
   onCreateBulletin,
   onBulletinSelect,
+  onEditBulletin,
+  onDeleteBulletin,
   isOver
 }: {
   bulletin: Bulletin
@@ -66,8 +73,11 @@ function SortableBulletinItem({
   onSelect: () => void
   onCreateBulletin?: (parentId?: string) => void
   onBulletinSelect: (bulletinId: string) => void
+  onEditBulletin?: (bulletinId: string) => void
+  onDeleteBulletin?: (bulletinId: string) => void
   isOver?: boolean
 }) {
+  const { user, isAdmin } = useAuth()
   const {
     attributes,
     listeners,
@@ -149,19 +159,50 @@ function SortableBulletinItem({
         {/* 게시판 제목 */}
         <span className="flex-1 text-sm truncate">{bulletin.title}</span>
 
-        {/* 새 게시판 생성 버튼 (선택된 게시판에만 표시) */}
-        {isSelected && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onCreateBulletin?.(bulletin.id)
-            }}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
-            title="하위 게시판 생성"
-          >
-            <PlusIcon className="w-3 h-3" />
-          </button>
-        )}
+        {/* 액션 버튼들 */}
+        <div className="flex items-center space-x-1">
+          {/* 새 게시판 생성 버튼 (선택된 게시판에만 표시) */}
+          {isSelected && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCreateBulletin?.(bulletin.id)
+              }}
+              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+              title="하위 게시판 생성"
+            >
+              <PlusIcon className="w-3 h-3" />
+            </button>
+          )}
+          
+          {/* 편집 버튼 (관리자 또는 게시판 생성자만) */}
+          {(isAdmin || (user && bulletin.userId === user.uid)) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditBulletin?.(bulletin.id)
+              }}
+              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+              title="게시판 편집"
+            >
+              <PencilIcon className="w-3 h-3" />
+            </button>
+          )}
+          
+          {/* 삭제 버튼 (관리자만) */}
+          {isAdmin && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteBulletin?.(bulletin.id)
+              }}
+              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="게시판 삭제"
+            >
+              <TrashIcon className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -173,6 +214,8 @@ export function BulletinTree({
   expandedBulletins, 
   onExpandedBulletinsChange,
   onCreateBulletin,
+  onEditBulletin,
+  onDeleteBulletin,
   isMobile = false
 }: BulletinTreeProps) {
   const { user, isAdmin } = useAuth()
@@ -370,6 +413,8 @@ export function BulletinTree({
             onSelect={() => onBulletinSelect(bulletin.id)}
             onCreateBulletin={handleCreateBulletin}
             onBulletinSelect={onBulletinSelect}
+            onEditBulletin={onEditBulletin}
+            onDeleteBulletin={onDeleteBulletin}
             isOver={isOver}
           />
 

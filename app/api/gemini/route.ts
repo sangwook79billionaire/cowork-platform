@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Gemini API 키 확인
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
+// Gemini AI 인스턴스 생성 함수
+function getGeminiModel() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
+  }
+  
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 }
-
-// Gemini AI 인스턴스 생성
-const genAI = new GoogleGenerativeAI(apiKey);
-const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function generatePost(topic: string, style: string, length: string): Promise<string> {
+  const textModel = getGeminiModel();
   const prompt = `
 다음 주제에 대해 ${style}한 스타일로 ${length} 길이의 글을 작성해주세요.
 
@@ -78,6 +80,7 @@ async function generatePost(topic: string, style: string, length: string): Promi
 }
 
 async function summarizeText(text: string): Promise<string> {
+  const textModel = getGeminiModel();
   const prompt = `
 다음 글을 간결하게 요약해주세요:
 
@@ -95,6 +98,7 @@ ${text}
 }
 
 async function improveText(text: string, improvementType: string): Promise<string> {
+  const textModel = getGeminiModel();
   const prompt = `
 다음 글의 ${improvementType}을 개선해주세요:
 
@@ -113,6 +117,7 @@ ${text}
 }
 
 async function extractKeywords(text: string, count: number): Promise<string[]> {
+  const textModel = getGeminiModel();
   const prompt = `
 다음 글에서 가장 중요한 키워드 ${count}개를 추출해주세요:
 
@@ -126,5 +131,5 @@ ${text}
 
   const result = await textModel.generateContent(prompt);
   const response = await result.response;
-  return response.text().split(',').map(keyword => keyword.trim());
+  return response.text().split(',').map((keyword: string) => keyword.trim());
 } 

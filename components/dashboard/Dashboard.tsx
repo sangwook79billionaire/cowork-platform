@@ -272,6 +272,7 @@ export function Dashboard() {
                   onCreatePost={handleCreatePost}
                   onCreateBulletin={handleCreateBulletin}
                   isMobile={isMobile}
+                  onBulletinSelect={handleBulletinSelect}
                 />
               )}
               {activeFeature === 'calendar' && (

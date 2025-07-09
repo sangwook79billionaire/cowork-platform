@@ -24,6 +24,7 @@ interface BulletinContentProps {
   onCreatePost: () => void
   onCreateBulletin?: (parentId?: string) => void
   isMobile?: boolean
+  onBulletinSelect?: (bulletinId: string) => void
 }
 
 export function BulletinContent({ 
@@ -31,7 +32,8 @@ export function BulletinContent({
   onSelectPost, 
   onCreatePost,
   onCreateBulletin,
-  isMobile = false
+  isMobile = false,
+  onBulletinSelect
 }: BulletinContentProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
@@ -158,7 +160,7 @@ export function BulletinContent({
         <div className="text-center text-gray-500">
           <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
           <h3 className="text-lg font-medium mb-2">게시판을 선택해주세요</h3>
-          <p className="text-sm">좌측에서 게시판을 선택하면 내용이 표시됩니다.</p>
+          <p className="text-sm">좌측에서 게시판을 선택하면 하단에 자식 게시판과 게시글 목록이 표시됩니다.</p>
         </div>
       </div>
     )
@@ -214,7 +216,8 @@ export function BulletinContent({
                   {childBulletins.map((bulletin) => (
                     <div
                       key={bulletin.id}
-                      className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-colors"
+                      onClick={() => onBulletinSelect?.(bulletin.id)}
                     >
                       <div className="flex items-center space-x-2">
                         <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
@@ -223,6 +226,14 @@ export function BulletinContent({
                       {bulletin.description && (
                         <p className="text-sm text-gray-600 mt-1">{bulletin.description}</p>
                       )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-500">클릭하여 이동</span>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                            하위 게시판
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -231,11 +242,14 @@ export function BulletinContent({
 
             {/* 게시글 목록 */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">게시글</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-medium text-gray-900">게시글 목록</h3>
+                <span className="text-sm text-gray-500">{posts.length}개의 게시글</span>
+              </div>
               {posts.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm">게시글이 없습니다</p>
+                  <p className="text-sm">이 게시판에 게시글이 없습니다</p>
                   <button
                     onClick={onCreatePost}
                     className="mt-2 text-primary-600 hover:text-primary-700 text-sm font-medium"

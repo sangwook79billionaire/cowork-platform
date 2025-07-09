@@ -12,6 +12,7 @@ import {
   ChatBubbleLeftRightIcon,
   CalendarIcon,
   CheckCircleIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { BulletinBoard } from './BulletinBoard'
@@ -24,9 +25,10 @@ import { TodoList } from './TodoList'
 import { NotificationCenter } from './NotificationCenter'
 import { AccountSettings } from './AccountSettings'
 import { BulletinCreateModal } from './BulletinCreateModal'
+import GeminiWriter from './GeminiWriter'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai'
 
 export function Dashboard() {
   const { user, userProfile } = useAuth()
@@ -300,6 +302,22 @@ export function Dashboard() {
                   }} 
                 />
               )}
+              {activeFeature === 'ai' && (
+                <div className="p-4 md:p-6">
+                  <GeminiWriter 
+                    onContentGenerated={(content) => {
+                      console.log('Generated content:', content)
+                      // 여기서 생성된 내용을 게시판에 바로 저장하거나 다른 처리 가능
+                    }}
+                    onSaveToBulletin={(content, title) => {
+                      // 게시판에 저장하는 로직
+                      console.log('Saving to bulletin:', { title, content })
+                      // DocumentEditor를 통해 저장하거나 다른 방법으로 처리
+                      toast.success('게시판에 저장되었습니다!')
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </>
         )}
@@ -371,6 +389,7 @@ export function Dashboard() {
               { id: 'bulletin', name: '게시판', icon: ChatBubbleLeftRightIcon },
               { id: 'calendar', name: '캘린더', icon: CalendarIcon },
               { id: 'todo', name: '할 일', icon: CheckCircleIcon },
+              { id: 'ai', name: 'AI', icon: SparklesIcon },
             ].map((feature) => {
               const Icon = feature.icon
               const isActive = activeFeature === feature.id

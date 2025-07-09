@@ -16,6 +16,7 @@ Notion을 벤치마킹한 소규모 웹 기반 협업 툴입니다.
   - **Firestore** - NoSQL 실시간 데이터베이스
   - **Firebase Storage** - 파일 스토리지
   - **Firebase Security Rules** - 보안 규칙
+- **Google Gemini AI** - AI 글쓰기 및 텍스트 처리
 
 ### Deployment
 - **Vercel** - 프론트엔드 및 서버리스 함수 호스팅
@@ -67,7 +68,7 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-```
+GEMINI_API_KEY=your_gemini_api_key
 
 2. Firebase 프로젝트 설정에서 웹 앱 추가 후 설정 정보 복사
 
@@ -115,13 +116,37 @@ service firebase.storage {
 }
 ```
 
-### 6. 개발 서버 실행
+### 6. Gemini API 설정
+
+1. [Google AI Studio](https://makersuite.google.com/app/apikey)에서 API 키 생성
+2. `.env.local` 파일에 `GEMINI_API_KEY` 추가
+
+### 7. 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
+
+## 🤖 AI 기능
+
+### Gemini AI 글쓰기 도구
+
+AI 기능을 통해 다음과 같은 작업을 수행할 수 있습니다:
+
+- **글 생성**: 주제, 스타일, 길이를 지정하여 AI가 글을 생성
+- **글 요약**: 긴 글을 핵심 내용만 추출하여 요약
+- **글 개선**: 가독성, 문법, 스타일 측면에서 글을 개선
+- **키워드 추출**: 글에서 중요한 키워드를 자동으로 추출
+- **게시판 저장**: 생성된 글을 바로 게시판에 저장
+
+### 사용 방법
+
+1. 좌측 사이드바에서 "AI 글쓰기" 탭 선택
+2. 주제, 스타일, 길이를 설정하고 "글 생성하기" 클릭
+3. 생성된 글을 편집하거나 개선 기능 사용
+4. "게시판 저장" 버튼으로 바로 게시판에 저장
 
 ## 📊 데이터 구조
 

@@ -6,10 +6,11 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   XMarkIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -64,6 +65,14 @@ export function IntegratedSidebar({
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200',
+    },
+    {
+      id: 'ai' as ActiveFeature,
+      name: 'AI 글쓰기',
+      icon: SparklesIcon,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
     },
   ]
 
@@ -146,6 +155,17 @@ export function IntegratedSidebar({
             <CheckCircleIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">할 일</h3>
             <p className="text-gray-500">할 일을 관리하세요</p>
+          </div>
+        </div>
+      )}
+
+      {/* AI 글쓰기 사이드바 (AI 선택 시에만 표시) */}
+      {activeFeature === 'ai' && (
+        <div className="flex-1 p-4">
+          <div className="text-center py-8">
+            <SparklesIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">AI 글쓰기</h3>
+            <p className="text-gray-500">AI로 글을 작성하세요</p>
           </div>
         </div>
       )}

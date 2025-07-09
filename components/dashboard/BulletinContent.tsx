@@ -27,6 +27,7 @@ interface BulletinContentProps {
   onCreateBulletin?: (parentId?: string) => void
   isMobile?: boolean
   onBulletinSelect?: (bulletinId: string) => void
+  onEditBulletin?: (bulletinId: string) => void
 }
 
 export function BulletinContent({ 
@@ -35,7 +36,8 @@ export function BulletinContent({
   onCreatePost,
   onCreateBulletin,
   isMobile = false,
-  onBulletinSelect
+  onBulletinSelect,
+  onEditBulletin
 }: BulletinContentProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
@@ -256,6 +258,15 @@ export function BulletinContent({
               <FolderPlusIcon className="w-4 h-4" />
               <span className="text-sm">새 게시판</span>
             </button>
+            {onEditBulletin && (
+              <button
+                onClick={() => onEditBulletin(selectedBulletinId || '')}
+                className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <PencilIcon className="w-4 h-4" />
+                <span className="text-sm">게시판 편집</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

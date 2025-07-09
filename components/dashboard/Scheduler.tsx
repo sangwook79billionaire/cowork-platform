@@ -39,7 +39,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
     topic: '',
     style: '일반적인',
     length: '중간',
-    scheduleType: 'daily' as const,
+    scheduleType: 'daily' as 'daily' | 'weekly' | 'monthly',
     time: '09:00',
     daysOfWeek: [] as number[],
     dayOfMonth: 1,
@@ -136,7 +136,11 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
         nextRun: calculateNextRun({
           ...newTask,
           schedule,
-          nextRun: new Date()
+          nextRun: new Date(),
+          id: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: user.uid
         } as ScheduledTask),
         userId: user.uid,
         createdAt: serverTimestamp(),

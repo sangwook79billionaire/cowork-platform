@@ -175,19 +175,17 @@ function SortableBulletinItem({
             </button>
           )}
           
-          {/* 편집 버튼 (관리자 또는 게시판 생성자만) */}
-          {(isAdmin || (user && bulletin.userId === user.uid)) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditBulletin?.(bulletin.id)
-              }}
-              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
-              title="게시판 편집"
-            >
-              <PencilIcon className="w-3 h-3" />
-            </button>
-          )}
+          {/* 편집 버튼 (모든 사용자에게 표시) */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditBulletin?.(bulletin.id)
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+            title="게시판 편집"
+          >
+            <PencilIcon className="w-3 h-3" />
+          </button>
           
           {/* 삭제 버튼 (관리자만) */}
           {isAdmin && (

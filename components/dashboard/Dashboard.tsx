@@ -29,7 +29,7 @@ type ViewMode = 'list' | 'view' | 'edit' | 'create'
 type ActiveFeature = 'bulletin' | 'calendar' | 'todo'
 
 export function Dashboard() {
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
@@ -228,7 +228,7 @@ export function Dashboard() {
               <UserIcon className="w-5 h-5" />
             </button>
             <span className="hidden md:inline text-sm text-gray-600">
-              {user?.email}
+              {userProfile?.nickname || user?.email}
             </span>
             <button
               onClick={handleSignOut}

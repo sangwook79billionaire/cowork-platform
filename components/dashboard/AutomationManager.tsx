@@ -14,7 +14,10 @@ import {
   SparklesIcon,
   ArrowPathIcon,
   CalendarIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  CheckIcon,
+  XMarkIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 
 interface NewsArticle {
@@ -62,6 +65,12 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
     morning: { lastRun: null as Date | null, isRunning: false, articleCount: 0 },
     evening: { lastRun: null as Date | null, isRunning: false, articleCount: 0 }
   });
+  
+  // 새로운 상태들
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewArticle, setPreviewArticle] = useState<NewsArticle | null>(null);
+  const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set());
+  const [showSelectionMode, setShowSelectionMode] = useState(false);
 
   // 뉴스 기사 로드
   useEffect(() => {
@@ -83,7 +92,7 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
           id: '1',
           title: '시니어 건강 관리의 새로운 트렌드',
           url: 'https://example.com/article1',
-          content: '최근 시니어들의 건강 관리에 대한 새로운 트렌드가 나타나고 있습니다. 특히 디지털 헬스케어 기술의 발전으로 원격 건강 모니터링이 활성화되고 있으며, 개인 맞춤형 건강 관리 서비스가 주목받고 있습니다.',
+          content: '최근 시니어들의 건강 관리에 대한 새로운 트렌드가 나타나고 있습니다. 특히 디지털 헬스케어 기술의 발전으로 원격 건강 모니터링이 활성화되고 있으며, 개인 맞춤형 건강 관리 서비스가 주목받고 있습니다. 전문가들은 이러한 기술 발전이 시니어들의 삶의 질 향상에 크게 기여할 것으로 전망하고 있습니다.',
           source: 'BBC News',
           publishedAt: new Date().toISOString(),
           keywords: ['시니어', '건강', '트렌드'],
@@ -97,7 +106,7 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
           id: '2',
           title: '노인 건강을 위한 운동 프로그램',
           url: 'https://example.com/article2',
-          content: '노인들의 건강 증진을 위한 새로운 운동 프로그램이 개발되었습니다. 이 프로그램은 관절 건강과 근력 강화에 중점을 두고 설계되었습니다.',
+          content: '노인들의 건강 증진을 위한 새로운 운동 프로그램이 개발되었습니다. 이 프로그램은 관절 건강과 근력 강화에 중점을 두고 설계되었습니다. 전문가들은 정기적인 운동이 노화 과정을 늦추고 전반적인 건강 상태를 개선하는 데 도움이 된다고 강조합니다.',
           source: 'CNN Health',
           publishedAt: new Date().toISOString(),
           keywords: ['노인', '운동', '건강'],
@@ -111,7 +120,7 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
           id: '3',
           title: '시니어를 위한 영양 관리 가이드',
           url: 'https://example.com/article3',
-          content: '시니어들의 건강한 노후를 위한 영양 관리 가이드가 발표되었습니다. 연령대별 맞춤 영양 섭취가 중요하다고 강조했습니다.',
+          content: '시니어들의 건강한 노후를 위한 영양 관리 가이드가 발표되었습니다. 연령대별 맞춤 영양 섭취가 중요하다고 강조했습니다. 특히 단백질 섭취와 비타민 보충이 시니어 건강에 핵심적인 역할을 한다고 전문가들은 설명합니다.',
           source: 'Health Today',
           publishedAt: new Date().toISOString(),
           keywords: ['시니어', '영양', '관리'],
@@ -125,7 +134,7 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
           id: '4',
           title: '노인 건강검진의 중요성',
           url: 'https://example.com/article4',
-          content: '정기적인 건강검진이 노인들의 건강 관리에 얼마나 중요한지에 대한 연구 결과가 발표되었습니다.',
+          content: '정기적인 건강검진이 노인들의 건강 관리에 얼마나 중요한지에 대한 연구 결과가 발표되었습니다. 조기 발견과 예방이 질병 치료보다 효과적이라는 것이 연구의 핵심 내용입니다.',
           source: 'Medical News',
           publishedAt: new Date().toISOString(),
           keywords: ['노인', '건강검진', '중요성'],
@@ -139,7 +148,7 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
           id: '5',
           title: '시니어 마음 건강 관리법',
           url: 'https://example.com/article5',
-          content: '시니어들의 정신 건강을 위한 다양한 관리법이 소개되었습니다. 사회적 활동과 취미 생활이 중요하다고 강조했습니다.',
+          content: '시니어들의 정신 건강을 위한 다양한 관리법이 소개되었습니다. 사회적 활동과 취미 생활이 중요하다고 강조했습니다. 우울증 예방과 인지 기능 유지를 위한 구체적인 방법들이 제시되었습니다.',
           source: 'Psychology Today',
           publishedAt: new Date().toISOString(),
           keywords: ['시니어', '마음', '건강'],
@@ -153,7 +162,7 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
           id: '6',
           title: '오후 시니어 건강 뉴스',
           url: 'https://example.com/article6',
-          content: '오후 시간대의 시니어 건강 관련 뉴스입니다. 다양한 건강 정보와 팁을 제공합니다.',
+          content: '오후 시간대의 시니어 건강 관련 뉴스입니다. 다양한 건강 정보와 팁을 제공합니다. 전문가들의 조언과 실제 사례를 통해 시니어들이 실천할 수 있는 건강 관리 방법을 소개합니다.',
           source: 'Evening Health',
           publishedAt: new Date().toISOString(),
           keywords: ['시니어', '건강', '오후'],
@@ -231,7 +240,110 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
     }
   };
 
-  // 숏츠 스크립트 생성
+  // 기사 미리보기
+  const handlePreviewArticle = (article: NewsArticle) => {
+    setPreviewArticle(article);
+    setShowPreviewModal(true);
+  };
+
+  // 기사 선택/해제
+  const handleToggleArticleSelection = (articleId: string) => {
+    const newSelected = new Set(selectedArticles);
+    if (newSelected.has(articleId)) {
+      newSelected.delete(articleId);
+    } else {
+      newSelected.add(articleId);
+    }
+    setSelectedArticles(newSelected);
+  };
+
+  // 선택된 기사들로 숏츠 스크립트 초안 생성
+  const handleCreateShortsDrafts = async () => {
+    if (selectedArticles.size === 0) {
+      toast.error('선택된 기사가 없습니다.');
+      return;
+    }
+
+    setGeneratingScript(true);
+    try {
+      const selectedArticleList = newsArticles.filter(article => selectedArticles.has(article.id));
+      
+      for (const article of selectedArticleList) {
+        const response = await fetch('/api/shorts/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            newsArticle: article,
+            targetDuration: '60',
+            style: 'friendly'
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          // 게시판에 숏츠 스크립트 초안 등록
+          await saveShortsDraftToBulletin(article, data);
+        }
+      }
+
+      toast.success(`${selectedArticles.size}개의 숏츠 스크립트 초안이 생성되었습니다!`);
+      setSelectedArticles(new Set());
+      setShowSelectionMode(false);
+    } catch (error) {
+      toast.error('숏츠 스크립트 초안 생성에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setGeneratingScript(false);
+    }
+  };
+
+  // 숏츠 스크립트 초안을 게시판에 저장
+  const saveShortsDraftToBulletin = async (article: NewsArticle, scriptData: any) => {
+    try {
+      const response = await fetch('/api/news/create-shorts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `[숏츠 초안] ${article.keywords.slice(0, 2).join(', ')} - ${article.title}`,
+          content: `## 숏츠 스크립트 초안
+
+**원본 기사**: ${article.title}
+**출처**: ${article.source}
+**키워드**: ${article.keywords.join(', ')}
+
+### 오프닝
+${scriptData.opening}
+
+### 본론
+${scriptData.mainContent}
+
+### 클로징
+${scriptData.closing}
+
+### 제작 정보
+- 재생 시간: ${scriptData.totalDuration}
+- 스타일: 친근한 톤
+- 대상: 시니어 건강 관심층`,
+          bulletinId: 'shorts-drafts', // 숏츠 초안 전용 게시판 ID
+          userId: user?.uid
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('게시판 저장 실패');
+      }
+    } catch (error) {
+      console.error('숏츠 초안 저장 오류:', error);
+      throw error;
+    }
+  };
+
+  // 숏츠 스크립트 생성 (기존 기능)
   const generateShortsScript = async (article: NewsArticle) => {
     if (!user) return;
 
@@ -345,6 +457,61 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
         </button>
       </div>
 
+      {/* 뉴스 기사 선택 안내 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <VideoCameraIcon className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-blue-900">어떤 뉴스를 활용하여 숏츠를 제작하시겠습니까?</h3>
+        </div>
+        <p className="text-blue-700 text-sm">
+          기사를 클릭하여 미리보기 후, 선택 버튼을 눌러 숏츠 스크립트 초안을 생성할 수 있습니다.
+        </p>
+      </div>
+
+      {/* 선택 모드 토글 */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <CheckIcon className="h-5 w-5 text-purple-600" />
+          <span className="text-sm font-medium text-gray-700">선택 모드</span>
+        </div>
+        <button
+          onClick={() => setShowSelectionMode(!showSelectionMode)}
+          className={`px-4 py-2 text-sm rounded-md transition-colors ${
+            showSelectionMode 
+              ? 'bg-purple-600 text-white' 
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          {showSelectionMode ? '선택 모드 종료' : '선택 모드 시작'}
+        </button>
+      </div>
+
+      {/* 선택된 기사들로 숏츠 생성 버튼 */}
+      {showSelectionMode && selectedArticles.size > 0 && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <VideoCameraIcon className="h-5 w-5 text-purple-600" />
+              <span className="text-purple-900 font-medium">
+                {selectedArticles.size}개 기사 선택됨
+              </span>
+            </div>
+            <button
+              onClick={handleCreateShortsDrafts}
+              disabled={generatingScript}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+            >
+              {generatingScript ? (
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              ) : (
+                <SparklesIcon className="h-4 w-4" />
+              )}
+              {generatingScript ? '생성 중...' : '숏츠 초안 생성'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 오전 뉴스 결과 */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -374,7 +541,10 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
                         관련도 {article.relevanceScore}%
                       </span>
                     </div>
-                    <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2">{article.title}</h4>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2 cursor-pointer hover:text-blue-600"
+                        onClick={() => handlePreviewArticle(article)}>
+                      {article.title}
+                    </h4>
                     <p className="text-xs text-gray-600 mb-3 line-clamp-3">{article.summary}</p>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <span>{article.source}</span>
@@ -396,14 +566,34 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
                   ))}
                 </div>
 
-                <button
-                  onClick={() => generateShortsScript(article)}
-                  disabled={generatingScript}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  <VideoCameraIcon className="h-4 w-4" />
-                  {generatingScript ? '생성 중...' : '숏츠 생성'}
-                </button>
+                <div className="flex gap-2">
+                  {showSelectionMode && (
+                    <button
+                      onClick={() => handleToggleArticleSelection(article.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${
+                        selectedArticles.has(article.id)
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {selectedArticles.has(article.id) ? (
+                        <CheckIcon className="h-4 w-4" />
+                      ) : (
+                        <CheckIcon className="h-4 w-4" />
+                      )}
+                      {selectedArticles.has(article.id) ? '선택됨' : '선택'}
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => generateShortsScript(article)}
+                    disabled={generatingScript}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    <VideoCameraIcon className="h-4 w-4" />
+                    {generatingScript ? '생성 중...' : '숏츠 생성'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -439,7 +629,10 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
                         관련도 {article.relevanceScore}%
                       </span>
                     </div>
-                    <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2">{article.title}</h4>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2 cursor-pointer hover:text-green-600"
+                        onClick={() => handlePreviewArticle(article)}>
+                      {article.title}
+                    </h4>
                     <p className="text-xs text-gray-600 mb-3 line-clamp-3">{article.summary}</p>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <span>{article.source}</span>
@@ -461,19 +654,124 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
                   ))}
                 </div>
 
-                <button
-                  onClick={() => generateShortsScript(article)}
-                  disabled={generatingScript}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  <VideoCameraIcon className="h-4 w-4" />
-                  {generatingScript ? '생성 중...' : '숏츠 생성'}
-                </button>
+                <div className="flex gap-2">
+                  {showSelectionMode && (
+                    <button
+                      onClick={() => handleToggleArticleSelection(article.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${
+                        selectedArticles.has(article.id)
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {selectedArticles.has(article.id) ? (
+                        <CheckIcon className="h-4 w-4" />
+                      ) : (
+                        <CheckIcon className="h-4 w-4" />
+                      )}
+                      {selectedArticles.has(article.id) ? '선택됨' : '선택'}
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => generateShortsScript(article)}
+                    disabled={generatingScript}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    <VideoCameraIcon className="h-4 w-4" />
+                    {generatingScript ? '생성 중...' : '숏츠 생성'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* 기사 미리보기 모달 */}
+      {showPreviewModal && previewArticle && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <NewspaperIcon className="h-6 w-6 text-blue-600" />
+                <h3 className="text-lg font-semibold">기사 미리보기</h3>
+              </div>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xl font-bold text-gray-900 mb-2">{previewArticle.title}</h4>
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                  <span>{previewArticle.source}</span>
+                  <span>•</span>
+                  <span>{formatDate(previewArticle.createdAt)}</span>
+                  <span>•</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
+                    관련도 {previewArticle.relevanceScore}%
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-2">요약</h5>
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-gray-700">{previewArticle.summary}</p>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-2">전문 내용</h5>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-gray-700 leading-relaxed">{previewArticle.content}</p>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-2">키워드</h5>
+                <div className="flex flex-wrap gap-2">
+                  {previewArticle.keywords.map((keyword, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                    >
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                뒤로 가기
+              </button>
+              <button
+                onClick={() => {
+                  handleToggleArticleSelection(previewArticle.id);
+                  setShowPreviewModal(false);
+                }}
+                className={`px-4 py-2 rounded-md transition-colors ${
+                  selectedArticles.has(previewArticle.id)
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {selectedArticles.has(previewArticle.id) ? '선택 해제' : '선택하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 숏츠 스크립트 모달 */}
       {showScriptModal && generatedScript && (

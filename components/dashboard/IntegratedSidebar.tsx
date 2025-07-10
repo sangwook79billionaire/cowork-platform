@@ -8,10 +8,12 @@ import {
   XMarkIcon,
   SparklesIcon,
   ClockIcon,
+  NewspaperIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler' | 'automation' | 'auto-summary'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -82,6 +84,22 @@ export function IntegratedSidebar({
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
       borderColor: 'border-indigo-200',
+    },
+    {
+      id: 'automation' as ActiveFeature,
+      name: '자동화',
+      icon: NewspaperIcon,
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-50',
+      borderColor: 'border-teal-200',
+    },
+    {
+      id: 'auto-summary' as ActiveFeature,
+      name: '자동 요약',
+      icon: DocumentTextIcon,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
     },
   ]
 
@@ -188,6 +206,28 @@ export function IntegratedSidebar({
             <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">반복 작업</h3>
             <p className="text-gray-500">자동화된 작업을 관리하세요</p>
+          </div>
+        </div>
+      )}
+
+      {/* 자동화 사이드바 (자동화 선택 시에만 표시) */}
+      {activeFeature === 'automation' && (
+        <div className="flex-1 p-4">
+          <div className="text-center py-8">
+            <NewspaperIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">자동화</h3>
+            <p className="text-gray-500">뉴스 자동화를 관리하세요</p>
+          </div>
+        </div>
+      )}
+
+      {/* 자동 요약 사이드바 (자동 요약 선택 시에만 표시) */}
+      {activeFeature === 'auto-summary' && (
+        <div className="flex-1 p-4">
+          <div className="text-center py-8">
+            <DocumentTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">자동 요약</h3>
+            <p className="text-gray-500">뉴스 요약 및 쇼츠 스크립트를 생성하세요</p>
           </div>
         </div>
       )}

@@ -32,9 +32,10 @@ import GeminiWriter from './GeminiWriter'
 import Scheduler from './Scheduler'
 
 import AutomationManager from './AutomationManager'
+import AutoSummaryManager from './AutoSummaryManager'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler' | 'automation'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler' | 'automation' | 'auto-summary'
 
 export function Dashboard() {
   const { user, userProfile } = useAuth()
@@ -337,6 +338,11 @@ export function Dashboard() {
               {activeFeature === 'automation' && (
                 <div className="p-4 md:p-6">
                   <AutomationManager isMobile={isMobile} />
+                </div>
+              )}
+              {activeFeature === 'auto-summary' && (
+                <div className="p-4 md:p-6">
+                  <AutoSummaryManager isMobile={isMobile} />
                 </div>
               )}
             </div>

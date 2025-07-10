@@ -100,7 +100,7 @@ async function searchNews(query: string, sources: string[] = []): Promise<any[]>
   if (!newsApiKey) {
     console.warn('NEWS_API_KEY가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
     // 모의 데이터 반환
-    return getMockArticles(query);
+    return getMockArticles(query, sources);
   }
 
   try {
@@ -143,12 +143,12 @@ async function searchNews(query: string, sources: string[] = []): Promise<any[]>
   } catch (error) {
     console.error('뉴스 API 호출 오류:', error);
     // 오류 발생 시 모의 데이터 반환
-    return getMockArticles(query);
+    return getMockArticles(query, sources);
   }
 }
 
 // 모의 데이터 함수
-function getMockArticles(query: string): any[] {
+function getMockArticles(query: string, sources: string[] = []): any[] {
   const mockArticles = [
     {
       title: '시니어 건강 관리의 새로운 트렌드',

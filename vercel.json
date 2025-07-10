@@ -6,20 +6,12 @@
   "devCommand": "npm run dev",
   "crons": [
     {
-      "path": "/api/cron/news-daily?timeSlot=morning&userId=system",
+      "path": "/api/cron/news-daily?timeSlot=morning&userId=system&includeAutoSummary=true",
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/news-daily?timeSlot=evening&userId=system",
+      "path": "/api/cron/news-daily?timeSlot=evening&userId=system&includeAutoSummary=true",
       "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/auto-summary?timeSlot=morning&userId=system",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/auto-summary?timeSlot=evening&userId=system",
-      "schedule": "0 18 * * *"
     }
   ]
 } 

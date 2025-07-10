@@ -21,6 +21,8 @@ import {
   FlagIcon,
 } from '@heroicons/react/24/outline'
 import { useRef } from 'react'
+import { WeekView } from './WeekView'
+import { DayView } from './DayView'
 
 interface CalendarProps {
   selectedDate?: Date
@@ -1196,6 +1198,67 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                   })}
                 </div>
               </div>
+            )}
+
+            {/* 주별 캘린더 뷰 */}
+            {calendarView === 'week' && (
+              <WeekView
+                currentDate={currentDate}
+                events={events}
+                todos={todos}
+                onDateSelect={(date) => {
+                  setCurrentDate(date)
+                  setCalendarView('day')
+                }}
+                onCreateEvent={handleCreateEventWithDate}
+                onCreateTodo={handleCreateTodo}
+                onEventClick={handleEventClick}
+                onTodoClick={handleTodoClick}
+                onEventDragStart={handleEventDragStart}
+                onTodoDragStart={handleTodoDragStart}
+                onDateDrop={handleDateDrop}
+                onDateDragOver={handleDateDragOver}
+                onPreviousWeek={() => {
+                  const newDate = new Date(currentDate)
+                  newDate.setDate(newDate.getDate() - 7)
+                  setCurrentDate(newDate)
+                }}
+                onNextWeek={() => {
+                  const newDate = new Date(currentDate)
+                  newDate.setDate(newDate.getDate() + 7)
+                  setCurrentDate(newDate)
+                }}
+                isMobile={isMobile}
+              />
+            )}
+
+            {/* 일별 캘린더 뷰 */}
+            {calendarView === 'day' && (
+              <DayView
+                currentDate={currentDate}
+                events={events}
+                todos={todos}
+                onDateSelect={(date) => setCurrentDate(date)}
+                onCreateEvent={handleCreateEventWithDate}
+                onCreateTodo={handleCreateTodo}
+                onEventClick={handleEventClick}
+                onTodoClick={handleTodoClick}
+                onEventDragStart={handleEventDragStart}
+                onTodoDragStart={handleTodoDragStart}
+                onDateDrop={handleDateDrop}
+                onDateDragOver={handleDateDragOver}
+                onPreviousDay={() => {
+                  const newDate = new Date(currentDate)
+                  newDate.setDate(newDate.getDate() - 1)
+                  setCurrentDate(newDate)
+                }}
+                onNextDay={() => {
+                  const newDate = new Date(currentDate)
+                  newDate.setDate(newDate.getDate() + 1)
+                  setCurrentDate(newDate)
+                }}
+                isMobile={isMobile}
+              />
             )}
 
             {/* 주별 뷰 */}

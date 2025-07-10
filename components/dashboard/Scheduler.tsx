@@ -16,7 +16,9 @@ import {
   PlusIcon,
   CheckCircleIcon,
   XCircleIcon,
-  EyeIcon
+  EyeIcon,
+  CloudArrowDownIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 interface SchedulerProps {
@@ -29,8 +31,13 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showExecutionModal, setShowExecutionModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [selectedExecution, setSelectedExecution] = useState<TaskExecution | null>(null);
   const [loading, setLoading] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importDescription, setImportDescription] = useState('');
+  const [importedTasks, setImportedTasks] = useState<any[]>([]);
+  const [importSuggestions, setImportSuggestions] = useState<string[]>([]);
 
   // 새 작업 폼 상태
   const [newTask, setNewTask] = useState({
@@ -83,6 +90,12 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
   // 실행 기록 로드
   useEffect(() => {
     if (!user) return;
+
+    // tasks가 비어있으면 실행 기록을 가져오지 않음
+    if (tasks.length === 0) {
+      setExecutions([]);
+      return;
+    }
 
     const executionsQuery = query(
       collection(db, 'taskExecutions'),
@@ -204,6 +217,89 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
     setShowExecutionModal(true);
   };
 
+  // Gemini AI를 사용한 작업 가져오기
+  const handleImportTasks = async () => {
+    if (!user || !importDescription.trim()) {
+      toast.error('설명을 입력해주세요.');
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const response = await fetch('/api/gemini/import-tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userDescription: importDescription,
+          existingTasks: tasks
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || '작업 가져오기에 실패했습니다.');
+      }
+
+      setImportedTasks(data.tasks || []);
+      setImportSuggestions(data.suggestions || []);
+      toast.success('AI가 작업 설정을 분석했습니다!');
+    } catch (error) {
+      toast.error('작업 가져오기에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  // 가져온 작업을 실제로 생성
+  const handleCreateImportedTask = async (importedTask: any) => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const schedule = {
+        type: importedTask.schedule.type,
+        time: importedTask.schedule.time,
+        daysOfWeek: importedTask.schedule.type === 'weekly' ? importedTask.schedule.daysOfWeek : undefined,
+        dayOfMonth: importedTask.schedule.type === 'monthly' ? importedTask.schedule.dayOfMonth : undefined
+      };
+
+      const taskData = {
+        title: importedTask.title,
+        description: importedTask.description,
+        topic: importedTask.topic,
+        style: importedTask.style,
+        length: importedTask.length,
+        schedule,
+        targetBulletinId: importedTask.targetBulletinId || null,
+        isActive: true,
+        nextRun: calculateNextRun({
+          ...importedTask,
+          schedule,
+          nextRun: new Date(),
+          id: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: user.uid
+        } as ScheduledTask),
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'scheduledTasks'), taskData);
+      toast.success('작업이 생성되었습니다!');
+    } catch (error) {
+      console.error('Imported task creation failed:', error);
+      toast.error('작업 생성에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('ko-KR', {
       year: 'numeric',
@@ -229,13 +325,22 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
           <ClockIcon className="h-6 w-6 text-purple-600" />
           <h2 className="text-xl font-semibold text-gray-900">반복 작업 관리</h2>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-        >
-          <PlusIcon className="h-5 w-5" />
-          새 작업 생성
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            <CloudArrowDownIcon className="h-5 w-5" />
+            AI 작업 가져오기
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+          >
+            <PlusIcon className="h-5 w-5" />
+            새 작업 생성
+          </button>
+        </div>
       </div>
 
       {/* 작업 목록 */}
@@ -538,6 +643,124 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
               >
                 {loading ? '생성 중...' : '생성'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI 작업 가져오기 모달 */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-2 mb-4">
+              <SparklesIcon className="h-6 w-6 text-green-600" />
+              <h3 className="text-lg font-semibold">AI 작업 가져오기</h3>
+            </div>
+            
+            <div className="space-y-6">
+              {/* 설명 입력 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  원하는 반복 작업을 설명해주세요
+                </label>
+                <textarea
+                  value={importDescription}
+                  onChange={(e) => setImportDescription(e.target.value)}
+                  placeholder="예: 매주 월요일 오전 9시에 주간 업무 요약 글을 생성하고, 매일 저녁 6시에 일일 회고 글을 작성해주세요."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 h-32"
+                />
+              </div>
+
+              {/* AI 분석 버튼 */}
+              <div className="flex justify-center">
+                <button
+                  onClick={handleImportTasks}
+                  disabled={importLoading || !importDescription.trim()}
+                  className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                  <SparklesIcon className="h-5 w-5" />
+                  {importLoading ? 'AI 분석 중...' : 'AI로 작업 분석하기'}
+                </button>
+              </div>
+
+              {/* 분석 결과 */}
+              {importedTasks.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="text-md font-semibold text-gray-900">AI가 제안한 작업들</h4>
+                  
+                  {importedTasks.map((task, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h5 className="font-semibold text-gray-900">{task.title}</h5>
+                          <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                        </div>
+                        <button
+                          onClick={() => handleCreateImportedTask(task)}
+                          disabled={loading}
+                          className="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {loading ? '생성 중...' : '생성'}
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">주제:</span>
+                          <span className="ml-2 text-gray-600">{task.topic}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">스타일:</span>
+                          <span className="ml-2 text-gray-600">{task.style}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">길이:</span>
+                          <span className="ml-2 text-gray-600">{task.length}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">반복:</span>
+                          <span className="ml-2 text-gray-600">
+                            {task.schedule.type === 'daily' && '매일'}
+                            {task.schedule.type === 'weekly' && '매주'}
+                            {task.schedule.type === 'monthly' && '매월'} {task.schedule.time}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 추가 제안 */}
+              {importSuggestions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-md font-semibold text-gray-900">추가 제안</h4>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <ul className="space-y-1 text-sm text-blue-800">
+                      {importSuggestions.map((suggestion, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-blue-600">•</span>
+                          <span>{suggestion}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportDescription('');
+                  setImportedTasks([]);
+                  setImportSuggestions([]);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                닫기
               </button>
             </div>
           </div>

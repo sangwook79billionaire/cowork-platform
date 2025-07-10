@@ -1,5 +1,4 @@
 import { ScheduledTask, TaskExecution } from '@/types/schedule';
-import { generatePost } from './gemini';
 import { addDoc, collection, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -63,8 +62,26 @@ export function getTasksToExecute(tasks: ScheduledTask[]): ScheduledTask[] {
 // 작업 실행
 export async function executeTask(task: ScheduledTask): Promise<TaskExecution> {
   try {
-    // Gemini API로 글 생성
-    const content = await generatePost(task.topic, task.style, task.length);
+    // Gemini API로 글 생성 (API 라우트를 통해 호출)
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'generate',
+        topic: task.topic,
+        style: task.style,
+        length: task.length,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('글 생성에 실패했습니다.');
+    }
+
+    const data = await response.json();
+    const content = data.result;
     
     // 실행 기록 생성
     const execution: Omit<TaskExecution, 'id'> = {

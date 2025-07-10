@@ -94,6 +94,7 @@ export function IntegratedSidebar({
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title="사이드바 닫기"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -121,6 +122,7 @@ export function IntegratedSidebar({
                     ? `${feature.bgColor} ${feature.color} border ${feature.borderColor}` 
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
+                title={`${feature.name} 메뉴`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{feature.name}</span>

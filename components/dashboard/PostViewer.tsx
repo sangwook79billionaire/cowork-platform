@@ -389,6 +389,7 @@ export function PostViewer({ postId, bulletinId, onEditPost, onBackToList, isMob
                   ? 'text-red-500 bg-red-50'
                   : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
               }`}
+              title={isLiked ? "좋아요 취소" : "좋아요"}
             >
               <HeartIcon className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
               <span className="text-sm">{post.likeCount}</span>

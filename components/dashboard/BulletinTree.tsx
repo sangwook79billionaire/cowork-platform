@@ -125,6 +125,7 @@ function SortableBulletinItem({
                 onToggleExpansion()
               }}
               className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+              title={isExpanded ? "게시판 접기" : "게시판 펼치기"}
             >
               {isExpanded ? (
                 <ChevronDownIcon className="w-3 h-3" />

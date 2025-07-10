@@ -1,20 +1,20 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Gemini API 키 확인
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
+// Gemini AI 인스턴스 생성 함수
+function getGeminiModel() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
+  }
+  
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 }
-
-// Gemini AI 인스턴스 생성
-export const genAI = new GoogleGenerativeAI(apiKey);
-
-// 텍스트 생성 모델
-export const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // 글 생성 함수
 export async function generatePost(topic: string, style: string = '일반적인', length: string = '중간') {
   try {
+    const textModel = getGeminiModel();
     const prompt = `
 다음 주제에 대해 ${style}한 스타일로 ${length} 길이의 글을 작성해주세요.
 
@@ -41,6 +41,7 @@ export async function generatePost(topic: string, style: string = '일반적인'
 // 글 요약 함수
 export async function summarizeText(text: string) {
   try {
+    const textModel = getGeminiModel();
     const prompt = `
 다음 글을 간결하게 요약해주세요:
 
@@ -64,6 +65,7 @@ ${text}
 // 글 개선 함수
 export async function improveText(text: string, improvementType: '문법' | '스타일' | '가독성' = '가독성') {
   try {
+    const textModel = getGeminiModel();
     const prompt = `
 다음 글의 ${improvementType}을 개선해주세요:
 
@@ -88,6 +90,7 @@ ${text}
 // 키워드 추출 함수
 export async function extractKeywords(text: string, count: number = 5) {
   try {
+    const textModel = getGeminiModel();
     const prompt = `
 다음 글에서 가장 중요한 키워드 ${count}개를 추출해주세요:
 
@@ -101,7 +104,7 @@ ${text}
 
     const result = await textModel.generateContent(prompt);
     const response = await result.response;
-    return response.text().split(',').map(keyword => keyword.trim());
+    return response.text().split(',').map((keyword: string) => keyword.trim());
   } catch (error) {
     console.error('키워드 추출 중 오류 발생:', error);
     throw new Error('키워드 추출에 실패했습니다.');

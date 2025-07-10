@@ -17,6 +17,7 @@ Notion을 벤치마킹한 소규모 웹 기반 협업 툴입니다.
   - **Firebase Storage** - 파일 스토리지
   - **Firebase Security Rules** - 보안 규칙
 - **Google Gemini AI** - AI 글쓰기 및 텍스트 처리
+- **NewsAPI.org** - 뉴스 검색 및 수집
 
 ### Deployment
 - **Vercel** - 프론트엔드 및 서버리스 함수 호스팅
@@ -29,7 +30,11 @@ cowork-platform/
 ├── app/                    # Next.js App Router
 │   ├── globals.css        # 전역 스타일
 │   ├── layout.tsx         # 루트 레이아웃
-│   └── page.tsx           # 메인 페이지
+│   ├── page.tsx           # 메인 페이지
+│   └── api/               # API 라우트
+│       ├── news/          # 뉴스 검색 API
+│       ├── shorts/        # 숏츠 스크립트 생성 API
+│       └── automation/    # 자동화 API
 ├── components/            # React 컴포넌트
 │   ├── auth/             # 인증 관련 컴포넌트
 │   ├── dashboard/        # 대시보드 컴포넌트
@@ -69,6 +74,8 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 GEMINI_API_KEY=your_gemini_api_key
+NEWS_API_KEY=your_news_api_key
+```
 
 2. Firebase 프로젝트 설정에서 웹 앱 추가 후 설정 정보 복사
 
@@ -93,6 +100,12 @@ service cloud.firestore {
     
     // 파일
     match /files/{fileId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // 뉴스 기사
+    match /newsArticles/{articleId} {
       allow read, write: if request.auth != null && 
         resource.data.userId == request.auth.uid;
     }
@@ -121,7 +134,12 @@ service firebase.storage {
 1. [Google AI Studio](https://makersuite.google.com/app/apikey)에서 API 키 생성
 2. `.env.local` 파일에 `GEMINI_API_KEY` 추가
 
-### 7. 개발 서버 실행
+### 7. NewsAPI 설정
+
+1. [NewsAPI.org](https://newsapi.org)에서 API 키 생성
+2. `.env.local` 파일에 `NEWS_API_KEY` 추가
+
+### 8. 개발 서버 실행
 
 ```bash
 npm run dev
@@ -147,6 +165,33 @@ AI 기능을 통해 다음과 같은 작업을 수행할 수 있습니다:
 2. 주제, 스타일, 길이를 설정하고 "글 생성하기" 클릭
 3. 생성된 글을 편집하거나 개선 기능 사용
 4. "게시판 저장" 버튼으로 바로 게시판에 저장
+
+## 🔄 자동화 기능
+
+### 뉴스 자동화 시스템
+
+매일 정해진 시간에 자동으로 뉴스를 수집하고 요약하는 기능:
+
+- **오전 뉴스 자동화**: 매일 오전 8시에 '시니어', '건강' 관련 뉴스 검색 및 요약
+- **오후 뉴스 자동화**: 매일 오후 7시에 '시니어 운동', '시니어 영양' 관련 뉴스 검색 및 요약
+- **키워드 추출**: 각 기사에서 핵심 키워드를 자동으로 추출
+- **Firestore 저장**: 수집된 뉴스를 데이터베이스에 자동 저장
+
+### 숏츠 스크립트 생성
+
+수집된 뉴스 기사를 바탕으로 숏츠 영상 스크립트를 자동 생성:
+
+- **50대 여성 친근한 어투**: 자연스럽고 친근한 톤으로 스크립트 작성
+- **구조화된 스크립트**: 오프닝(흥미 유발) - 본론(핵심 정보) - 클로징(행동 유도) 구조
+- **매체 인용**: 출처 매체명을 명확히 인용
+- **60초 분량**: 약 60초 재생 시간에 맞춘 스크립트
+
+### 사용 방법
+
+1. 좌측 사이드바에서 "자동화" 탭 선택
+2. "오전 뉴스 자동화" 또는 "오후 뉴스 자동화" 버튼 클릭
+3. 수집된 뉴스 기사 목록에서 "숏츠 생성" 버튼 클릭
+4. 생성된 스크립트를 모달에서 확인
 
 ## 📊 데이터 구조
 
@@ -189,6 +234,25 @@ AI 기능을 통해 다음과 같은 작업을 수행할 수 있습니다:
 }
 ```
 
+### NewsArticles 컬렉션
+```javascript
+{
+  id: "article_id",
+  title: "뉴스 제목",
+  url: "https://...",
+  content: "뉴스 내용",
+  source: "BBC News",
+  publishedAt: "2024-01-01T00:00:00Z",
+  keywords: ["시니어", "건강", "트렌드"],
+  summary: "요약된 내용",
+  category: "morning",
+  timeSlot: "morning",
+  userId: "user_uid",
+  createdAt: Timestamp,
+  processedAt: Timestamp
+}
+```
+
 ## 🔧 배포
 
 ### Vercel 배포
@@ -198,10 +262,8 @@ AI 기능을 통해 다음과 같은 작업을 수행할 수 있습니다:
    - `NEXT_PUBLIC_FIREBASE_API_KEY`
    - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
    - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-   - `NEXT_PUBLIC_FIREBASE_APP_ID`
-3. 자동 배포 설정 (main 브랜치 푸시 시)
+   - `GEMINI_API_KEY`
+   - `NEWS_API_KEY`
 
 ### CI/CD 파이프라인
 

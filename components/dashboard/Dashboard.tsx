@@ -15,6 +15,7 @@ import {
   CheckCircleIcon,
   SparklesIcon,
   ClockIcon,
+  NewspaperIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { BulletinBoard } from './BulletinBoard'
@@ -30,8 +31,10 @@ import { BulletinCreateModal } from './BulletinCreateModal'
 import GeminiWriter from './GeminiWriter'
 import Scheduler from './Scheduler'
 
+import AutomationManager from './AutomationManager'
+
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler'
+type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler' | 'automation'
 
 export function Dashboard() {
   const { user, userProfile } = useAuth()
@@ -198,16 +201,17 @@ export function Dashboard() {
           <div className="flex items-center space-x-3 md:space-x-6">
             {/* 모바일 햄버거 메뉴 */}
             {isMobile && (
-              <button
-                onClick={toggleSidebar}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                {showSidebar ? (
-                  <XMarkIcon className="w-6 h-6" />
-                ) : (
-                  <Bars3Icon className="w-6 h-6" />
-                )}
-              </button>
+                          <button
+              onClick={toggleSidebar}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title={showSidebar ? "사이드바 닫기" : "사이드바 열기"}
+            >
+              {showSidebar ? (
+                <XMarkIcon className="w-6 h-6" />
+              ) : (
+                <Bars3Icon className="w-6 h-6" />
+              )}
+            </button>
             )}
             
             <h1 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center">
@@ -221,6 +225,7 @@ export function Dashboard() {
             <button
               onClick={() => setShowNotificationCenter(true)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
+              title="알림 센터"
             >
               <BellIcon className="w-5 h-5" />
               {/* 알림 표시기 */}
@@ -239,6 +244,7 @@ export function Dashboard() {
             <button
               onClick={handleSignOut}
               className="btn-secondary text-sm px-3 py-1 md:px-4 md:py-2"
+              title="로그아웃"
             >
               <span className="hidden sm:inline">로그아웃</span>
               <span className="sm:hidden">로그아웃</span>
@@ -327,6 +333,12 @@ export function Dashboard() {
                   <Scheduler isMobile={isMobile} />
                 </div>
               )}
+
+              {activeFeature === 'automation' && (
+                <div className="p-4 md:p-6">
+                  <AutomationManager isMobile={isMobile} />
+                </div>
+              )}
             </div>
           </>
         )}
@@ -400,6 +412,8 @@ export function Dashboard() {
               { id: 'todo', name: '할 일', icon: CheckCircleIcon },
               { id: 'ai', name: 'AI', icon: SparklesIcon },
               { id: 'scheduler', name: '반복', icon: ClockIcon },
+              { id: 'google', name: 'Google', icon: UserIcon },
+              { id: 'automation', name: '자동화', icon: NewspaperIcon },
             ].map((feature) => {
               const Icon = feature.icon
               const isActive = activeFeature === feature.id

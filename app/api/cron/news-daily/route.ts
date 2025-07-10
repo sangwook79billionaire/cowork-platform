@@ -181,10 +181,8 @@ function getMockArticles(query: string): any[] {
 async function runAutoSummary(timeSlot: string, userId: string) {
   // 기본 키워드 설정
   const defaultKeywords = [
-    '노인 우울증',
-    '근감소증', 
-    '눈 건강 루테인',
-    '관절염 예방 습관'
+    '노인 건강',
+    '시니어 건강'
   ];
 
   const allResults: any[] = [];

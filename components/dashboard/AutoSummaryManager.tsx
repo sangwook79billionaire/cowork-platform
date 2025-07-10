@@ -23,6 +23,13 @@ interface AutoSummaryResult {
   summary: string;
   shortsScript: string;
   keyword: string;
+  relevanceScore?: number;
+}
+
+interface ShortsContent {
+  shortsScript: string;
+  seoTitle: string;
+  videoDescription: string;
 }
 
 interface AutoSummaryManagerProps {
@@ -31,12 +38,15 @@ interface AutoSummaryManagerProps {
 
 export default function AutoSummaryManager({ isMobile = false }: AutoSummaryManagerProps) {
   const { user } = useAuth();
-  const [keywords, setKeywords] = useState<string[]>(['노인 우울증', '근감소증', '눈 건강 루테인', '관절염 예방 습관']);
+  const [keywords, setKeywords] = useState<string[]>(['노인 건강', '시니어 건강']);
   const [newKeyword, setNewKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<AutoSummaryResult[]>([]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<'morning' | 'evening'>('morning');
   const [showResults, setShowResults] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<AutoSummaryResult | null>(null);
+  const [shortsContent, setShortsContent] = useState<ShortsContent | null>(null);
+  const [creatingShorts, setCreatingShorts] = useState(false);
 
   // 키워드 추가
   const addKeyword = () => {
@@ -97,6 +107,47 @@ export default function AutoSummaryManager({ isMobile = false }: AutoSummaryMana
     }
   };
 
+  // 숏츠 생성
+  const createShorts = async (article: AutoSummaryResult) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setCreatingShorts(true);
+    try {
+      const response = await fetch('/api/news/create-shorts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          articleId: article.url, // URL을 ID로 사용
+          articleTitle: article.title,
+          articleContent: article.content,
+          articleSummary: article.summary,
+          keyword: article.keyword,
+          userId: user.uid
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setShortsContent(data);
+        setSelectedArticle(article);
+        toast.success('숏츠 콘텐츠가 생성되었습니다!');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      toast.error('숏츠 생성에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setCreatingShorts(false);
+    }
+  };
+
   // 텍스트 파일 다운로드
   const downloadResults = () => {
     if (results.length === 0) return;
@@ -110,7 +161,6 @@ export default function AutoSummaryManager({ isMobile = false }: AutoSummaryMana
       content += `출처: ${result.source}\n`;
       content += `URL: ${result.url}\n\n`;
       content += `[요약]\n${result.summary}\n\n`;
-      content += `[쇼츠 스크립트]\n${result.shortsScript}\n\n`;
       content += '='.repeat(50) + '\n\n';
     });
 
@@ -262,51 +312,139 @@ export default function AutoSummaryManager({ isMobile = false }: AutoSummaryMana
             {results.map((result, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">
-                      {result.keyword}
-                    </h4>
-                    <p className="text-sm text-gray-600">{result.title}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-gray-900">
+                        {result.keyword}
+                      </h4>
+                      {result.relevanceScore && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                          연관성: {result.relevanceScore}점
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">{result.title}</p>
                     <p className="text-xs text-gray-500">
                       {result.source} • {new Date(result.publishedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <a
-                    href={result.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm"
-                    title="원문 보기"
-                  >
-                    원문 →
-                  </a>
+                  <div className="flex gap-2">
+                    <a
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                      title="원문 보기"
+                    >
+                      원문 →
+                    </a>
+                    <button
+                      onClick={() => createShorts(result)}
+                      disabled={creatingShorts}
+                      className="text-green-600 hover:text-green-800 text-sm disabled:opacity-50"
+                      title="숏츠 생성"
+                    >
+                      {creatingShorts ? '생성 중...' : '숏츠 생성'}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* 요약 */}
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
-                      <DocumentTextIcon className="w-4 h-4" />
-                      요약
-                    </h5>
-                    <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-700">
-                      {result.summary}
-                    </div>
-                  </div>
-
-                  {/* 쇼츠 스크립트 */}
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
-                      <PlayIcon className="w-4 h-4" />
-                      쇼츠 스크립트
-                    </h5>
-                    <div className="bg-blue-50 rounded-md p-3 text-sm text-gray-700 whitespace-pre-line">
-                      {result.shortsScript}
-                    </div>
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <DocumentTextIcon className="w-4 h-4" />
+                    주요 내용
+                  </h5>
+                  <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-700">
+                    {result.summary}
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 숏츠 콘텐츠 표시 */}
+      {shortsContent && selectedArticle && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">숏츠 콘텐츠</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <PlayIcon className="w-4 h-4" />
+              {selectedArticle.keyword}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* SEO 최적화된 제목 */}
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
+                <DocumentTextIcon className="w-4 h-4" />
+                SEO 최적화된 제목
+              </h5>
+              <div className="bg-yellow-50 rounded-md p-3 text-sm text-gray-700 border border-yellow-200">
+                {shortsContent.seoTitle}
+              </div>
+            </div>
+
+            {/* 숏츠 스크립트 */}
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
+                <PlayIcon className="w-4 h-4" />
+                숏츠 스크립트
+              </h5>
+              <div className="bg-blue-50 rounded-md p-3 text-sm text-gray-700 whitespace-pre-line border border-blue-200">
+                {shortsContent.shortsScript}
+              </div>
+            </div>
+
+            {/* 영상 설명 */}
+            <div>
+              <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
+                <DocumentTextIcon className="w-4 h-4" />
+                영상 설명
+              </h5>
+              <div className="bg-green-50 rounded-md p-3 text-sm text-gray-700 whitespace-pre-line border border-green-200">
+                {shortsContent.videoDescription}
+              </div>
+            </div>
+
+            {/* 복사 버튼들 */}
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shortsContent.seoTitle);
+                  toast.success('제목이 복사되었습니다!');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+                title="제목 복사"
+              >
+                <DocumentTextIcon className="w-4 h-4" />
+                제목 복사
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shortsContent.shortsScript);
+                  toast.success('스크립트가 복사되었습니다!');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                title="스크립트 복사"
+              >
+                <PlayIcon className="w-4 h-4" />
+                스크립트 복사
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shortsContent.videoDescription);
+                  toast.success('영상 설명이 복사되었습니다!');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                title="영상 설명 복사"
+              >
+                <DocumentTextIcon className="w-4 h-4" />
+                영상 설명 복사
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -321,7 +459,8 @@ export default function AutoSummaryManager({ isMobile = false }: AutoSummaryMana
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>• 키워드를 추가하고 실행 시간대를 선택하세요</li>
                 <li>• "자동 요약 실행" 버튼을 클릭하면 뉴스를 검색하고 요약합니다</li>
-                <li>• 각 키워드별로 최신 기사 1개를 요약하고 쇼츠 스크립트를 생성합니다</li>
+                <li>• 각 키워드별로 연관성 높은 기사 5개를 선별하여 요약합니다</li>
+                <li>• 원하는 기사를 선택하여 숏츠 스크립트, SEO 제목, 영상 설명을 생성할 수 있습니다</li>
                 <li>• 결과는 Firestore에 저장되며 텍스트 파일로 다운로드할 수 있습니다</li>
               </ul>
             </div>

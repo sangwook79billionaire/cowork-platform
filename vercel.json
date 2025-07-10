@@ -7,11 +7,11 @@
   "crons": [
     {
       "path": "/api/cron/news-daily?timeSlot=morning&userId=system&includeAutoSummary=true",
-      "schedule": "0 8 * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/news-daily?timeSlot=evening&userId=system&includeAutoSummary=true",
-      "schedule": "0 19 * * *"
+      "schedule": "0 18 * * *"
     }
   ]
 } 

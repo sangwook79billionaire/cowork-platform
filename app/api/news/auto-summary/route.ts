@@ -37,35 +37,28 @@ export async function POST(request: NextRequest) {
     // 각 키워드별로 뉴스 검색 및 처리
     for (const keyword of keywords) {
       try {
-        // 뉴스 검색
-        const articles = await searchNews(keyword);
+        // 뉴스 검색 (최대 10개 기사)
+        const articles = await searchNews(keyword, 10);
         
         if (articles.length > 0) {
-          const article = articles[0]; // 첫 번째 기사 사용
+          // 연관성 점수 계산 및 정렬
+          const scoredArticles = await calculateRelevanceScores(articles, keyword);
+          const topArticles = scoredArticles.slice(0, 5); // 상위 5개 선택
           
-          // 기사 요약
-          const summary = await summarizeText(article.content);
-          
-          // 쇼츠 스크립트 생성
-          const shortsScript = await generateShortsScript(summary, keyword);
-          
-          const processedArticle: NewsArticle = {
-            ...article,
-            summary,
-            shortsScript,
-            keyword
-          };
+          // 각 기사 요약
+          for (const article of topArticles) {
+            const summary = await summarizeText(article.content);
+            
+            const processedArticle: NewsArticle = {
+              ...article,
+              summary,
+              shortsScript: '', // 나중에 생성
+              keyword,
+              relevanceScore: article.relevanceScore
+            };
 
-          allResults.push(processedArticle);
-
-          // Firestore에 저장
-          await addDoc(collection(db, 'autoSummaries'), {
-            ...processedArticle,
-            userId,
-            timeSlot,
-            createdAt: serverTimestamp(),
-            processedAt: serverTimestamp()
-          });
+            allResults.push(processedArticle);
+          }
         }
       } catch (error) {
         console.error(`키워드 "${keyword}" 처리 중 오류:`, error);
@@ -88,7 +81,7 @@ export async function POST(request: NextRequest) {
 }
 
 // 뉴스 검색 함수
-async function searchNews(keyword: string): Promise<any[]> {
+async function searchNews(keyword: string, maxResults: number = 10): Promise<any[]> {
   const newsApiKey = process.env.NEWS_API_KEY;
   
   if (!newsApiKey) {
@@ -106,7 +99,7 @@ async function searchNews(keyword: string): Promise<any[]> {
       from: fromDate.toISOString().split('T')[0],
       sortBy: 'publishedAt',
       language: 'ko,en',
-      pageSize: '3', // 최대 3개 기사
+      pageSize: maxResults.toString(),
       apiKey: newsApiKey
     });
 
@@ -134,6 +127,50 @@ async function searchNews(keyword: string): Promise<any[]> {
     console.error('뉴스 API 호출 오류:', error);
     return getMockArticles(keyword);
   }
+}
+
+// 연관성 점수 계산 함수
+async function calculateRelevanceScores(articles: any[], keyword: string): Promise<any[]> {
+  const scoredArticles = articles.map(article => {
+    let score = 0;
+    
+    // 제목에 키워드 포함 여부 (가장 높은 가중치)
+    if (article.title.toLowerCase().includes(keyword.toLowerCase())) {
+      score += 50;
+    }
+    
+    // 내용에 키워드 포함 여부
+    const contentLower = article.content.toLowerCase();
+    const keywordLower = keyword.toLowerCase();
+    const keywordCount = (contentLower.match(new RegExp(keywordLower, 'g')) || []).length;
+    score += keywordCount * 10;
+    
+    // 최신성 점수 (최근 7일 내: 20점, 14일 내: 10점)
+    const publishedDate = new Date(article.publishedAt);
+    const daysDiff = (new Date().getTime() - publishedDate.getTime()) / (1000 * 3600 * 24);
+    if (daysDiff <= 7) score += 20;
+    else if (daysDiff <= 14) score += 10;
+    
+    // 신뢰할 수 있는 소스 점수
+    const trustedSources = ['BBC News', 'The Guardian', 'CNN', 'Reuters', 'Associated Press'];
+    if (trustedSources.some(source => article.source.includes(source))) {
+      score += 15;
+    }
+    
+    // 내용 길이 점수 (적절한 길이: 500-2000자)
+    const contentLength = article.content.length;
+    if (contentLength >= 500 && contentLength <= 2000) {
+      score += 10;
+    }
+    
+    return {
+      ...article,
+      relevanceScore: score
+    };
+  });
+  
+  // 점수순으로 정렬
+  return scoredArticles.sort((a, b) => b.relevanceScore - a.relevanceScore);
 }
 
 // 쇼츠 스크립트 생성 함수

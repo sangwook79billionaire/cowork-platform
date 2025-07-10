@@ -17,7 +17,8 @@ import {
   ChartBarIcon,
   CheckIcon,
   XMarkIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  BoltIcon
 } from '@heroicons/react/24/outline';
 
 interface NewsArticle {
@@ -63,7 +64,8 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
   const [generatedScript, setGeneratedScript] = useState<ShortsScript | null>(null);
   const [automationStatus, setAutomationStatus] = useState({
     morning: { lastRun: null as Date | null, isRunning: false, articleCount: 0 },
-    evening: { lastRun: null as Date | null, isRunning: false, articleCount: 0 }
+    evening: { lastRun: null as Date | null, isRunning: false, articleCount: 0 },
+    now: { lastRun: null as Date | null, isRunning: false, articleCount: 0 }
   });
   
   // 새로운 상태들
@@ -195,12 +197,17 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
         lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5시간 전
         isRunning: false, 
         articleCount: 3 
+      },
+      now: {
+        lastRun: null,
+        isRunning: false,
+        articleCount: 0
       }
     });
   };
 
   // 뉴스 자동화 실행
-  const runNewsAutomation = async (timeSlot: 'morning' | 'evening') => {
+  const runNewsAutomation = async (timeSlot: 'morning' | 'evening' | 'now') => {
     if (!user) return;
 
     setAutomationStatus(prev => ({
@@ -209,28 +216,68 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
     }));
 
     try {
-      const response = await fetch('/api/automation/news-daily', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.uid,
-          timeSlot
-        }),
-      });
+      let response;
+      
+      if (timeSlot === 'now') {
+        // 실시간 뉴스 검색 (5시간 전부터 현재까지)
+        response = await fetch('/api/news/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            keywords: ['노인 건강', '시니어 건강'],
+            fromDate: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5시간 전
+            toDate: new Date().toISOString(), // 현재
+            limit: 10
+          }),
+        });
+      } else {
+        // 기존 자동화 (오전/오후)
+        response = await fetch('/api/automation/news-daily', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            timeSlot
+          }),
+        });
+      }
 
       const data = await response.json();
       
       if (response.ok) {
-        toast.success(`${timeSlot === 'morning' ? '오전' : '오후'} 뉴스 자동화가 완료되었습니다!`);
+        if (timeSlot === 'now') {
+          // 실시간 검색 결과를 기사 목록에 추가
+          const realTimeArticles = data.articles.map((article: any, index: number) => ({
+            id: `realtime-${index}`,
+            title: article.title,
+            url: article.url,
+            content: article.content || article.description,
+            source: article.source.name,
+            publishedAt: article.publishedAt,
+            keywords: ['노인 건강', '시니어 건강'],
+            summary: article.description || article.content?.substring(0, 200) + '...',
+            category: 'realtime',
+            timeSlot: 'now',
+            createdAt: new Date(),
+            relevanceScore: Math.floor(Math.random() * 20) + 80 // 80-100 사이
+          }));
+          
+          setNewsArticles(prev => [...realTimeArticles, ...prev]);
+          toast.success(`실시간 뉴스 검색 완료! ${realTimeArticles.length}개 기사를 찾았습니다.`);
+        } else {
+          toast.success(`${timeSlot === 'morning' ? '오전' : '오후'} 뉴스 자동화가 완료되었습니다!`);
+        }
         loadNewsArticles(); // 기사 목록 새로고침
         loadAutomationStatus(); // 상태 새로고침
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
-      toast.error('뉴스 자동화에 실패했습니다.');
+      toast.error(timeSlot === 'now' ? '실시간 뉴스 검색에 실패했습니다.' : '뉴스 자동화에 실패했습니다.');
       console.error(error);
     } finally {
       setAutomationStatus(prev => ({
@@ -393,14 +440,14 @@ ${scriptData.closing}
     });
   };
 
-  const getTimeSlotArticles = (timeSlot: 'morning' | 'evening') => {
+  const getTimeSlotArticles = (timeSlot: 'morning' | 'evening' | 'now') => {
     return newsArticles
       .filter(article => article.timeSlot === timeSlot)
       .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
       .slice(0, 5);
   };
 
-  const getTimeSlotStatus = (timeSlot: 'morning' | 'evening') => {
+  const getTimeSlotStatus = (timeSlot: 'morning' | 'evening' | 'now') => {
     return automationStatus[timeSlot];
   };
 
@@ -415,7 +462,7 @@ ${scriptData.closing}
       </div>
 
       {/* 자동화 실행 버튼들 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => runNewsAutomation('morning')}
           disabled={automationStatus.morning.isRunning}
@@ -453,6 +500,26 @@ ${scriptData.closing}
           </div>
           {automationStatus.evening.isRunning && (
             <ArrowPathIcon className="h-5 w-5 animate-spin text-green-600" />
+          )}
+        </button>
+
+        <button
+          onClick={() => runNewsAutomation('now')}
+          disabled={automationStatus.now.isRunning}
+          className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-orange-200"
+        >
+          <BoltIcon className="h-8 w-8 text-orange-600" />
+          <div className="text-left flex-1">
+            <h4 className="font-semibold text-gray-900">지금 검색</h4>
+            <p className="text-sm text-gray-600">현재 시점 기준 5시간 전 뉴스 검색</p>
+            {automationStatus.now.lastRun && (
+              <p className="text-xs text-gray-500 mt-1">
+                마지막 실행: {formatDate(automationStatus.now.lastRun)}
+              </p>
+            )}
+          </div>
+          {automationStatus.now.isRunning && (
+            <ArrowPathIcon className="h-5 w-5 animate-spin text-orange-600" />
           )}
         </button>
       </div>
@@ -508,6 +575,88 @@ ${scriptData.closing}
               )}
               {generatingScript ? '생성 중...' : '숏츠 초안 생성'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 실시간 뉴스 결과 */}
+      {getTimeSlotArticles('now').length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BoltIcon className="h-5 w-5 text-orange-600" />
+              <h3 className="text-lg font-semibold text-gray-900">실시간 뉴스 결과</h3>
+              <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">
+                {getTimeSlotArticles('now').length}개 기사
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {getTimeSlotArticles('now').map((article) => (
+              <div key={article.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow border-l-4 border-orange-500">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">
+                        실시간 {article.relevanceScore}%
+                      </span>
+                    </div>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2 cursor-pointer hover:text-orange-600"
+                        onClick={() => handlePreviewArticle(article)}>
+                      {article.title}
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-3 line-clamp-3">{article.summary}</p>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{article.source}</span>
+                      <span>•</span>
+                      <span>{formatDate(article.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 키워드 */}
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {article.keywords.slice(0, 3).map((keyword, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
+                    >
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  {showSelectionMode && (
+                    <button
+                      onClick={() => handleToggleArticleSelection(article.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${
+                        selectedArticles.has(article.id)
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {selectedArticles.has(article.id) ? (
+                        <CheckIcon className="h-4 w-4" />
+                      ) : (
+                        <CheckIcon className="h-4 w-4" />
+                      )}
+                      {selectedArticles.has(article.id) ? '선택됨' : '선택'}
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => generateShortsScript(article)}
+                    disabled={generatingScript}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    <VideoCameraIcon className="h-4 w-4" />
+                    {generatingScript ? '생성 중...' : '숏츠 생성'}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

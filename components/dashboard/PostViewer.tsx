@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, getDisplayName } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { BulletinPost, BulletinComment, Bulletin } from '@/types/firebase'
 import toast from 'react-hot-toast'
@@ -346,7 +346,7 @@ export function PostViewer({ postId, bulletinId, onEditPost, onBackToList, isMob
             <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
               <div className="flex items-center space-x-1">
                 <UserIcon className="w-4 h-4" />
-                <span>{post.authorName}</span>
+                <span>{getDisplayName(post.authorName)}</span>
               </div>
               <div className="flex items-center space-x-1">
                 <CalendarIcon className="w-4 h-4" />
@@ -425,7 +425,7 @@ export function PostViewer({ postId, bulletinId, onEditPost, onBackToList, isMob
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <span className="font-medium text-gray-900">
-                      {comment.authorName}
+                      {getDisplayName(comment.authorName)}
                     </span>
                     <span className="text-xs text-gray-500">
                       {formatDate(comment.createdAt)}

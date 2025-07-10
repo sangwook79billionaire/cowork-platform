@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, addDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
-import { db, getUserNickname } from '@/lib/firebase'
+import { db, getUserNickname, getDisplayName } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { CalendarEvent, TodoItem } from '@/types/firebase'
 import toast from 'react-hot-toast'
@@ -1351,7 +1351,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
 
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">{event.authorName}</span>
+                        <span className="text-xs text-gray-500">{getDisplayName(event.authorName)}</span>
                         <div
                           className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: event.color }}
@@ -1873,7 +1873,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
 
                 <div className="flex items-center space-x-2">
                   <UserGroupIcon className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">작성자: {selectedEventForDetail.authorName}</span>
+                  <span className="text-sm text-gray-600">작성자: {getDisplayName(selectedEventForDetail.authorName)}</span>
                 </div>
 
                 {selectedEventForDetail.reminder && selectedEventForDetail.reminder !== '0' && (
@@ -1975,7 +1975,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
 
                 <div className="flex items-center space-x-2">
                   <UserGroupIcon className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">작성자: {selectedTodoForDetail.authorName}</span>
+                  <span className="text-sm text-gray-600">작성자: {getDisplayName(selectedTodoForDetail.authorName)}</span>
                 </div>
 
                 {selectedTodoForDetail.reminder && selectedTodoForDetail.reminder !== '0' && (

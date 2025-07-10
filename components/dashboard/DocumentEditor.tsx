@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { doc, getDoc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore'
-import { db, getUserNickname } from '@/lib/firebase'
+import { db, getUserNickname, getDisplayName } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Document } from '@/types/firebase'
 import { mockDocuments } from '@/lib/mockData'

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, getDisplayName } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
 import toast from 'react-hot-toast'
@@ -1463,7 +1463,7 @@ export function BulletinBoard({
                               )}
                             </div>
                             <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
-                              <span className="truncate">{post.authorName}</span>
+                              <span className="truncate">{getDisplayName(post.authorName)}</span>
                               <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
                               <div className="flex items-center space-x-1">
                                 <EyeIcon className="w-3 h-3" />

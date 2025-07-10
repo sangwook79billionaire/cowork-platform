@@ -64,4 +64,46 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 export const getUserNickname = async (userId: string): Promise<string> => {
   const profile = await getUserProfile(userId)
   return profile?.nickname || '익명'
+}
+
+// 작성자 표시 이름 생성 함수 (닉네임 우선, 없으면 이메일)
+export const getDisplayName = (authorName: string, userEmail?: string): string => {
+  // authorName이 닉네임인지 확인 (이메일 형식이 아닌 경우)
+  if (authorName && !authorName.includes('@')) {
+    return authorName
+  }
+  
+  // authorName이 이메일이거나 비어있는 경우, userEmail 사용
+  if (userEmail) {
+    return userEmail
+  }
+  
+  // 둘 다 없는 경우
+  return authorName || '익명'
+}
+
+// 작성자 표시 이름 생성 함수 (Firebase User 객체 사용)
+export const getDisplayNameFromUser = (user: any, fallbackName?: string): string => {
+  // 1. 사용자의 displayName이 있고 이메일이 아닌 경우
+  if (user?.displayName && !user.displayName.includes('@')) {
+    return user.displayName
+  }
+  
+  // 2. fallbackName이 있고 이메일이 아닌 경우
+  if (fallbackName && !fallbackName.includes('@')) {
+    return fallbackName
+  }
+  
+  // 3. 사용자의 이메일
+  if (user?.email) {
+    return user.email
+  }
+  
+  // 4. fallbackName이 이메일인 경우
+  if (fallbackName) {
+    return fallbackName
+  }
+  
+  // 5. 기본값
+  return '익명'
 } 

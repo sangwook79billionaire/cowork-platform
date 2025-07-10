@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, getDisplayName } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
 import {
@@ -390,7 +390,7 @@ export function BulletinContent({
                             )}
                           </div>
                           <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
-                            <span>{post.authorName}</span>
+                            <span>{getDisplayName(post.authorName)}</span>
                             <span>{formatDate(post.createdAt)}</span>
                             <div className="flex items-center space-x-1">
                               <EyeIcon className="w-3 h-3" />

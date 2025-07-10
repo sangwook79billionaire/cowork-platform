@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { collection, query, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot } from 'firebase/firestore'
-import { db, getUserNickname } from '@/lib/firebase'
+import { db, getUserNickname, getDisplayName } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { TodoItem, CalendarEvent } from '@/types/firebase'
 import toast from 'react-hot-toast'
@@ -514,7 +514,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                         <span>{formatDate(todo.dueDate)}</span>
                       </div>
                     )}
-                    <span>{todo.authorName}</span>
+                    <span>{getDisplayName(todo.authorName)}</span>
                   </div>
 
                   {todo.tags && todo.tags.length > 0 && (
@@ -750,7 +750,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
 
                 <div className="flex items-center space-x-2">
                   <UserGroupIcon className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">작성자: {selectedTodoForDetail.authorName}</span>
+                  <span className="text-sm text-gray-600">작성자: {getDisplayName(selectedTodoForDetail.authorName)}</span>
                 </div>
 
                 {selectedTodoForDetail.reminder && selectedTodoForDetail.reminder !== '0' && (

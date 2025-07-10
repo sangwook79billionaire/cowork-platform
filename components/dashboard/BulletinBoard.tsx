@@ -1182,7 +1182,7 @@ export function BulletinBoard({
                   type="text"
                   value={newBulletin.title}
                   onChange={(e) => setNewBulletin({ ...newBulletin, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시판 제목을 입력하세요"
                 />
               </div>
@@ -1193,7 +1193,7 @@ export function BulletinBoard({
                 <textarea
                   value={newBulletin.description}
                   onChange={(e) => setNewBulletin({ ...newBulletin, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시판 설명을 입력하세요"
                   rows={3}
                 />
@@ -1205,7 +1205,7 @@ export function BulletinBoard({
                 <select
                   value={newBulletin.parentId}
                   onChange={(e) => setNewBulletin({ ...newBulletin, parentId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                 >
                   <option value="">📁 최상위 게시판</option>
                   {bulletins
@@ -1272,7 +1272,7 @@ export function BulletinBoard({
                   type="text"
                   value={editingBulletin.title}
                   onChange={(e) => setEditingBulletin({ ...editingBulletin, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시판 제목을 입력하세요"
                 />
               </div>
@@ -1283,7 +1283,7 @@ export function BulletinBoard({
                 <textarea
                   value={editingBulletin.description || ''}
                   onChange={(e) => setEditingBulletin({ ...editingBulletin, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시판 설명을 입력하세요"
                   rows={3}
                 />
@@ -1339,7 +1339,7 @@ export function BulletinBoard({
                   type="text"
                   value={editingPost.title}
                   onChange={(e) => setEditingPost({ ...editingPost, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시글 제목을 입력하세요"
                 />
               </div>
@@ -1350,7 +1350,7 @@ export function BulletinBoard({
                 <textarea
                   value={editingPost.content}
                   onChange={(e) => setEditingPost({ ...editingPost, content: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시글 내용을 입력하세요"
                   rows={5}
                 />

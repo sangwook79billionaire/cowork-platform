@@ -28,7 +28,7 @@
   }
   
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900;
   }
 
   /* Prose 스타일 개선 */
@@ -255,6 +255,7 @@ body {
 @media (max-width: 768px) {
   input, textarea, select {
     font-size: 16px; /* iOS에서 줌 방지 */
+    color: #111827; /* text-gray-900 */
   }
   
   .mobile-form-group {

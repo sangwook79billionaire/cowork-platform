@@ -97,7 +97,7 @@ export function AccountSettings({ isOpen, onClose }: AccountSettingsProps) {
                 required
                 value={formData.nickname}
                 onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                 placeholder="닉네임을 입력하세요"
               />
             </div>
@@ -112,7 +112,7 @@ export function AccountSettings({ isOpen, onClose }: AccountSettingsProps) {
               <select
                 value={formData.countryCode}
                 onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
               >
                 {countryCodes.map((country) => (
                   <option key={country.code} value={country.code}>
@@ -133,7 +133,7 @@ export function AccountSettings({ isOpen, onClose }: AccountSettingsProps) {
                 type="tel"
                 value={formData.phoneNumber}
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                 placeholder="휴대전화번호를 입력하세요"
               />
             </div>

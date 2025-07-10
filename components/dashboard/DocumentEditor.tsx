@@ -559,7 +559,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
                   type="text"
                   value={linkText}
                   onChange={(e) => setLinkText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="링크 텍스트"
                 />
               </div>
@@ -571,7 +571,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
                   type="url"
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="https://example.com"
                 />
               </div>
@@ -608,7 +608,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="https://example.com/image.jpg"
                 />
               </div>
@@ -620,7 +620,7 @@ export function DocumentEditor({ documentId, isPostEditor, bulletinId, onBack, o
                   type="text"
                   value={imageAlt}
                   onChange={(e) => setImageAlt(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="이미지 설명"
                 />
               </div>

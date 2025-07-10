@@ -229,7 +229,7 @@ export default function GeminiWriter({ onContentGenerated, initialContent = '', 
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="글의 주제를 입력하세요"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
             />
           </div>
 
@@ -240,7 +240,7 @@ export default function GeminiWriter({ onContentGenerated, initialContent = '', 
             <select
               value={style}
               onChange={(e) => setStyle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
             >
               {styles.map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -255,7 +255,7 @@ export default function GeminiWriter({ onContentGenerated, initialContent = '', 
             <select
               value={length}
               onChange={(e) => setLength(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
             >
               {lengths.map((l) => (
                 <option key={l} value={l}>{l}</option>
@@ -303,7 +303,7 @@ export default function GeminiWriter({ onContentGenerated, initialContent = '', 
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="여기에 내용을 입력하거나 생성된 글을 편집하세요"
-            className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+            className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-gray-900"
           />
 
           <div className="flex flex-wrap gap-2">
@@ -387,7 +387,7 @@ export default function GeminiWriter({ onContentGenerated, initialContent = '', 
                   value={postTitle}
                   onChange={(e) => setPostTitle(e.target.value)}
                   placeholder="글 제목을 입력하세요"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                 />
               </div>
               <div className="flex gap-2 justify-end">

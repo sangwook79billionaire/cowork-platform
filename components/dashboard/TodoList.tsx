@@ -575,7 +575,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                   type="text"
                   value={todoForm.title}
                   onChange={(e) => setTodoForm({ ...todoForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="할 일 제목"
                 />
               </div>
@@ -587,7 +587,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                 <textarea
                   value={todoForm.description}
                   onChange={(e) => setTodoForm({ ...todoForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-gray-900"
                   rows={3}
                   placeholder="할 일 설명"
                 />
@@ -600,7 +600,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                 <select
                   value={todoForm.priority}
                   onChange={(e) => setTodoForm({ ...todoForm, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                 >
                   <option value="low">낮음</option>
                   <option value="medium">보통</option>
@@ -612,37 +612,37 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   마감일
                 </label>
-                <input
-                  type="date"
-                  value={todoForm.dueDate}
-                  onChange={(e) => setTodoForm({ ...todoForm, dueDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+                                  <input
+                    type="date"
+                    value={todoForm.dueDate}
+                    onChange={(e) => setTodoForm({ ...todoForm, dueDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   마감 시간
                 </label>
-                <input
-                  type="time"
-                  value={todoForm.dueTime}
-                  onChange={(e) => setTodoForm({ ...todoForm, dueTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+                                  <input
+                    type="time"
+                    value={todoForm.dueTime}
+                    onChange={(e) => setTodoForm({ ...todoForm, dueTime: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   태그
                 </label>
-                <input
-                  type="text"
-                  value={todoForm.tags}
-                  onChange={(e) => setTodoForm({ ...todoForm, tags: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="태그를 쉼표로 구분하여 입력"
-                />
+                                  <input
+                    type="text"
+                    value={todoForm.tags}
+                    onChange={(e) => setTodoForm({ ...todoForm, tags: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                    placeholder="태그를 쉼표로 구분하여 입력"
+                  />
               </div>
 
               {/* 알림 설정 */}
@@ -650,11 +650,11 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   알림
                 </label>
-                <select
-                  value={todoForm.reminder}
-                  onChange={(e) => setTodoForm({ ...todoForm, reminder: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
+                                  <select
+                    value={todoForm.reminder}
+                    onChange={(e) => setTodoForm({ ...todoForm, reminder: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  >
                   <option value="0">알림 없음</option>
                   <option value="5">5분 전</option>
                   <option value="10">10분 전</option>

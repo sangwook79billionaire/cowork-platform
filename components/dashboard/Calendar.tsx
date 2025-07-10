@@ -1397,7 +1397,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                   type="text"
                   value={eventForm.title}
                   onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="일정 제목"
                 />
               </div>
@@ -1409,7 +1409,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                 <textarea
                   value={eventForm.description}
                   onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-gray-900"
                   rows={3}
                   placeholder="일정 설명"
                 />
@@ -1433,24 +1433,24 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     시작일
                   </label>
-                  <input
-                    type="date"
-                    value={eventForm.startDate}
-                    onChange={(e) => setEventForm({ ...eventForm, startDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                                      <input
+                      type="date"
+                      value={eventForm.startDate}
+                      onChange={(e) => setEventForm({ ...eventForm, startDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                    />
                 </div>
                 {!eventForm.allDay && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       시작 시간
                     </label>
-                    <input
-                      type="time"
-                      value={eventForm.startTime}
-                      onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+                                          <input
+                        type="time"
+                        value={eventForm.startTime}
+                        onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                      />
                   </div>
                 )}
               </div>
@@ -1460,24 +1460,24 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     종료일
                   </label>
-                  <input
-                    type="date"
-                    value={eventForm.endDate}
-                    onChange={(e) => setEventForm({ ...eventForm, endDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                                      <input
+                      type="date"
+                      value={eventForm.endDate}
+                      onChange={(e) => setEventForm({ ...eventForm, endDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                    />
                 </div>
                 {!eventForm.allDay && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       종료 시간
                     </label>
-                    <input
-                      type="time"
-                      value={eventForm.endTime}
-                      onChange={(e) => setEventForm({ ...eventForm, endTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
+                                          <input
+                        type="time"
+                        value={eventForm.endTime}
+                        onChange={(e) => setEventForm({ ...eventForm, endTime: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                      />
                   </div>
                 )}
               </div>
@@ -1491,7 +1491,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                   type="text"
                   value={eventForm.location}
                   onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="위치를 입력하세요"
                 />
               </div>
@@ -1504,7 +1504,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                 <select
                   value={eventForm.reminder}
                   onChange={(e) => setEventForm({ ...eventForm, reminder: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                 >
                   <option value="0">알림 없음</option>
                   <option value="5">5분 전</option>
@@ -1568,7 +1568,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                   type="text"
                   value={todoForm.title}
                   onChange={(e) => setTodoForm({ ...todoForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="할 일 제목"
                 />
               </div>
@@ -1580,7 +1580,7 @@ export function Calendar({ selectedDate, onDateSelect, isMobile = false }: Calen
                 <textarea
                   value={todoForm.description}
                   onChange={(e) => setTodoForm({ ...todoForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-gray-900"
                   rows={3}
                   placeholder="할 일 설명"
                 />

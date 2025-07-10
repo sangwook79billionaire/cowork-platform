@@ -470,7 +470,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                     placeholder="작업 제목을 입력하세요"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                   />
                 </div>
                 
@@ -483,7 +483,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                     value={newTask.topic}
                     onChange={(e) => setNewTask({ ...newTask, topic: e.target.value })}
                     placeholder="AI가 생성할 글의 주제"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                   />
                 </div>
               </div>
@@ -496,7 +496,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   placeholder="작업에 대한 설명 (선택사항)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                   rows={3}
                 />
               </div>
@@ -509,7 +509,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                   <select
                     value={newTask.style}
                     onChange={(e) => setNewTask({ ...newTask, style: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                   >
                     {styles.map((style) => (
                       <option key={style} value={style}>{style}</option>
@@ -524,7 +524,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                   <select
                     value={newTask.length}
                     onChange={(e) => setNewTask({ ...newTask, length: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                   >
                     {lengths.map((length) => (
                       <option key={length} value={length}>{length}</option>
@@ -540,7 +540,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                     type="time"
                     value={newTask.time}
                     onChange={(e) => setNewTask({ ...newTask, time: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                   />
                 </div>
               </div>
@@ -622,7 +622,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                         max="31"
                         value={newTask.dayOfMonth}
                         onChange={(e) => setNewTask({ ...newTask, dayOfMonth: parseInt(e.target.value) })}
-                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
                       />
                     </div>
                   )}
@@ -668,7 +668,7 @@ export default function Scheduler({ isMobile = false }: SchedulerProps) {
                   value={importDescription}
                   onChange={(e) => setImportDescription(e.target.value)}
                   placeholder="예: 매주 월요일 오전 9시에 주간 업무 요약 글을 생성하고, 매일 저녁 6시에 일일 회고 글을 작성해주세요."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 h-32"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 h-32 text-gray-900"
                 />
               </div>
 

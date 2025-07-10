@@ -450,7 +450,7 @@ export function PostViewer({ postId, bulletinId, onEditPost, onBackToList, isMob
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="댓글을 입력하세요..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-gray-900"
                   rows={3}
                 />
                 <div className="flex justify-end mt-2">

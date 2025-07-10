@@ -197,7 +197,25 @@ body {
     font-size: 1.125rem;
     line-height: 1.75rem;
   }
-  
+}
+
+/* 텍스트 줄 제한 유틸리티 */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 모바일에서 텍스트 크기 추가 조정 */
+@media (max-width: 640px) {
   .text-xl {
     font-size: 1.25rem;
     line-height: 1.75rem;

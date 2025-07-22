@@ -103,9 +103,12 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
     const response = await fetch(`https://newsapi.org/v2/everything?${params}`);
     
     console.log('📡 NewsAPI 응답 상태:', response.status);
+    console.log('📡 NewsAPI 응답 헤더:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
-      throw new Error(`NewsAPI 오류: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ NewsAPI 오류 응답:', errorText);
+      throw new Error(`NewsAPI 오류: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -113,10 +116,12 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
     console.log('📊 NewsAPI 응답 데이터:', {
       status: data.status,
       totalResults: data.totalResults,
-      articlesCount: data.articles?.length || 0
+      articlesCount: data.articles?.length || 0,
+      firstArticleTitle: data.articles?.[0]?.title || '없음'
     });
     
     if (data.status === 'error') {
+      console.error('❌ NewsAPI API 오류:', data.message);
       throw new Error(`NewsAPI 오류: ${data.message}`);
     }
 
@@ -143,18 +148,19 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
 
 // 모의 데이터 함수
 function getMockArticles(keywords: string[], fromDate?: string, toDate?: string, limit: number = 10): any[] {
+  console.log('🔄 모의 데이터 생성 중...');
   const mockArticles = [
     {
-      title: '시니어 건강 관리의 새로운 트렌드',
+      title: '[MOCK] 시니어 건강 관리의 새로운 트렌드',
       url: 'https://example.com/article1',
       content: '최근 시니어들의 건강 관리에 대한 새로운 트렌드가 나타나고 있습니다. 특히 디지털 헬스케어 기술의 발전으로 원격 건강 모니터링이 활성화되고 있으며, 개인 맞춤형 건강 관리 서비스가 주목받고 있습니다. 전문가들은 이러한 기술 발전이 시니어들의 삶의 질 향상에 크게 기여할 것으로 전망하고 있습니다.',
       source: {
-        name: 'BBC News'
+        name: 'MOCK News'
       },
       publishedAt: new Date().toISOString()
     },
     {
-      title: '50대 이상을 위한 건강한 라이프스타일',
+      title: '[MOCK] 50대 이상을 위한 건강한 라이프스타일',
       url: 'https://example.com/article2',
       content: '50대 이상의 성인들을 위한 건강한 라이프스타일 가이드가 발표되었습니다. 이 가이드는 신체적, 정신적 건강을 모두 고려한 종합적인 접근법을 제시합니다. 정기적인 운동과 균형 잡힌 식단이 핵심이라고 강조합니다.',
       source: {

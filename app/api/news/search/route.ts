@@ -67,13 +67,13 @@ export async function POST(request: NextRequest) {
 
 // 뉴스 검색 함수 (실제 NewsAPI.org 사용)
 async function searchNews(keywords: string[], fromDate?: string, toDate?: string, limit: number = 10): Promise<any[]> {
-  const newsApiKey = process.env.NEWS_API_KEY;
+  const newsApiKey = process.env.NewsAPI || process.env.NEWS_API_KEY;
   
   console.log('🔍 뉴스 검색 시작:', { keywords, fromDate, toDate, limit });
-  console.log('🔑 NEWS_API_KEY 존재 여부:', !!newsApiKey);
+  console.log('🔑 NewsAPI 키 존재 여부:', !!newsApiKey);
   
   if (!newsApiKey) {
-    console.warn('NEWS_API_KEY가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
+    console.warn('NewsAPI 키가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
     // 모의 데이터 반환
     return getMockArticles(keywords, fromDate, toDate, limit);
   }

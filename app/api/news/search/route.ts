@@ -24,16 +24,18 @@ export async function POST(request: NextRequest) {
     // NewsAPI.org를 사용한 뉴스 검색
     const newsArticles = await searchNews(keywords, fromDate, toDate, language, countries, limit);
     
+    console.log('📊 검색된 기사 수:', newsArticles.length);
+    
     // 각 기사에 대해 요약 및 키워드 추출
     const processedArticles: NewsArticle[] = [];
     
     for (const article of newsArticles) {
       try {
-        // 기사 요약
-        const summary = await summarizeText(article.content);
+        // 기사 요약 (임시로 간단한 요약 사용)
+        const summary = article.content?.substring(0, 200) + '...' || '요약을 사용할 수 없습니다.';
         
-        // 키워드 추출
-        const extractedKeywords = await extractKeywords(article.content, 5);
+        // 키워드 추출 (임시로 검색 키워드 사용)
+        const extractedKeywords = keywords;
         
         processedArticles.push({
           ...article,
@@ -76,7 +78,9 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
   if (!newsApiKey) {
     console.warn('NewsAPI 키가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
     // 모의 데이터 반환
-    return getMockArticles(keywords, fromDate, toDate, limit);
+    const mockArticles = getMockArticles(keywords, fromDate, toDate, limit);
+    console.log('📝 모의 데이터 반환:', mockArticles.length, '개 기사');
+    return mockArticles;
   }
 
   try {
@@ -150,7 +154,9 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
     });
     // 오류 발생 시 모의 데이터 반환
     console.log('🔄 모의 데이터로 대체');
-    return getMockArticles(keywords, fromDate, toDate, limit);
+    const mockArticles = getMockArticles(keywords, fromDate, toDate, limit);
+    console.log('📝 생성된 모의 기사 수:', mockArticles.length);
+    return mockArticles;
   }
 }
 
@@ -162,51 +168,53 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
   
   const mockArticles = [
     {
-      title: '[MOCK] 시니어 건강 관리의 새로운 트렌드',
+      title: '[MOCK] 코로나19 관련 최신 뉴스',
       url: 'https://example.com/article1',
-      content: '최근 시니어들의 건강 관리에 대한 새로운 트렌드가 나타나고 있습니다. 특히 디지털 헬스케어 기술의 발전으로 원격 건강 모니터링이 활성화되고 있으며, 개인 맞춤형 건강 관리 서비스가 주목받고 있습니다. 전문가들은 이러한 기술 발전이 시니어들의 삶의 질 향상에 크게 기여할 것으로 전망하고 있습니다.',
+      content: '코로나19 관련 최신 뉴스가 발표되었습니다. 특히 시니어들의 건강 관리에 대한 새로운 트렌드가 나타나고 있습니다. 특히 디지털 헬스케어 기술의 발전으로 원격 건강 모니터링이 활성화되고 있으며, 개인 맞춤형 건강 관리 서비스가 주목받고 있습니다.',
       source: {
         name: 'MOCK News'
       },
       publishedAt: new Date().toISOString()
     },
     {
-      title: '[MOCK] 50대 이상을 위한 건강한 라이프스타일',
+      title: '[MOCK] 코로나19 예방을 위한 건강 관리',
       url: 'https://example.com/article2',
-      content: '50대 이상의 성인들을 위한 건강한 라이프스타일 가이드가 발표되었습니다. 이 가이드는 신체적, 정신적 건강을 모두 고려한 종합적인 접근법을 제시합니다. 정기적인 운동과 균형 잡힌 식단이 핵심이라고 강조합니다.',
+      content: '코로나19 예방을 위한 건강 관리 가이드가 발표되었습니다. 이 가이드는 신체적, 정신적 건강을 모두 고려한 종합적인 접근법을 제시합니다. 정기적인 운동과 균형 잡힌 식단이 핵심이라고 강조합니다.',
       source: {
         name: 'The Guardian'
       },
       publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2시간 전
     },
     {
-      title: '시니어 건강: 예방이 치료보다 중요하다',
+      title: '[MOCK] 코로나19와 시니어 건강',
       url: 'https://example.com/article3',
-      content: '의료 전문가들이 시니어 건강에 있어 예방의 중요성을 강조하고 있습니다. 정기적인 건강 검진과 생활 습관 개선이 질병 예방에 핵심 역할을 한다고 밝혔습니다. 특히 조기 발견과 예방이 치료보다 효과적이라는 것이 연구의 핵심 내용입니다.',
+      content: '의료 전문가들이 코로나19와 시니어 건강에 있어 예방의 중요성을 강조하고 있습니다. 정기적인 건강 검진과 생활 습관 개선이 질병 예방에 핵심 역할을 한다고 밝혔습니다.',
       source: {
         name: 'CNN Health'
       },
       publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3시간 전
     },
     {
-      title: '노인 건강을 위한 운동 프로그램',
+      title: '[MOCK] 코로나19 대응 운동 프로그램',
       url: 'https://example.com/article4',
-      content: '노인들의 건강 증진을 위한 새로운 운동 프로그램이 개발되었습니다. 이 프로그램은 관절 건강과 근력 강화에 중점을 두고 설계되었습니다. 전문가들은 정기적인 운동이 노화 과정을 늦추고 전반적인 건강 상태를 개선하는 데 도움이 된다고 강조합니다.',
+      content: '코로나19 대응을 위한 새로운 운동 프로그램이 개발되었습니다. 이 프로그램은 관절 건강과 근력 강화에 중점을 두고 설계되었습니다.',
       source: {
         name: 'Health Today'
       },
       publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() // 4시간 전
     },
     {
-      title: '시니어를 위한 영양 관리 가이드',
+      title: '[MOCK] 코로나19 시대의 영양 관리',
       url: 'https://example.com/article5',
-      content: '시니어들의 건강한 노후를 위한 영양 관리 가이드가 발표되었습니다. 연령대별 맞춤 영양 섭취가 중요하다고 강조했습니다. 특히 단백질 섭취와 비타민 보충이 시니어 건강에 핵심적인 역할을 한다고 전문가들은 설명합니다.',
+      content: '코로나19 시대의 영양 관리 가이드가 발표되었습니다. 연령대별 맞춤 영양 섭취가 중요하다고 강조했습니다.',
       source: {
         name: 'Medical News'
       },
       publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // 5시간 전
     }
   ];
+
+  console.log('📝 전체 모의 기사 수:', mockArticles.length);
 
   // 키워드에 따라 필터링
   const filteredArticles = mockArticles.filter(article => 
@@ -215,6 +223,8 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
       article.content.toLowerCase().includes(keyword.toLowerCase())
     )
   );
+
+  console.log('🔍 키워드 필터링 후 기사 수:', filteredArticles.length);
 
   // 날짜 범위 필터링
   let dateFilteredArticles = filteredArticles;
@@ -228,8 +238,11 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
       if (to && articleDate > to) return false;
       return true;
     });
+    console.log('📅 날짜 필터링 후 기사 수:', dateFilteredArticles.length);
   }
 
   // 제한 개수만큼 반환
-  return dateFilteredArticles.slice(0, limit);
+  const result = dateFilteredArticles.slice(0, limit);
+  console.log('✅ 최종 반환 기사 수:', result.length);
+  return result;
 } 

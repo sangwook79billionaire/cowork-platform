@@ -197,6 +197,15 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
       publishedAt: new Date().toISOString()
     },
     {
+      title: '[MOCK] AI 기술 혁신 소식',
+      url: 'https://example.com/article1-2',
+      content: '인공지능 기술의 혁신적인 발전이 보고되었습니다. 새로운 AI 모델의 등장으로 자연어 처리와 이미지 인식 기술이 크게 향상되었습니다. 이는 다양한 산업 분야에 적용될 것으로 예상됩니다.',
+      source: {
+        name: 'AI Tech News'
+      },
+      publishedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() // 1시간 전
+    },
+    {
       title: '[MOCK] 글로벌 경제 동향 분석',
       url: 'https://example.com/article2',
       content: '글로벌 경제 동향에 대한 분석 보고서가 발표되었습니다. 이 보고서는 세계 경제의 현재 상황과 미래 전망을 종합적으로 분석합니다. 주요 경제 강국들의 정책 변화와 시장 동향이 핵심 내용입니다.',
@@ -231,18 +240,34 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
         name: 'Education News'
       },
       publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // 5시간 전
+    },
+    {
+      title: '[MOCK] 최신 뉴스 요약',
+      url: 'https://example.com/article6',
+      content: '오늘의 주요 뉴스를 요약해드립니다. 정치, 경제, 사회, 문화 등 다양한 분야의 최신 소식을 한눈에 볼 수 있습니다. 특히 국내외 주요 이슈와 트렌드에 대한 분석이 포함되어 있습니다.',
+      source: {
+        name: 'Daily News'
+      },
+      publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() // 6시간 전
     }
   ];
 
   console.log('📝 전체 모의 기사 수:', mockArticles.length);
 
-  // 키워드에 따라 필터링
-  const filteredArticles = mockArticles.filter(article => 
-    keywords.some(keyword => 
-      article.title.toLowerCase().includes(keyword.toLowerCase()) ||
-      article.content.toLowerCase().includes(keyword.toLowerCase())
-    )
-  );
+  // 키워드에 따라 필터링 - 더 유연한 매칭
+  const filteredArticles = mockArticles.filter(article => {
+    const articleText = `${article.title} ${article.content}`.toLowerCase();
+    return keywords.some(keyword => {
+      const lowerKeyword = keyword.toLowerCase();
+      // 정확한 키워드 매칭 또는 관련 키워드 매칭
+      return articleText.includes(lowerKeyword) || 
+             (lowerKeyword === '기술' && (articleText.includes('ai') || articleText.includes('인공지능') || articleText.includes('머신러닝'))) ||
+             (lowerKeyword === '경제' && (articleText.includes('경제') || articleText.includes('시장') || articleText.includes('투자'))) ||
+             (lowerKeyword === '환경' && (articleText.includes('환경') || articleText.includes('기후') || articleText.includes('지속'))) ||
+             (lowerKeyword === '건강' && (articleText.includes('건강') || articleText.includes('의료') || articleText.includes('헬스'))) ||
+             (lowerKeyword === '교육' && (articleText.includes('교육') || articleText.includes('학습') || articleText.includes('학교')));
+    });
+  });
 
   console.log('🔍 키워드 필터링 후 기사 수:', filteredArticles.length);
 

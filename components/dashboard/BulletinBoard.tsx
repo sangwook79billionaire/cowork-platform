@@ -548,7 +548,17 @@ export function BulletinBoard({
               setLoading(false)
             }, (error) => {
               console.error('실시간 게시판 데이터 가져오기 오류:', error)
-              toast.error('실시간 업데이트에 실패했습니다.')
+              
+              // 연결 타임아웃 오류인 경우 재연결 시도
+              if (error.code === 'cancelled' || error.message.includes('CANCELLED')) {
+                console.log('🔄 Firestore 연결이 끊어졌습니다. 재연결을 시도합니다...')
+                // 3초 후 재연결 시도
+                setTimeout(() => {
+                  initializeData()
+                }, 3000)
+              } else {
+                toast.error('실시간 업데이트에 실패했습니다.')
+              }
               setLoading(false)
             })
           } catch (error: any) {
@@ -631,7 +641,17 @@ export function BulletinBoard({
               setPosts(postData)
             }, (error) => {
               console.error('실시간 게시글 데이터 가져오기 오류:', error)
-              toast.error('실시간 업데이트에 실패했습니다.')
+              
+              // 연결 타임아웃 오류인 경우 재연결 시도
+              if (error.code === 'cancelled' || error.message.includes('CANCELLED')) {
+                console.log('🔄 Firestore posts 연결이 끊어졌습니다. 재연결을 시도합니다...')
+                // 3초 후 재연결 시도
+                setTimeout(() => {
+                  initializePosts()
+                }, 3000)
+              } else {
+                toast.error('실시간 업데이트에 실패했습니다.')
+              }
             })
           } catch (error: any) {
             console.error('Error fetching posts:', error)

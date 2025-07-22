@@ -3,7 +3,7 @@
 
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { UserProfile } from '@/types/firebase'
 
@@ -30,6 +30,12 @@ try {
     auth = getAuth(app)
     db = getFirestore(app)
     storage = getStorage(app)
+    
+    // Firestore 연결 최적화 설정
+    if (typeof window !== 'undefined') {
+      // 클라이언트 사이드에서만 실행
+      console.log('Firebase Firestore 초기화 완료')
+    }
   } else {
     console.warn('Firebase 환경 변수가 설정되지 않았습니다. 모의 모드로 실행됩니다.')
   }

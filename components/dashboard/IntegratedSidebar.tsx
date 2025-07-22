@@ -3,17 +3,12 @@
 import { useState } from 'react'
 import { 
   ChatBubbleLeftRightIcon,
-  CalendarIcon,
-  CheckCircleIcon,
   XMarkIcon,
-  SparklesIcon,
-  ClockIcon,
-  NewspaperIcon,
-  DocumentTextIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler' | 'automation' | 'auto-summary'
+type ActiveFeature = 'bulletin' | 'news-search'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -54,52 +49,12 @@ export function IntegratedSidebar({
       borderColor: 'border-blue-200',
     },
     {
-      id: 'calendar' as ActiveFeature,
-      name: '캘린더',
-      icon: CalendarIcon,
+      id: 'news-search' as ActiveFeature,
+      name: '뉴스 검색',
+      icon: MagnifyingGlassIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200',
-    },
-    {
-      id: 'todo' as ActiveFeature,
-      name: '할 일',
-      icon: CheckCircleIcon,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-    },
-    {
-      id: 'ai' as ActiveFeature,
-      name: 'AI 글쓰기',
-      icon: SparklesIcon,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-    },
-    {
-      id: 'scheduler' as ActiveFeature,
-      name: '반복 작업',
-      icon: ClockIcon,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200',
-    },
-    {
-      id: 'automation' as ActiveFeature,
-      name: '자동화',
-      icon: NewspaperIcon,
-      color: 'text-teal-600',
-      bgColor: 'bg-teal-50',
-      borderColor: 'border-teal-200',
-    },
-    {
-      id: 'auto-summary' as ActiveFeature,
-      name: '자동 요약',
-      icon: DocumentTextIcon,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
     },
   ]
 
@@ -166,68 +121,13 @@ export function IntegratedSidebar({
         </div>
       )}
 
-      {/* 캘린더 사이드바 (캘린더 선택 시에만 표시) */}
-      {activeFeature === 'calendar' && (
+      {/* 뉴스 검색 사이드바 (뉴스 검색 선택 시에만 표시) */}
+      {activeFeature === 'news-search' && (
         <div className="flex-1 p-4">
           <div className="text-center py-8">
-            <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">캘린더</h3>
-            <p className="text-gray-500">일정을 관리하세요</p>
-          </div>
-        </div>
-      )}
-
-      {/* 할 일 사이드바 (할 일 선택 시에만 표시) */}
-      {activeFeature === 'todo' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <CheckCircleIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">할 일</h3>
-            <p className="text-gray-500">할 일을 관리하세요</p>
-          </div>
-        </div>
-      )}
-
-      {/* AI 글쓰기 사이드바 (AI 선택 시에만 표시) */}
-      {activeFeature === 'ai' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <SparklesIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">AI 글쓰기</h3>
-            <p className="text-gray-500">AI로 글을 작성하세요</p>
-          </div>
-        </div>
-      )}
-
-      {/* 반복 작업 사이드바 (스케줄러 선택 시에만 표시) */}
-      {activeFeature === 'scheduler' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">반복 작업</h3>
-            <p className="text-gray-500">자동화된 작업을 관리하세요</p>
-          </div>
-        </div>
-      )}
-
-      {/* 자동화 사이드바 (자동화 선택 시에만 표시) */}
-      {activeFeature === 'automation' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <NewspaperIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">자동화</h3>
-            <p className="text-gray-500">뉴스 자동화를 관리하세요</p>
-          </div>
-        </div>
-      )}
-
-      {/* 자동 요약 사이드바 (자동 요약 선택 시에만 표시) */}
-      {activeFeature === 'auto-summary' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <DocumentTextIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">자동 요약</h3>
-            <p className="text-gray-500">뉴스 요약 및 쇼츠 스크립트를 생성하세요</p>
+            <MagnifyingGlassIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">뉴스 검색</h3>
+            <p className="text-gray-500">기간과 키워드로 뉴스를 검색하세요</p>
           </div>
         </div>
       )}

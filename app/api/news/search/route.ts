@@ -15,14 +15,14 @@ interface NewsArticle {
 
 export async function POST(request: NextRequest) {
   try {
-    const { keywords, fromDate, toDate, limit = 10 } = await request.json();
+    const { keywords, fromDate, toDate, language, countries, limit = 10 } = await request.json();
 
     if (!keywords || !Array.isArray(keywords)) {
       return NextResponse.json({ error: '키워드 배열이 필요합니다.' }, { status: 400 });
     }
 
     // NewsAPI.org를 사용한 뉴스 검색
-    const newsArticles = await searchNews(keywords, fromDate, toDate, limit);
+    const newsArticles = await searchNews(keywords, fromDate, toDate, language, countries, limit);
     
     // 각 기사에 대해 요약 및 키워드 추출
     const processedArticles: NewsArticle[] = [];
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 }
 
 // 뉴스 검색 함수 (실제 NewsAPI.org 사용)
-async function searchNews(keywords: string[], fromDate?: string, toDate?: string, limit: number = 10): Promise<any[]> {
+async function searchNews(keywords: string[], fromDate?: string, toDate?: string, language?: string, countries?: string[], limit: number = 10): Promise<any[]> {
   const newsApiKey = process.env.NEWS_API_KEY || process.env.NewsAPI || process.env.NEWS_API;
   
   console.log('🔍 뉴스 검색 시작:', { keywords, fromDate, toDate, limit });

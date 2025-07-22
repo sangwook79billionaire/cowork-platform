@@ -23,19 +23,13 @@ import { PostViewer } from './PostViewer'
 import { DocumentEditor } from './DocumentEditor'
 import { IntegratedSidebar } from './IntegratedSidebar'
 import { BulletinContent } from './BulletinContent'
-import { Calendar } from './Calendar'
-import { TodoList } from './TodoList'
 import { NotificationCenter } from './NotificationCenter'
 import { AccountSettings } from './AccountSettings'
 import { BulletinCreateModal } from './BulletinCreateModal'
-import GeminiWriter from './GeminiWriter'
-import Scheduler from './Scheduler'
-
-import AutomationManager from './AutomationManager'
-import AutoSummaryManager from './AutoSummaryManager'
+import NewsSearch from './NewsSearch'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'calendar' | 'todo' | 'ai' | 'scheduler' | 'automation' | 'auto-summary'
+type ActiveFeature = 'bulletin' | 'news-search'
 
 export function Dashboard() {
   const { user, userProfile } = useAuth()
@@ -302,48 +296,8 @@ export function Dashboard() {
                   onEditBulletin={handleEditBulletin}
                 />
               )}
-              {activeFeature === 'calendar' && (
-                <Calendar isMobile={isMobile} />
-              )}
-              {activeFeature === 'todo' && (
-                <TodoList 
-                  isMobile={isMobile}
-                  onTodoCreated={(calendarEvent) => {
-                    console.log('Todo created, calendar event:', calendarEvent)
-                  }} 
-                />
-              )}
-              {activeFeature === 'ai' && (
-                <div className="p-4 md:p-6">
-                  <GeminiWriter 
-                    onContentGenerated={(content) => {
-                      console.log('Generated content:', content)
-                      // 여기서 생성된 내용을 게시판에 바로 저장하거나 다른 처리 가능
-                    }}
-                    onSaveToBulletin={(content, title) => {
-                      // 게시판에 저장하는 로직
-                      console.log('Saving to bulletin:', { title, content })
-                      // DocumentEditor를 통해 저장하거나 다른 방법으로 처리
-                      toast.success('게시판에 저장되었습니다!')
-                    }}
-                  />
-                </div>
-              )}
-              {activeFeature === 'scheduler' && (
-                <div className="p-4 md:p-6">
-                  <Scheduler isMobile={isMobile} />
-                </div>
-              )}
-
-              {activeFeature === 'automation' && (
-                <div className="p-4 md:p-6">
-                  <AutomationManager isMobile={isMobile} />
-                </div>
-              )}
-              {activeFeature === 'auto-summary' && (
-                <div className="p-4 md:p-6">
-                  <AutoSummaryManager isMobile={isMobile} />
-                </div>
+              {activeFeature === 'news-search' && (
+                <NewsSearch />
               )}
             </div>
           </>

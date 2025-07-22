@@ -254,24 +254,12 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
 
   console.log('📝 전체 모의 기사 수:', mockArticles.length);
 
-  // 키워드에 따라 필터링 - 더 유연한 매칭
-  const filteredArticles = mockArticles.filter(article => {
-    const articleText = `${article.title} ${article.content}`.toLowerCase();
-    return keywords.some(keyword => {
-      const lowerKeyword = keyword.toLowerCase();
-      // 정확한 키워드 매칭 또는 관련 키워드 매칭
-      return articleText.includes(lowerKeyword) || 
-             (lowerKeyword === '기술' && (articleText.includes('ai') || articleText.includes('인공지능') || articleText.includes('머신러닝'))) ||
-             (lowerKeyword === '경제' && (articleText.includes('경제') || articleText.includes('시장') || articleText.includes('투자'))) ||
-             (lowerKeyword === '환경' && (articleText.includes('환경') || articleText.includes('기후') || articleText.includes('지속'))) ||
-             (lowerKeyword === '건강' && (articleText.includes('건강') || articleText.includes('의료') || articleText.includes('헬스'))) ||
-             (lowerKeyword === '교육' && (articleText.includes('교육') || articleText.includes('학습') || articleText.includes('학교')));
-    });
-  });
+  // 모의 데이터는 필터링하지 않고 모든 기사 제공
+  const filteredArticles = mockArticles;
 
-  console.log('🔍 키워드 필터링 후 기사 수:', filteredArticles.length);
+  console.log('🔍 모의 데이터 기사 수:', filteredArticles.length);
 
-  // 날짜 범위 필터링
+  // 날짜 범위 필터링 (모의 데이터는 최신 날짜이므로 필터링하지 않음)
   let dateFilteredArticles = filteredArticles;
   if (fromDate || toDate) {
     dateFilteredArticles = filteredArticles.filter(article => {

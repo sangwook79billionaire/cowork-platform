@@ -71,6 +71,7 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
   
   console.log('🔍 뉴스 검색 시작:', { keywords, fromDate, toDate, limit });
   console.log('🔑 NewsAPI 키 존재 여부:', !!newsApiKey);
+  console.log('🔑 NewsAPI 키 길이:', newsApiKey?.length || 0);
   
   if (!newsApiKey) {
     console.warn('NewsAPI 키가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
@@ -98,9 +99,11 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
       params.append('to', toDate.split('T')[0]);
     }
 
-    console.log('🌐 NewsAPI.org 호출 URL:', `https://newsapi.org/v2/everything?${params.toString().replace(newsApiKey, '***')}`);
+    const apiUrl = `https://newsapi.org/v2/everything?${params}`;
+    console.log('🌐 NewsAPI.org 호출 URL:', apiUrl.replace(newsApiKey, '***'));
+    console.log('🔑 실제 API 키 (마스킹):', newsApiKey ? `${newsApiKey.substring(0, 4)}...${newsApiKey.substring(newsApiKey.length - 4)}` : '없음');
 
-    const response = await fetch(`https://newsapi.org/v2/everything?${params}`);
+    const response = await fetch(apiUrl);
     
     console.log('📡 NewsAPI 응답 상태:', response.status);
     console.log('📡 NewsAPI 응답 헤더:', Object.fromEntries(response.headers.entries()));
@@ -138,8 +141,13 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
     console.log('✅ 실제 뉴스 검색 완료:', processedArticles.length, '개 기사');
     return processedArticles;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ 뉴스 API 호출 오류:', error);
+    console.error('❌ 오류 상세 정보:', {
+      message: error?.message || 'Unknown error',
+      code: error?.code || 'Unknown code',
+      stack: error?.stack || 'No stack trace'
+    });
     // 오류 발생 시 모의 데이터 반환
     console.log('🔄 모의 데이터로 대체');
     return getMockArticles(keywords, fromDate, toDate, limit);

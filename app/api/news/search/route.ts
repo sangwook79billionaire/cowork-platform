@@ -26,6 +26,26 @@ export async function POST(request: NextRequest) {
     
     console.log('📊 검색된 기사 수:', newsArticles.length);
     
+    // 검색 결과가 없으면 모의 데이터 제공
+    if (newsArticles.length === 0) {
+      console.log('🔄 검색 결과가 없어 모의 데이터를 제공합니다.');
+      const mockArticles = getMockArticles(keywords, fromDate, toDate, limit);
+      const processedMockArticles = mockArticles.map(article => ({
+        ...article,
+        summary: article.content?.substring(0, 200) + '...' || '요약을 사용할 수 없습니다.',
+        keywords: keywords
+      }));
+      
+      return NextResponse.json({
+        articles: processedMockArticles,
+        totalCount: processedMockArticles.length,
+        keywords,
+        fromDate,
+        toDate,
+        isMockData: true
+      });
+    }
+    
     // 각 기사에 대해 요약 및 키워드 추출
     const processedArticles: NewsArticle[] = [];
     
@@ -168,47 +188,47 @@ function getMockArticles(keywords: string[], fromDate?: string, toDate?: string,
   
   const mockArticles = [
     {
-      title: '[MOCK] 코로나19 관련 최신 뉴스',
+      title: '[MOCK] 최신 기술 트렌드 뉴스',
       url: 'https://example.com/article1',
-      content: '코로나19 관련 최신 뉴스가 발표되었습니다. 특히 시니어들의 건강 관리에 대한 새로운 트렌드가 나타나고 있습니다. 특히 디지털 헬스케어 기술의 발전으로 원격 건강 모니터링이 활성화되고 있으며, 개인 맞춤형 건강 관리 서비스가 주목받고 있습니다.',
+      content: '최신 기술 트렌드에 대한 뉴스가 발표되었습니다. 특히 인공지능과 머신러닝 기술의 발전으로 다양한 산업 분야에서 혁신이 일어나고 있습니다. 전문가들은 이러한 기술 발전이 우리의 일상생활에 큰 변화를 가져올 것으로 전망하고 있습니다.',
       source: {
-        name: 'MOCK News'
+        name: 'Tech News'
       },
       publishedAt: new Date().toISOString()
     },
     {
-      title: '[MOCK] 코로나19 예방을 위한 건강 관리',
+      title: '[MOCK] 글로벌 경제 동향 분석',
       url: 'https://example.com/article2',
-      content: '코로나19 예방을 위한 건강 관리 가이드가 발표되었습니다. 이 가이드는 신체적, 정신적 건강을 모두 고려한 종합적인 접근법을 제시합니다. 정기적인 운동과 균형 잡힌 식단이 핵심이라고 강조합니다.',
+      content: '글로벌 경제 동향에 대한 분석 보고서가 발표되었습니다. 이 보고서는 세계 경제의 현재 상황과 미래 전망을 종합적으로 분석합니다. 주요 경제 강국들의 정책 변화와 시장 동향이 핵심 내용입니다.',
       source: {
-        name: 'The Guardian'
+        name: 'Economic Times'
       },
       publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2시간 전
     },
     {
-      title: '[MOCK] 코로나19와 시니어 건강',
+      title: '[MOCK] 환경 보호 관련 최신 뉴스',
       url: 'https://example.com/article3',
-      content: '의료 전문가들이 코로나19와 시니어 건강에 있어 예방의 중요성을 강조하고 있습니다. 정기적인 건강 검진과 생활 습관 개선이 질병 예방에 핵심 역할을 한다고 밝혔습니다.',
+      content: '환경 보호와 관련된 최신 뉴스가 발표되었습니다. 기후 변화 대응을 위한 새로운 정책과 기술이 소개되었습니다. 지속 가능한 발전을 위한 다양한 노력들이 진행되고 있다고 밝혔습니다.',
       source: {
-        name: 'CNN Health'
+        name: 'Environmental News'
       },
       publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3시간 전
     },
     {
-      title: '[MOCK] 코로나19 대응 운동 프로그램',
+      title: '[MOCK] 건강 관리 트렌드',
       url: 'https://example.com/article4',
-      content: '코로나19 대응을 위한 새로운 운동 프로그램이 개발되었습니다. 이 프로그램은 관절 건강과 근력 강화에 중점을 두고 설계되었습니다.',
+      content: '건강 관리 분야의 최신 트렌드가 소개되었습니다. 디지털 헬스케어 기술의 발전으로 개인 맞춤형 건강 관리 서비스가 활성화되고 있습니다. 전문가들은 예방 의학의 중요성을 강조합니다.',
       source: {
         name: 'Health Today'
       },
       publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() // 4시간 전
     },
     {
-      title: '[MOCK] 코로나19 시대의 영양 관리',
+      title: '[MOCK] 교육 혁신 뉴스',
       url: 'https://example.com/article5',
-      content: '코로나19 시대의 영양 관리 가이드가 발표되었습니다. 연령대별 맞춤 영양 섭취가 중요하다고 강조했습니다.',
+      content: '교육 분야의 혁신적인 변화에 대한 뉴스가 발표되었습니다. 온라인 교육 플랫폼의 발전과 개인화 학습 시스템이 주목받고 있습니다. 미래 교육의 방향성에 대한 논의가 활발히 진행되고 있습니다.',
       source: {
-        name: 'Medical News'
+        name: 'Education News'
       },
       publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // 5시간 전
     }

@@ -41,7 +41,7 @@ export default function NewsSearch() {
   const [loading, setLoading] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     keywords: [''],
-    fromDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7일 전
+    fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30일 전
     toDate: new Date().toISOString().split('T')[0], // 오늘
     language: 'both',
     countries: ['kr', 'us', 'gb', 'au']

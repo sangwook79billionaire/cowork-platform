@@ -220,6 +220,14 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
       
       if (timeSlot === 'now') {
         // 실시간 뉴스 검색 (5시간 전부터 현재까지)
+        console.log('🚀 실시간 뉴스 검색 시작');
+        console.log('📤 API 요청 데이터:', {
+          keywords: ['노인 건강', '시니어 건강'],
+          fromDate: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+          toDate: new Date().toISOString(),
+          limit: 10
+        });
+        
         response = await fetch('/api/news/search', {
           method: 'POST',
           headers: {
@@ -232,6 +240,8 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
             limit: 10
           }),
         });
+        
+        console.log('📡 API 응답 상태:', response.status);
       } else {
         // 기존 자동화 (오전/오후)
         response = await fetch('/api/automation/news-daily', {
@@ -248,9 +258,13 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
 
       const data = await response.json();
       
+      console.log('📥 API 응답 데이터:', data);
+      
       if (response.ok) {
         if (timeSlot === 'now') {
           // 실시간 검색 결과를 기사 목록에 추가
+          console.log('✅ 실시간 뉴스 검색 성공, 기사 수:', data.articles?.length || 0);
+          
           const realTimeArticles = data.articles.map((article: any, index: number) => ({
             id: `realtime-${index}`,
             title: article.title,
@@ -265,6 +279,8 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
             createdAt: new Date(),
             relevanceScore: Math.floor(Math.random() * 20) + 80 // 80-100 사이
           }));
+          
+          console.log('📝 처리된 실시간 기사들:', realTimeArticles);
           
           setNewsArticles(prev => [...realTimeArticles, ...prev]);
           toast.success(`실시간 뉴스 검색 완료! ${realTimeArticles.length}개 기사를 찾았습니다.`);

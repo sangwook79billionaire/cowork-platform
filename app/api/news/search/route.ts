@@ -149,6 +149,9 @@ async function searchNews(keywords: string[], fromDate?: string, toDate?: string
 // 모의 데이터 함수
 function getMockArticles(keywords: string[], fromDate?: string, toDate?: string, limit: number = 10): any[] {
   console.log('🔄 모의 데이터 생성 중...');
+  console.log('🔍 요청된 키워드:', keywords);
+  console.log('📅 날짜 범위:', { fromDate, toDate });
+  
   const mockArticles = [
     {
       title: '[MOCK] 시니어 건강 관리의 새로운 트렌드',

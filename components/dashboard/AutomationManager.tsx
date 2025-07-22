@@ -259,6 +259,15 @@ export default function AutomationManager({ isMobile = false }: AutomationManage
       const data = await response.json();
       
       console.log('📥 API 응답 데이터:', data);
+      console.log('📊 응답 상세 정보:', {
+        status: data.status,
+        totalCount: data.totalCount,
+        articlesLength: data.articles?.length || 0,
+        firstArticle: data.articles?.[0] || '없음',
+        keywords: data.keywords,
+        fromDate: data.fromDate,
+        toDate: data.toDate
+      });
       
       if (response.ok) {
         if (timeSlot === 'now') {

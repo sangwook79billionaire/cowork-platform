@@ -44,47 +44,74 @@ export async function POST(request: NextRequest) {
     
     const articles: NaverNewsArticle[] = [];
     
-    // 정규식을 사용하여 네이버 뉴스 검색 결과 파싱
-    const newsPattern = /<div[^>]*class="[^"]*news_wrap[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
-    const titlePattern = /<a[^>]*class="[^"]*news_tit[^"]*"[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g;
-    const summaryPattern = /<div[^>]*class="[^"]*dsc_txt_wrap[^"]*"[^>]*>([^<]*)<\/div>/g;
-    const sourcePattern = /<a[^>]*class="[^"]*info_group[^"]*"[^>]*>([^<]*)<\/a>/g;
-    const datePattern = /<span[^>]*class="[^"]*info_group[^"]*"[^>]*>([^<]*)<\/span>/g;
+    // 네이버 뉴스 검색 결과의 다양한 HTML 패턴 시도
+    const patterns = [
+      // 패턴 1: 기본 뉴스 래퍼
+      {
+        wrapper: /<div[^>]*class="[^"]*news_wrap[^"]*"[^>]*>([\s\S]*?)<\/div>/g,
+        title: /<a[^>]*class="[^"]*news_tit[^"]*"[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g,
+        summary: /<div[^>]*class="[^"]*dsc_txt_wrap[^"]*"[^>]*>([^<]*)<\/div>/g,
+        source: /<a[^>]*class="[^"]*info_group[^"]*"[^>]*>([^<]*)<\/a>/g,
+        date: /<span[^>]*class="[^"]*info_group[^"]*"[^>]*>([^<]*)<\/span>/g
+      },
+      // 패턴 2: 새로운 뉴스 구조
+      {
+        wrapper: /<div[^>]*class="[^"]*sds-comps-vertical-layout[^"]*"[^>]*>([\s\S]*?)<\/div>/g,
+        title: /<div[^>]*class="[^"]*sds-comps-text-type-headline1[^"]*"[^>]*>([^<]*)<\/div>/g,
+        summary: /<div[^>]*class="[^"]*sds-comps-text-type-body1[^"]*"[^>]*>([^<]*)<\/div>/g,
+        source: /<div[^>]*class="[^"]*sds-comps-profile-info-title-text[^"]*"[^>]*>([^<]*)<\/div>/g,
+        date: /<div[^>]*class="[^"]*sds-comps-profile-info-subtext[^"]*"[^>]*>([^<]*)<\/div>/g
+      },
+      // 패턴 3: 링크 기반 추출
+      {
+        wrapper: /<div[^>]*class="[^"]*news_area[^"]*"[^>]*>([\s\S]*?)<\/div>/g,
+        title: /<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g,
+        summary: /<p[^>]*class="[^"]*dsc[^"]*"[^>]*>([^<]*)<\/p>/g,
+        source: /<span[^>]*class="[^"]*source[^"]*"[^>]*>([^<]*)<\/span>/g,
+        date: /<span[^>]*class="[^"]*date[^"]*"[^>]*>([^<]*)<\/span>/g
+      }
+    ];
     
-    let match;
     let articleCount = 0;
     
-    // 뉴스 블록 찾기
-    while ((match = newsPattern.exec(html)) !== null && articleCount < 10) {
-      const newsBlock = match[1];
+    // 각 패턴으로 시도
+    for (const pattern of patterns) {
+      if (articleCount >= 10) break;
       
-      // 제목과 링크 추출
-      const titleMatch = titlePattern.exec(newsBlock);
-      if (titleMatch) {
-        const link = titleMatch[1];
-        const title = titleMatch[2].trim();
+      let match;
+      const wrapperRegex = new RegExp(pattern.wrapper.source, 'g');
+      
+      while ((match = wrapperRegex.exec(html)) !== null && articleCount < 10) {
+        const newsBlock = match[1];
         
-        // 요약 추출
-        const summaryMatch = summaryPattern.exec(newsBlock);
-        const summary = summaryMatch ? summaryMatch[1].trim() : '';
-        
-        // 언론사 추출
-        const sourceMatch = sourcePattern.exec(newsBlock);
-        const source = sourceMatch ? sourceMatch[1].trim() : '네이버 뉴스';
-        
-        // 날짜 추출
-        const dateMatch = datePattern.exec(newsBlock);
-        const publishedAt = dateMatch ? dateMatch[1].trim() : '최근';
-        
-        if (title && link && title.length > 10) { // 의미있는 제목만
-          articles.push({
-            title,
-            summary,
-            link,
-            source,
-            publishedAt
-          });
-          articleCount++;
+        // 제목과 링크 추출
+        const titleMatch = pattern.title.exec(newsBlock);
+        if (titleMatch) {
+          const link = titleMatch[1] || '';
+          const title = titleMatch[2] || titleMatch[1] || '';
+          
+          // 요약 추출
+          const summaryMatch = pattern.summary.exec(newsBlock);
+          const summary = summaryMatch ? summaryMatch[1].trim() : '';
+          
+          // 언론사 추출
+          const sourceMatch = pattern.source.exec(newsBlock);
+          const source = sourceMatch ? sourceMatch[1].trim() : '네이버 뉴스';
+          
+          // 날짜 추출
+          const dateMatch = pattern.date.exec(newsBlock);
+          const publishedAt = dateMatch ? dateMatch[1].trim() : '최근';
+          
+          if (title && title.length > 5 && link && link.includes('news.naver.com')) {
+            articles.push({
+              title: title.trim(),
+              summary: summary,
+              link: link.trim(),
+              source: source,
+              publishedAt: publishedAt
+            });
+            articleCount++;
+          }
         }
       }
     }

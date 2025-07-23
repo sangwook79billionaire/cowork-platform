@@ -1,9 +1,9 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // Firebase Admin SDK 초기화
-let app;
-let db;
+let app: any;
+let db: Firestore | null = null;
 
 try {
   if (getApps().length === 0) {

@@ -51,10 +51,10 @@ export default function NaverNewsSearch({ onSaveToDatabase }: NaverNewsSearchPro
         setSearchHistory(prev => [keywords, ...prev.slice(0, 4)]); // 최근 5개 저장
         toast.success(`${data.totalCount}개의 뉴스를 찾았습니다.`);
         
-        // DB에 저장
-        if (data.articles.length > 0) {
-          await saveToDatabase(data.articles, keywordArray);
-        }
+        // DB에 저장 (임시 비활성화)
+        // if (data.articles.length > 0) {
+        //   await saveToDatabase(data.articles, keywordArray);
+        // }
       } else {
         toast.error(data.error || '뉴스 검색 중 오류가 발생했습니다.');
       }

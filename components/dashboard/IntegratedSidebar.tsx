@@ -1,156 +1,153 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
   NewspaperIcon,
+  RssIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'news-search' | 'naver-news-search'
+type ActiveFeature = 'bulletin' | 'news-search' | 'naver-news-search' | 'google-news-alerts'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
   onFeatureChange: (feature: ActiveFeature) => void
-  selectedBulletinId: string | null
-  onBulletinSelect: (bulletinId: string) => void
-  expandedBulletins: Set<string>
-  onExpandedBulletinsChange: (expanded: Set<string>) => void
-  onCreateBulletin?: (parentId?: string) => void
-  onEditBulletin?: (bulletinId: string) => void
-  onDeleteBulletin?: (bulletinId: string) => void
-  isMobile?: boolean
-  onClose?: () => void
+  isOpen: boolean
+  onClose: () => void
 }
 
-export function IntegratedSidebar({
-  activeFeature,
-  onFeatureChange,
-  selectedBulletinId,
-  onBulletinSelect,
-  expandedBulletins,
-  onExpandedBulletinsChange,
-  onCreateBulletin,
-  onEditBulletin,
-  onDeleteBulletin,
-  isMobile = false,
-  onClose,
+export function IntegratedSidebar({ 
+  activeFeature, 
+  onFeatureChange, 
+  isOpen, 
+  onClose 
 }: IntegratedSidebarProps) {
-  const [showBulletinTree, setShowBulletinTree] = useState(true)
+  const { user, signOut } = useAuth()
 
   const features = [
-    {
-      id: 'bulletin' as ActiveFeature,
-      name: '게시판',
-      icon: ChatBubbleLeftRightIcon,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
+    { 
+      id: 'bulletin' as ActiveFeature, 
+      name: '게시판', 
+      icon: ChatBubbleLeftRightIcon, 
+      color: 'text-blue-600', 
+      bgColor: 'bg-blue-50', 
+      borderColor: 'border-blue-200' 
     },
-    {
-      id: 'news-search' as ActiveFeature,
-      name: '뉴스 검색',
-      icon: MagnifyingGlassIcon,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200',
+    { 
+      id: 'news-search' as ActiveFeature, 
+      name: '뉴스 검색', 
+      icon: MagnifyingGlassIcon, 
+      color: 'text-green-600', 
+      bgColor: 'bg-green-50', 
+      borderColor: 'border-green-200' 
     },
-    {
-      id: 'naver-news-search' as ActiveFeature,
-      name: '네이버 뉴스',
-      icon: NewspaperIcon,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
+    { 
+      id: 'naver-news-search' as ActiveFeature, 
+      name: '네이버 뉴스', 
+      icon: NewspaperIcon, 
+      color: 'text-orange-600', 
+      bgColor: 'bg-orange-50', 
+      borderColor: 'border-orange-200' 
+    },
+    { 
+      id: 'google-news-alerts' as ActiveFeature, 
+      name: '구글 뉴스 알리미', 
+      icon: RssIcon, 
+      color: 'text-purple-600', 
+      bgColor: 'bg-purple-50', 
+      borderColor: 'border-purple-200' 
     },
   ]
 
   return (
-    <div className="h-full flex flex-col bg-white border-r border-gray-200">
-      {/* 모바일 헤더 */}
-      {isMobile && (
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">메뉴</h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="사이드바 닫기"
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        </div>
+    <>
+      {/* 모바일 오버레이 */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onClose}
+        />
       )}
 
-      {/* 기능 선택 탭 */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="space-y-2">
-          {features.map((feature) => {
-            const Icon = feature.icon
-            const isActive = activeFeature === feature.id
-            
-            return (
+      {/* 사이드바 */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:relative lg:translate-x-0 lg:shadow-none
+      `}>
+        <div className="flex flex-col h-full">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h1 className="text-xl font-bold text-gray-900">협업 플랫폼</h1>
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* 사용자 정보 */}
+          {user && (
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold">
+                    {user.email?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.email}
+                  </p>
+                  <p className="text-xs text-gray-500">로그인됨</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 메뉴 */}
+          <nav className="flex-1 p-4 space-y-2">
+            {features.map((feature) => {
+              const Icon = feature.icon
+              const isActive = activeFeature === feature.id
+              
+              return (
+                <button
+                  key={feature.id}
+                  onClick={() => onFeatureChange(feature.id)}
+                  className={`
+                    w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
+                    ${isActive 
+                      ? `${feature.bgColor} ${feature.borderColor} border ${feature.color}` 
+                      : 'text-gray-600 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{feature.name}</span>
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* 로그아웃 */}
+          {user && (
+            <div className="p-4 border-t border-gray-200">
               <button
-                key={feature.id}
-                onClick={() => {
-                  onFeatureChange(feature.id)
-                  if (feature.id === 'bulletin') {
-                    setShowBulletinTree(true)
-                  }
-                }}
-                className={`w-full flex items-center space-x-3 px-3 py-3 md:py-2 rounded-lg transition-colors ${
-                  isActive 
-                    ? `${feature.bgColor} ${feature.color} border ${feature.borderColor}` 
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-                title={`${feature.name} 메뉴`}
+                onClick={signOut}
+                className="w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{feature.name}</span>
+                로그아웃
               </button>
-            )
-          })}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* 게시판 트리 (게시판 선택 시에만 표시) */}
-      {activeFeature === 'bulletin' && showBulletinTree && (
-        <div className="flex-1 overflow-y-auto">
-          <BulletinTree 
-            selectedBulletinId={selectedBulletinId}
-            onBulletinSelect={onBulletinSelect}
-            expandedBulletins={expandedBulletins}
-            onExpandedBulletinsChange={onExpandedBulletinsChange}
-            onCreateBulletin={onCreateBulletin}
-            onEditBulletin={onEditBulletin}
-            onDeleteBulletin={onDeleteBulletin}
-            isMobile={isMobile}
-          />
-        </div>
-      )}
-
-      {/* 뉴스 검색 사이드바 (뉴스 검색 선택 시에만 표시) */}
-      {activeFeature === 'news-search' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <MagnifyingGlassIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">뉴스 검색</h3>
-            <p className="text-gray-500">기간과 키워드로 뉴스를 검색하세요</p>
-          </div>
-        </div>
-      )}
-
-      {/* 네이버 뉴스 검색 사이드바 */}
-      {activeFeature === 'naver-news-search' && (
-        <div className="flex-1 p-4">
-          <div className="text-center py-8">
-            <NewspaperIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">네이버 뉴스 검색</h3>
-            <p className="text-gray-500">네이버 뉴스에서 최신 기사를 검색하세요</p>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   )
 } 

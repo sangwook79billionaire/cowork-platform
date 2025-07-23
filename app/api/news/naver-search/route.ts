@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { XMLParser } from 'fast-xml-parser';
 
 interface NaverNewsArticle {
   title: string;
@@ -19,89 +19,92 @@ export async function POST(request: NextRequest) {
     
     console.log('🔍 네이버 뉴스 검색 시작:', keywords);
     
-    // 네이버 뉴스 검색 페이지 URL
+    // 네이버 뉴스 RSS 피드 URL
     const searchQuery = encodeURIComponent(keywords.join(' '));
-    const searchUrl = `https://search.naver.com/search.naver?ssc=tab.news.all&where=news&sm=tab_jum&query=${searchQuery}`;
+    const rssUrl = `https://news.naver.com/main/rss/search.naver?query=${searchQuery}`;
     
-    console.log('🌐 네이버 뉴스 검색 URL:', searchUrl);
+    console.log('🌐 네이버 뉴스 RSS URL:', rssUrl);
     
-    // HTTP 요청으로 페이지 가져오기
-    const response = await axios.get(searchUrl, {
+    // RSS 피드 가져오기
+    const response = await axios.get(rssUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       },
-      timeout: 15000
+      timeout: 10000
     });
     
-    const html = response.data;
-    const $ = cheerio.load(html);
+    const xmlData = response.data;
+    const parser = new XMLParser();
+    const result = parser.parse(xmlData);
     
-    console.log('📄 HTML 로드 완료');
+    console.log('📊 RSS 파싱 결과:', result);
     
     const articles: NaverNewsArticle[] = [];
     
-    // 네이버 뉴스 검색 결과 파싱
-    $('.news_wrap.api_ani_send').each((index, element) => {
-      try {
-        const $element = $(element);
-        
-        // 제목 추출
-        const title = $element.find('.news_tit').text().trim();
-        
-        // 요약 내용 추출
-        const summary = $element.find('.dsc_txt_wrap').text().trim();
-        
-        // 링크 추출
-        const link = $element.find('.news_tit').attr('href') || '';
-        
-        // 언론사 추출
-        const source = $element.find('.info_group a').first().text().trim();
-        
-        // 발행일 추출
-        const publishedAt = $element.find('.info_group span').last().text().trim();
-        
-        if (title && summary && link) {
-          articles.push({
-            title,
-            summary,
-            link,
-            source: source || '네이버 뉴스',
-            publishedAt: publishedAt || '최근'
-          });
-        }
-      } catch (error) {
-        console.error('기사 파싱 중 오류:', error);
-      }
-    });
-    
-    // 대안: 다른 선택자로 시도
-    if (articles.length === 0) {
-      $('.sds-comps-vertical-layout').each((index, element) => {
-        try {
-          const $element = $(element);
+    // RSS 피드에서 기사 추출
+    if (result.rss && result.rss.channel && result.rss.channel.item) {
+      const items = Array.isArray(result.rss.channel.item)
+        ? result.rss.channel.item
+        : [result.rss.channel.item];
+      
+      items.forEach((item: any, index: number) => {
+        if (index < 10) { // 최대 10개 기사만
+          const title = item.title || '';
+          const description = item.description || '';
+          const link = item.link || '';
+          const pubDate = item.pubDate || '';
           
-          const title = $element.find('.sds-comps-text-type-headline1').text().trim();
-          const summary = $element.find('.sds-comps-text-type-body1').text().trim();
-          const link = $element.find('a').attr('href') || '';
-          const source = $element.find('.sds-comps-profile-info-title-text').text().trim();
-          const publishedAt = $element.find('.sds-comps-profile-info-subtext').text().trim();
+          // 언론사 추출 (link에서 추출)
+          let source = '네이버 뉴스';
+          if (link.includes('news.naver.com')) {
+            const urlMatch = link.match(/oid=(\d+)/);
+            if (urlMatch) {
+              const oid = urlMatch[1];
+              const sourceMap: { [key: string]: string } = {
+                '001': '연합뉴스',
+                '005': '국민일보',
+                '011': '서울경제',
+                '021': '문화일보',
+                '022': '세계일보',
+                '023': '조선일보',
+                '025': '중앙일보',
+                '028': '한겨레',
+                '032': '경향신문',
+                '081': '서울신문',
+                '082': '동아일보',
+                '087': '매일경제',
+                '088': '한국일보',
+                '092': '매일신문',
+                '094': '부산일보',
+                '096': '부산일보',
+                '097': '경남일보',
+                '098': '경남도민일보',
+                '099': '경남신문',
+                '100': '경남일보',
+                '101': '경남도민일보',
+                '102': '경남신문',
+                '103': '경남일보',
+                '104': '경남도민일보',
+                '105': '경남신문',
+                '106': '경남일보',
+                '107': '경남도민일보',
+                '108': '경남신문',
+                '109': '경남일보',
+                '110': '경남도민일보'
+              };
+              source = sourceMap[oid] || '네이버 뉴스';
+            }
+          }
           
-          if (title && summary && link) {
+          if (title && link) {
             articles.push({
-              title,
-              summary,
+              title: title.replace(/<[^>]*>/g, ''), // HTML 태그 제거
+              summary: description.replace(/<[^>]*>/g, ''), // HTML 태그 제거
               link,
-              source: source || '네이버 뉴스',
-              publishedAt: publishedAt || '최근'
+              source,
+              publishedAt: pubDate
             });
           }
-        } catch (error) {
-          console.error('대안 파싱 중 오류:', error);
         }
       });
     }
@@ -120,7 +123,7 @@ export async function POST(request: NextRequest) {
     if (uniqueArticles.length > 0) {
       return NextResponse.json({
         success: true,
-        articles: uniqueArticles.slice(0, 10), // 최대 10개
+        articles: uniqueArticles,
         totalCount: uniqueArticles.length,
         keywords,
         isMock: false

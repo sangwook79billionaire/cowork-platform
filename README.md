@@ -1,15 +1,18 @@
 # Cowork Platform
 
-A comprehensive coworking platform with news automation, document management, and team collaboration features.
+A comprehensive coworking platform with automation features.
 
 ## Features
 
-- 📰 **News Automation**: Automated news collection and summarization
-- 📝 **Document Management**: Rich text editor with real-time collaboration
-- 📅 **Calendar Integration**: Google Calendar sync
-- 🤖 **AI Assistant**: Gemini-powered writing assistance
-- 📊 **Bulletin Board**: Organized content management
-- ⚡ **Real-time Updates**: Live news search and content generation
+- Bulletin Board
+- Google News Alerts
+- Google Calendar Integration
+- Google Tasks Integration
+- Gemini AI Integration
+
+## Test Deployment
+
+Testing GitHub Actions deployment with Vercel token.
 
 ## Recent Updates
 

@@ -27,9 +27,10 @@ import { NotificationCenter } from './NotificationCenter'
 import { AccountSettings } from './AccountSettings'
 import { BulletinCreateModal } from './BulletinCreateModal'
 import NewsSearch from './NewsSearch'
+import NaverNewsSearch from './NaverNewsSearch'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'news-search'
+type ActiveFeature = 'bulletin' | 'news-search' | 'naver-news-search'
 
 export function Dashboard() {
   const { user, userProfile } = useAuth()
@@ -298,6 +299,9 @@ export function Dashboard() {
               )}
               {activeFeature === 'news-search' && (
                 <NewsSearch />
+              )}
+              {activeFeature === 'naver-news-search' && (
+                <NaverNewsSearch />
               )}
             </div>
           </>

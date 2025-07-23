@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { 
+import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
+  NewspaperIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'news-search'
+type ActiveFeature = 'bulletin' | 'news-search' | 'naver-news-search'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -55,6 +56,14 @@ export function IntegratedSidebar({
       color: 'text-green-600',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200',
+    },
+    {
+      id: 'naver-news-search' as ActiveFeature,
+      name: '네이버 뉴스',
+      icon: NewspaperIcon,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
     },
   ]
 
@@ -128,6 +137,17 @@ export function IntegratedSidebar({
             <MagnifyingGlassIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">뉴스 검색</h3>
             <p className="text-gray-500">기간과 키워드로 뉴스를 검색하세요</p>
+          </div>
+        </div>
+      )}
+
+      {/* 네이버 뉴스 검색 사이드바 */}
+      {activeFeature === 'naver-news-search' && (
+        <div className="flex-1 p-4">
+          <div className="text-center py-8">
+            <NewspaperIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">네이버 뉴스 검색</h3>
+            <p className="text-gray-500">네이버 뉴스에서 최신 기사를 검색하세요</p>
           </div>
         </div>
       )}

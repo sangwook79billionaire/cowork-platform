@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import axios from 'axios';
+import { XMLParser } from 'fast-xml-parser';
 
 interface NaverNewsArticle {
   title: string;
@@ -17,53 +19,142 @@ export async function POST(request: NextRequest) {
     
     console.log('🔍 네이버 뉴스 검색 시작:', keywords);
     
-    // 키워드에 따른 동적 모의 데이터 생성
+    // 네이버 뉴스 RSS 피드 URL
+    const searchQuery = encodeURIComponent(keywords.join(' '));
+    const rssUrl = `https://news.naver.com/main/rss/search.naver?query=${searchQuery}`;
+    
+    console.log('🌐 네이버 뉴스 RSS URL:', rssUrl);
+    
+    // RSS 피드 가져오기
+    const response = await axios.get(rssUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 10000
+    });
+    
+    const xmlData = response.data;
+    const parser = new XMLParser();
+    const result = parser.parse(xmlData);
+    
+    console.log('📊 RSS 파싱 결과:', result);
+    
+    const articles: NaverNewsArticle[] = [];
+    
+    // RSS 피드에서 기사 추출
+    if (result.rss && result.rss.channel && result.rss.channel.item) {
+      const items = Array.isArray(result.rss.channel.item) 
+        ? result.rss.channel.item 
+        : [result.rss.channel.item];
+      
+      items.forEach((item: any, index: number) => {
+        if (index < 10) { // 최대 10개 기사만
+          const title = item.title || '';
+          const description = item.description || '';
+          const link = item.link || '';
+          const pubDate = item.pubDate || '';
+          
+          // 언론사 추출 (link에서 추출)
+          let source = '네이버 뉴스';
+          if (link.includes('news.naver.com')) {
+            const urlMatch = link.match(/oid=(\d+)/);
+            if (urlMatch) {
+              const oid = urlMatch[1];
+              const sourceMap: { [key: string]: string } = {
+                '001': '연합뉴스',
+                '005': '국민일보',
+                '011': '서울경제',
+                '021': '문화일보',
+                '022': '세계일보',
+                '023': '조선일보',
+                '025': '중앙일보',
+                '028': '한겨레',
+                '032': '경향신문',
+                '081': '서울신문',
+                '082': '동아일보',
+                '087': '매일경제',
+                '088': '한국일보',
+                '092': '매일신문',
+                '094': '부산일보',
+                '096': '부산일보',
+                '097': '경남일보',
+                '098': '경남도민일보',
+                '099': '경남신문',
+                '100': '경남일보',
+                '101': '경남도민일보',
+                '102': '경남신문',
+                '103': '경남일보',
+                '104': '경남도민일보',
+                '105': '경남신문',
+                '106': '경남일보',
+                '107': '경남도민일보',
+                '108': '경남신문',
+                '109': '경남일보',
+                '110': '경남도민일보'
+              };
+              source = sourceMap[oid] || '네이버 뉴스';
+            }
+          }
+          
+          if (title && link) {
+            articles.push({
+              title: title.replace(/<[^>]*>/g, ''), // HTML 태그 제거
+              summary: description.replace(/<[^>]*>/g, ''), // HTML 태그 제거
+              link,
+              source,
+              publishedAt: pubDate
+            });
+          }
+        }
+      });
+    }
+    
+    console.log('📊 추출된 기사 수:', articles.length);
+    
+    // 중복 제거
+    const uniqueArticles = articles.filter((article, index, self) => {
+      const firstIndex = self.findIndex(a => a.title === article.title);
+      return firstIndex === index;
+    });
+    
+    console.log('✅ 중복 제거 후 기사 수:', uniqueArticles.length);
+    
+    // 실제 기사가 있으면 반환
+    if (uniqueArticles.length > 0) {
+      return NextResponse.json({
+        success: true,
+        articles: uniqueArticles,
+        totalCount: uniqueArticles.length,
+        keywords,
+        isMock: false
+      });
+    }
+    
+    // 실제 기사가 없으면 모의 데이터 제공
+    console.log('⚠️ 실제 기사를 찾지 못해 모의 데이터를 제공합니다.');
     const mockArticles: NaverNewsArticle[] = [
       {
-        title: `[네이버 뉴스] ${keywords.join(' ')} 관련 최신 동향`,
+        title: `[모의] ${keywords.join(' ')} 관련 최신 동향`,
         summary: `${keywords.join(' ')}에 대한 최신 뉴스입니다. 전문가들은 이 분야의 중요성을 강조하고 있으며, 다양한 연구 결과와 정책 동향을 보여주고 있습니다.`,
         link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=001&aid=0001234567',
         source: '연합뉴스',
         publishedAt: '1일 전'
       },
       {
-        title: `${keywords.join(' ')} 관리 방법과 주의사항`,
+        title: `[모의] ${keywords.join(' ')} 관리 방법과 주의사항`,
         summary: `${keywords.join(' ')}를 위한 전문적인 관리 방법과 주의사항에 대해 알아보겠습니다. 전문가들의 조언과 실제 사례를 통해 효과적인 관리 방안을 제시합니다.`,
         link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=005&aid=0001234568',
         source: '국민일보',
         publishedAt: '2일 전'
       },
       {
-        title: `${keywords.join(' ')} 관련 정책 변화와 전망`,
+        title: `[모의] ${keywords.join(' ')} 관련 정책 변화와 전망`,
         summary: `${keywords.join(' ')}와 관련된 정부 정책의 변화와 향후 전망에 대해 분석합니다. 새로운 제도와 지원 방안이 어떻게 변화하고 있는지 살펴봅니다.`,
         link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=011&aid=0001234569',
         source: '서울경제',
         publishedAt: '3일 전'
-      },
-      {
-        title: `${keywords.join(' ')} 전문가 인터뷰`,
-        summary: `${keywords.join(' ')} 분야의 전문가를 만나 최신 동향과 전문적인 조언을 들어봅니다. 실무 경험을 바탕으로 한 현실적인 해결책을 제시합니다.`,
-        link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=021&aid=0001234570',
-        source: '문화일보',
-        publishedAt: '4일 전'
-      },
-      {
-        title: `${keywords.join(' ')} 관련 연구 결과 발표`,
-        summary: `${keywords.join(' ')}에 대한 최신 연구 결과가 발표되었습니다. 이번 연구는 기존의 통념을 뒤엎는 새로운 발견을 포함하고 있어 학계의 주목을 받고 있습니다.`,
-        link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=022&aid=0001234571',
-        source: '세계일보',
-        publishedAt: '5일 전'
-      },
-      {
-        title: `${keywords.join(' ')} 국제 비교 분석`,
-        summary: `${keywords.join(' ')}에 대한 국제적인 비교 분석 결과가 공개되었습니다. 다른 국가들의 사례와 정책을 통해 우리나라의 현황과 개선 방안을 모색합니다.`,
-        link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=023&aid=0001234572',
-        source: '조선일보',
-        publishedAt: '1주일 전'
       }
     ];
-    
-    console.log('📊 생성된 모의 기사 수:', mockArticles.length);
     
     return NextResponse.json({
       success: true,

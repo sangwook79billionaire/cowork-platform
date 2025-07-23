@@ -31,9 +31,29 @@ jobs:
       env:
         NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     
     - name: Deploy to Vercel
-      run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+      run: |
+        echo "Setting up Vercel deployment..."
+        echo "Project ID: ${{ secrets.VERCEL_PROJECT_ID }}"
+        echo "Org ID: ${{ secrets.VERCEL_ORG_ID }}"
+        
+        # Vercel 프로젝트 연결
+        vercel link --token ${{ secrets.VERCEL_TOKEN }} --yes
+        
+        # 환경 변수 설정
+        vercel env pull .env.local --token ${{ secrets.VERCEL_TOKEN }}
+        
+        # 배포
+        vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
       env:
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }} 
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }} 

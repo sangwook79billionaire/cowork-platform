@@ -4,13 +4,11 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { IntegratedSidebar } from './IntegratedSidebar'
 import { BulletinBoard } from './BulletinBoard'
-import NewsSearch from './NewsSearch'
-import NaverNewsSearch from './NaverNewsSearch'
 import GoogleNewsAlerts from './GoogleNewsAlerts'
 import { Bars3Icon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'news-search' | 'naver-news-search' | 'google-news-alerts'
+type ActiveFeature = 'bulletin' | 'google-news-alerts'
 
 export function Dashboard() {
   const { user, loading } = useAuth()
@@ -96,12 +94,8 @@ export function Dashboard() {
               onCreatePost={handleCreatePost}
             />
           )}
-          {activeFeature === 'news-search' && (
-            <NewsSearch />
-          )}
-          {activeFeature === 'naver-news-search' && (
-            <NaverNewsSearch />
-          )}
+
+
           {activeFeature === 'google-news-alerts' && (
             <GoogleNewsAlerts />
           )}

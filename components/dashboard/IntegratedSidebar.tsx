@@ -5,13 +5,11 @@ import { useAuth } from '@/hooks/useAuth'
 import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
-  MagnifyingGlassIcon,
-  NewspaperIcon,
   RssIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'news-search' | 'naver-news-search' | 'google-news-alerts'
+type ActiveFeature = 'bulletin' | 'google-news-alerts'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -36,22 +34,6 @@ export function IntegratedSidebar({
       color: 'text-blue-600', 
       bgColor: 'bg-blue-50', 
       borderColor: 'border-blue-200' 
-    },
-    { 
-      id: 'news-search' as ActiveFeature, 
-      name: '뉴스 검색', 
-      icon: MagnifyingGlassIcon, 
-      color: 'text-green-600', 
-      bgColor: 'bg-green-50', 
-      borderColor: 'border-green-200' 
-    },
-    { 
-      id: 'naver-news-search' as ActiveFeature, 
-      name: '네이버 뉴스', 
-      icon: NewspaperIcon, 
-      color: 'text-orange-600', 
-      bgColor: 'bg-orange-50', 
-      borderColor: 'border-orange-200' 
     },
     { 
       id: 'google-news-alerts' as ActiveFeature, 

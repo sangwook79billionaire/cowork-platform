@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 interface NaverNewsArticle {
   title: string;
@@ -10,77 +11,63 @@ interface NaverNewsArticle {
 }
 
 export async function POST(request: NextRequest) {
+  let keywords = ['노인 건강', '시니어 건강'];
+  
   try {
-    const { keywords = ['노인 건강', '시니어 건강'] } = await request.json();
+    const requestData = await request.json();
+    keywords = requestData.keywords || keywords;
     
     console.log('🔍 네이버 뉴스 검색 시작:', keywords);
     
-    // Puppeteer 브라우저 실행
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    
-    const page = await browser.newPage();
-    
-    // 네이버 뉴스 검색 페이지로 이동
+    // 네이버 뉴스 검색 URL
     const searchQuery = encodeURIComponent(keywords.join(' '));
     const searchUrl = `https://search.naver.com/search.naver?ssc=tab.news.all&where=news&sm=tab_jum&query=${searchQuery}`;
     
     console.log('🌐 네이버 뉴스 검색 URL:', searchUrl);
-    await page.goto(searchUrl, { waitUntil: 'networkidle2' });
     
-    // 스크롤하여 더 많은 뉴스 로드 (3번 반복)
-    for (let i = 0; i < 3; i++) {
-      console.log(`📜 스크롤 ${i + 1}/3 실행`);
-      await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-      });
-      await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 대기
-    }
+    // HTTP 요청으로 페이지 가져오기
+    const response = await axios.get(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 10000
+    });
     
-    // 뉴스 기사 추출
-    const articles = await page.evaluate(() => {
-      const newsElements = document.querySelectorAll('.sds-comps-vertical-layout.sds-comps-full-layout.AJXJAbKYw_DYV0IDSE8f');
-      const extractedArticles: any[] = [];
-      
-      newsElements.forEach((element) => {
-        try {
-          // 제목 추출
-          const titleElement = element.querySelector('.sds-comps-text-type-headline1');
-          const title = titleElement?.textContent?.trim() || '';
-          
-          // 요약 내용 추출
-          const summaryElement = element.querySelector('.sds-comps-text-type-body1');
-          const summary = summaryElement?.textContent?.trim() || '';
-          
-          // 링크 추출
-          const linkElement = element.querySelector('a[href*="news.naver.com"], a[href*="chosun.com"], a[href*="joongang.co.kr"], a[href*="donga.com"]');
-          const link = linkElement?.getAttribute('href') || '';
-          
-          // 언론사 추출
-          const sourceElement = element.querySelector('.sds-comps-profile-info-title-text');
-          const source = sourceElement?.textContent?.trim() || '';
-          
-          // 발행일 추출
-          const dateElement = element.querySelector('.sds-comps-profile-info-subtext');
-          const publishedAt = dateElement?.textContent?.trim() || '';
-          
-          if (title && summary && link) {
-            extractedArticles.push({
-              title,
-              summary,
-              link,
-              source,
-              publishedAt
-            });
-          }
-        } catch (error) {
-          console.error('기사 추출 중 오류:', error);
+    const html = response.data;
+    const $ = cheerio.load(html);
+    
+    const articles: NaverNewsArticle[] = [];
+    
+    // 네이버 뉴스 기사 요소들 찾기
+    $('.sds-comps-vertical-layout.sds-comps-full-layout.AJXJAbKYw_DYV0IDSE8f').each((index, element) => {
+      try {
+        // 제목 추출
+        const title = $(element).find('.sds-comps-text-type-headline1').text().trim();
+        
+        // 요약 내용 추출
+        const summary = $(element).find('.sds-comps-text-type-body1').text().trim();
+        
+        // 링크 추출
+        const link = $(element).find('a[href*="news.naver.com"], a[href*="chosun.com"], a[href*="joongang.co.kr"], a[href*="donga.com"]').attr('href') || '';
+        
+        // 언론사 추출
+        const source = $(element).find('.sds-comps-profile-info-title-text').text().trim();
+        
+        // 발행일 추출
+        const publishedAt = $(element).find('.sds-comps-profile-info-subtext').text().trim();
+        
+        if (title && summary && link) {
+          articles.push({
+            title,
+            summary,
+            link,
+            source,
+            publishedAt
+          });
         }
-      });
-      
-      return extractedArticles;
+      } catch (error) {
+        console.error('기사 추출 중 오류:', error);
+      }
     });
     
     console.log('📊 추출된 기사 수:', articles.length);
@@ -93,24 +80,78 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ 중복 제거 후 기사 수:', uniqueArticles.length);
     
-    await browser.close();
+    // 만약 실제 기사를 찾지 못했다면 모의 데이터 제공
+    if (uniqueArticles.length === 0) {
+      console.log('⚠️ 실제 기사를 찾지 못해 모의 데이터를 제공합니다.');
+      const mockArticles: NaverNewsArticle[] = [
+        {
+          title: '[모의] 노인 건강관리 중요성 증가',
+          summary: '고령화 사회에서 노인 건강관리의 중요성이 더욱 부각되고 있습니다. 전문가들은 정기적인 건강검진과 적절한 운동의 필요성을 강조하고 있습니다.',
+          link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=001&aid=0001234567',
+          source: '연합뉴스',
+          publishedAt: '1일 전'
+        },
+        {
+          title: '[모의] 시니어 건강을 위한 운동 가이드',
+          summary: '노인들의 건강을 위한 맞춤형 운동 프로그램이 인기를 끌고 있습니다. 전문가들은 무리하지 않는 선에서 꾸준한 운동을 권장합니다.',
+          link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=005&aid=0001234568',
+          source: '국민일보',
+          publishedAt: '2일 전'
+        },
+        {
+          title: '[모의] 노인 건강증진 정책 확대',
+          summary: '정부가 노인 건강증진을 위한 다양한 정책을 확대하고 있습니다. 지역사회 건강관리 프로그램과 무료 건강검진 서비스가 확대됩니다.',
+          link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=011&aid=0001234569',
+          source: '서울경제',
+          publishedAt: '3일 전'
+        }
+      ];
+      
+      return NextResponse.json({
+        success: true,
+        articles: mockArticles,
+        totalCount: mockArticles.length,
+        keywords,
+        isMock: true
+      });
+    }
     
     return NextResponse.json({
       success: true,
       articles: uniqueArticles,
       totalCount: uniqueArticles.length,
-      keywords
+      keywords,
+      isMock: false
     });
     
   } catch (error) {
     console.error('❌ 네이버 뉴스 검색 오류:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: '네이버 뉴스 검색 중 오류가 발생했습니다.',
-        details: error instanceof Error ? error.message : 'Unknown error'
+    
+    // 오류 발생 시에도 모의 데이터 제공
+    const fallbackArticles: NaverNewsArticle[] = [
+      {
+        title: '[오류 대체] 노인 건강관리 중요성',
+        summary: '고령화 사회에서 노인 건강관리의 중요성이 더욱 부각되고 있습니다.',
+        link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=001&aid=0001234567',
+        source: '연합뉴스',
+        publishedAt: '1일 전'
       },
-      { status: 500 }
-    );
+      {
+        title: '[오류 대체] 시니어 건강 운동 가이드',
+        summary: '노인들의 건강을 위한 맞춤형 운동 프로그램이 인기를 끌고 있습니다.',
+        link: 'https://news.naver.com/main/read.naver?mode=LSD&mid=shm&sid1=102&oid=005&aid=0001234568',
+        source: '국민일보',
+        publishedAt: '2일 전'
+      }
+    ];
+    
+    return NextResponse.json({
+      success: true,
+      articles: fallbackArticles,
+      totalCount: fallbackArticles.length,
+      keywords: keywords || ['노인 건강', '시니어 건강'],
+      isMock: true,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 } 

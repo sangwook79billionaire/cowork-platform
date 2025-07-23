@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { XMLParser } from 'fast-xml-parser';
 
 interface NaverNewsArticle {
   title: string;
@@ -19,100 +18,90 @@ export async function POST(request: NextRequest) {
     
     console.log('🔍 네이버 뉴스 검색 시작:', keywords);
     
-    // 네이버 뉴스 RSS 피드 URL
+    // 네이버 뉴스 검색 페이지 URL
     const searchQuery = encodeURIComponent(keywords.join(' '));
-    const rssUrl = `https://news.naver.com/main/rss/search.naver?query=${searchQuery}`;
+    const searchUrl = `https://search.naver.com/search.naver?where=news&query=${searchQuery}`;
     
-    console.log('🌐 네이버 뉴스 RSS URL:', rssUrl);
+    console.log('🌐 네이버 뉴스 검색 URL:', searchUrl);
     
-    // RSS 피드 가져오기
-    const response = await axios.get(rssUrl, {
+    // HTTP 요청으로 페이지 가져오기
+    const response = await axios.get(searchUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       },
-      timeout: 10000
+      timeout: 15000
     });
     
-    const xmlData = response.data;
-    const parser = new XMLParser();
-    const result = parser.parse(xmlData);
-    
-    console.log('📊 RSS 파싱 결과:', result);
+    const html = response.data;
+    console.log('📄 HTML 로드 완료, 길이:', html.length);
     
     const articles: NaverNewsArticle[] = [];
     
-    // RSS 피드에서 기사 추출
-    if (result.rss && result.rss.channel && result.rss.channel.item) {
-      const items = Array.isArray(result.rss.channel.item)
-        ? result.rss.channel.item
-        : [result.rss.channel.item];
+    // 정규식을 사용하여 네이버 뉴스 검색 결과 파싱
+    const newsPattern = /<div[^>]*class="[^"]*news_wrap[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
+    const titlePattern = /<a[^>]*class="[^"]*news_tit[^"]*"[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g;
+    const summaryPattern = /<div[^>]*class="[^"]*dsc_txt_wrap[^"]*"[^>]*>([^<]*)<\/div>/g;
+    const sourcePattern = /<a[^>]*class="[^"]*info_group[^"]*"[^>]*>([^<]*)<\/a>/g;
+    const datePattern = /<span[^>]*class="[^"]*info_group[^"]*"[^>]*>([^<]*)<\/span>/g;
+    
+    let match;
+    let articleCount = 0;
+    
+    // 뉴스 블록 찾기
+    while ((match = newsPattern.exec(html)) !== null && articleCount < 10) {
+      const newsBlock = match[1];
       
-      items.forEach((item: any, index: number) => {
-        if (index < 10) { // 최대 10개 기사만
-          const title = item.title || '';
-          const description = item.description || '';
-          const link = item.link || '';
-          const pubDate = item.pubDate || '';
-          
-          // 언론사 추출 (link에서 추출)
-          let source = '네이버 뉴스';
-          if (link.includes('news.naver.com')) {
-            const urlMatch = link.match(/oid=(\d+)/);
-            if (urlMatch) {
-              const oid = urlMatch[1];
-              const sourceMap: { [key: string]: string } = {
-                '001': '연합뉴스',
-                '005': '국민일보',
-                '011': '서울경제',
-                '021': '문화일보',
-                '022': '세계일보',
-                '023': '조선일보',
-                '025': '중앙일보',
-                '028': '한겨레',
-                '032': '경향신문',
-                '081': '서울신문',
-                '082': '동아일보',
-                '087': '매일경제',
-                '088': '한국일보',
-                '092': '매일신문',
-                '094': '부산일보',
-                '096': '부산일보',
-                '097': '경남일보',
-                '098': '경남도민일보',
-                '099': '경남신문',
-                '100': '경남일보',
-                '101': '경남도민일보',
-                '102': '경남신문',
-                '103': '경남일보',
-                '104': '경남도민일보',
-                '105': '경남신문',
-                '106': '경남일보',
-                '107': '경남도민일보',
-                '108': '경남신문',
-                '109': '경남일보',
-                '110': '경남도민일보'
-              };
-              source = sourceMap[oid] || '네이버 뉴스';
-            }
-          }
-          
-          if (title && link) {
-            articles.push({
-              title: title.replace(/<[^>]*>/g, ''), // HTML 태그 제거
-              summary: description.replace(/<[^>]*>/g, ''), // HTML 태그 제거
-              link,
-              source,
-              publishedAt: pubDate
-            });
-          }
+      // 제목과 링크 추출
+      const titleMatch = titlePattern.exec(newsBlock);
+      if (titleMatch) {
+        const link = titleMatch[1];
+        const title = titleMatch[2].trim();
+        
+        // 요약 추출
+        const summaryMatch = summaryPattern.exec(newsBlock);
+        const summary = summaryMatch ? summaryMatch[1].trim() : '';
+        
+        // 언론사 추출
+        const sourceMatch = sourcePattern.exec(newsBlock);
+        const source = sourceMatch ? sourceMatch[1].trim() : '네이버 뉴스';
+        
+        // 날짜 추출
+        const dateMatch = datePattern.exec(newsBlock);
+        const publishedAt = dateMatch ? dateMatch[1].trim() : '최근';
+        
+        if (title && link && title.length > 10) { // 의미있는 제목만
+          articles.push({
+            title,
+            summary,
+            link,
+            source,
+            publishedAt
+          });
+          articleCount++;
         }
-      });
+      }
     }
     
     console.log('📊 추출된 기사 수:', articles.length);
     
+    // 키워드 필터링 (제목에 키워드가 포함된 기사만)
+    const keywordArray = keywords.map(k => k.toLowerCase());
+    const filteredArticles = articles.filter(article => {
+      const titleLower = article.title.toLowerCase();
+      return keywordArray.some(keyword => titleLower.includes(keyword));
+    });
+    
+    console.log('🔍 키워드 필터링 후 기사 수:', filteredArticles.length);
+    
     // 중복 제거
-    const uniqueArticles = articles.filter((article, index, self) => {
+    const uniqueArticles = filteredArticles.filter((article, index, self) => {
       const firstIndex = self.findIndex(a => a.title === article.title);
       return firstIndex === index;
     });
@@ -123,7 +112,7 @@ export async function POST(request: NextRequest) {
     if (uniqueArticles.length > 0) {
       return NextResponse.json({
         success: true,
-        articles: uniqueArticles,
+        articles: uniqueArticles.slice(0, 10), // 최대 10개
         totalCount: uniqueArticles.length,
         keywords,
         isMock: false

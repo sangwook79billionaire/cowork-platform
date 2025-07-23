@@ -35,52 +35,125 @@ export async function POST(request: NextRequest) {
     });
     
     const xmlData = response.data;
+    console.log('📄 XML 데이터 길이:', xmlData.length);
+    console.log('📄 XML 데이터 샘플:', xmlData.substring(0, 500));
+    
     const parser = new XMLParser({
       ignoreAttributes: false,
-      attributeNamePrefix: '@_'
+      attributeNamePrefix: '@_',
+      textNodeName: '_text',
+      parseAttributeValue: true
     });
     
     const result = parser.parse(xmlData);
-    console.log('📊 RSS 파싱 결과:', result);
+    console.log('📊 RSS 파싱 결과 구조:', JSON.stringify(result, null, 2).substring(0, 1000));
     
     const articles: GoogleNewsArticle[] = [];
     
-    // RSS 피드에서 기사 추출
-    if (result.feed && result.feed.entry) {
-      const entries = Array.isArray(result.feed.entry)
-        ? result.feed.entry
-        : [result.feed.entry];
-      
-      entries.forEach((entry: any, index: number) => {
-        if (index < 20) { // 최대 20개 기사
-          const title = entry.title || '';
-          const summary = entry.content || '';
-          const link = entry.link?.['@_href'] || '';
-          const publishedAt = entry.published || '';
-          const source = entry.author?.name || '구글 뉴스';
-          
-          // 키워드 매칭 확인
-          const titleLower = title.toLowerCase();
-          const summaryLower = summary.toLowerCase();
-          const keywordArray = keywords.map((k: string) => k.toLowerCase());
-          
-          const hasKeyword = keywordArray.some((keyword: string) => 
-            titleLower.includes(keyword) || summaryLower.includes(keyword)
-          );
-          
-          if (title && link && hasKeyword) {
-            articles.push({
-              title: title.replace(/<[^>]*>/g, ''), // HTML 태그 제거
-              summary: summary.replace(/<[^>]*>/g, '').substring(0, 200) + '...', // HTML 태그 제거 및 요약
-              link,
-              source,
-              publishedAt,
-              keyword: keywords.join(', ')
-            });
+    // 다양한 RSS 구조 시도
+    const possibleStructures = [
+      // 구조 1: 표준 RSS
+      () => {
+        if (result.rss && result.rss.channel && result.rss.channel.item) {
+          return Array.isArray(result.rss.channel.item) 
+            ? result.rss.channel.item 
+            : [result.rss.channel.item];
+        }
+        return null;
+      },
+      // 구조 2: Atom 피드
+      () => {
+        if (result.feed && result.feed.entry) {
+          return Array.isArray(result.feed.entry) 
+            ? result.feed.entry 
+            : [result.feed.entry];
+        }
+        return null;
+      },
+      // 구조 3: 구글 알리미 특별 구조
+      () => {
+        if (result.feed && result.feed.entry) {
+          return Array.isArray(result.feed.entry) 
+            ? result.feed.entry 
+            : [result.feed.entry];
+        }
+        return null;
+      }
+    ];
+    
+    let entries: any[] = [];
+    
+    // 각 구조 시도
+    for (const structureFn of possibleStructures) {
+      const foundEntries = structureFn();
+      if (foundEntries && foundEntries.length > 0) {
+        entries = foundEntries;
+        console.log('✅ RSS 구조 발견, 엔트리 수:', entries.length);
+        break;
+      }
+    }
+    
+    if (entries.length === 0) {
+      console.log('❌ RSS 구조를 찾을 수 없음');
+      // 전체 결과에서 가능한 모든 항목 찾기
+      const allPossibleItems: Array<{path: string, value: any}> = [];
+      const traverse = (obj: any, path: string = '') => {
+        if (typeof obj === 'object' && obj !== null) {
+          for (const [key, value] of Object.entries(obj)) {
+            if (key === 'item' || key === 'entry' || key === 'title') {
+              allPossibleItems.push({ path: path + '.' + key, value });
+            }
+            if (typeof value === 'object') {
+              traverse(value, path + '.' + key);
+            }
           }
         }
-      });
+      };
+      traverse(result);
+      console.log('🔍 발견된 가능한 항목들:', allPossibleItems);
     }
+    
+    // 엔트리에서 기사 추출
+    entries.forEach((entry: any, index: number) => {
+      if (index < 20) { // 최대 20개 기사
+        console.log(`📝 엔트리 ${index + 1}:`, JSON.stringify(entry, null, 2));
+        
+        // 다양한 필드명 시도
+        const title = entry.title?._text || entry.title || entry.name || '';
+        const summary = entry.description?._text || entry.description || entry.content?._text || entry.content || entry.summary?._text || entry.summary || '';
+        const link = entry.link?._text || entry.link || entry.url || entry.href || '';
+        const publishedAt = entry.pubDate?._text || entry.pubDate || entry.published?._text || entry.published || entry.updated?._text || entry.updated || '';
+        const source = entry.author?._text || entry.author || entry.source?._text || entry.source || '구글 뉴스';
+        
+        console.log(`📄 추출된 데이터 ${index + 1}:`, {
+          title: title.substring(0, 50),
+          summary: summary.substring(0, 50),
+          link: link.substring(0, 50),
+          publishedAt,
+          source
+        });
+        
+        // 키워드 매칭 확인
+        const titleLower = title.toLowerCase();
+        const summaryLower = summary.toLowerCase();
+        const keywordArray = keywords.map((k: string) => k.toLowerCase());
+        
+        const hasKeyword = keywordArray.some((keyword: string) => 
+          titleLower.includes(keyword) || summaryLower.includes(keyword)
+        );
+        
+        if (title && link && hasKeyword) {
+          articles.push({
+            title: title.replace(/<[^>]*>/g, ''), // HTML 태그 제거
+            summary: summary.replace(/<[^>]*>/g, '').substring(0, 200) + '...', // HTML 태그 제거 및 요약
+            link,
+            source,
+            publishedAt,
+            keyword: keywords.join(', ')
+          });
+        }
+      }
+    });
     
     console.log('📊 추출된 기사 수:', articles.length);
     

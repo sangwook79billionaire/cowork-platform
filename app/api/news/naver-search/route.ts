@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
-import { XMLParser } from 'fast-xml-parser';
+import { Builder, By, until, WebDriver } from 'selenium-webdriver';
+import chrome from 'selenium-webdriver/chrome.js';
 
 interface NaverNewsArticle {
   title: string;
@@ -12,6 +12,7 @@ interface NaverNewsArticle {
 
 export async function POST(request: NextRequest) {
   let keywords = ['노인 건강', '시니어 건강'];
+  let driver: WebDriver | null = null;
   
   try {
     const requestData = await request.json();
@@ -19,94 +20,78 @@ export async function POST(request: NextRequest) {
     
     console.log('🔍 네이버 뉴스 검색 시작:', keywords);
     
-    // 네이버 뉴스 RSS 피드 URL
+    // Selenium WebDriver 설정
+    const options = new chrome.Options();
+    options.addArguments('--headless');
+    options.addArguments('--no-sandbox');
+    options.addArguments('--disable-dev-shm-usage');
+    options.addArguments('--disable-gpu');
+    options.addArguments('--window-size=1920,1080');
+    
+    driver = await new Builder()
+      .forBrowser('chrome')
+      .setChromeOptions(options)
+      .build();
+    
+    // 네이버 뉴스 검색 페이지로 이동
     const searchQuery = encodeURIComponent(keywords.join(' '));
-    const rssUrl = `https://news.naver.com/main/rss/search.naver?query=${searchQuery}`;
+    const searchUrl = `https://search.naver.com/search.naver?ssc=tab.news.all&where=news&sm=tab_jum&query=${searchQuery}`;
     
-    console.log('🌐 네이버 뉴스 RSS URL:', rssUrl);
+    console.log('🌐 네이버 뉴스 검색 URL:', searchUrl);
+    await driver.get(searchUrl);
     
-    // RSS 피드 가져오기
-    const response = await axios.get(rssUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      timeout: 10000
-    });
+    // 페이지 로딩 대기
+    await driver.wait(until.elementLocated(By.css('.sds-comps-vertical-layout')), 10000);
     
-    const xmlData = response.data;
-    const parser = new XMLParser();
-    const result = parser.parse(xmlData);
+    // 스크롤하여 더 많은 뉴스 로드 (3번 반복)
+    for (let i = 0; i < 3; i++) {
+      console.log(`📜 스크롤 ${i + 1}/3 실행`);
+      await driver.executeScript('window.scrollTo(0, document.body.scrollHeight);');
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
+    }
     
-    console.log('📊 RSS 파싱 결과:', result);
+    // 뉴스 기사 요소들 찾기
+    const newsElements = await driver.findElements(By.css('.sds-comps-vertical-layout.sds-comps-full-layout.AJXJAbKYw_DYV0IDSE8f'));
+    
+    console.log('📊 찾은 뉴스 요소 수:', newsElements.length);
     
     const articles: NaverNewsArticle[] = [];
     
-    // RSS 피드에서 기사 추출
-    if (result.rss && result.rss.channel && result.rss.channel.item) {
-      const items = Array.isArray(result.rss.channel.item) 
-        ? result.rss.channel.item 
-        : [result.rss.channel.item];
-      
-      items.forEach((item: any, index: number) => {
-        if (index < 10) { // 최대 10개 기사만
-          const title = item.title || '';
-          const description = item.description || '';
-          const link = item.link || '';
-          const pubDate = item.pubDate || '';
-          
-          // 언론사 추출 (link에서 추출)
-          let source = '네이버 뉴스';
-          if (link.includes('news.naver.com')) {
-            const urlMatch = link.match(/oid=(\d+)/);
-            if (urlMatch) {
-              const oid = urlMatch[1];
-              const sourceMap: { [key: string]: string } = {
-                '001': '연합뉴스',
-                '005': '국민일보',
-                '011': '서울경제',
-                '021': '문화일보',
-                '022': '세계일보',
-                '023': '조선일보',
-                '025': '중앙일보',
-                '028': '한겨레',
-                '032': '경향신문',
-                '081': '서울신문',
-                '082': '동아일보',
-                '087': '매일경제',
-                '088': '한국일보',
-                '092': '매일신문',
-                '094': '부산일보',
-                '096': '부산일보',
-                '097': '경남일보',
-                '098': '경남도민일보',
-                '099': '경남신문',
-                '100': '경남일보',
-                '101': '경남도민일보',
-                '102': '경남신문',
-                '103': '경남일보',
-                '104': '경남도민일보',
-                '105': '경남신문',
-                '106': '경남일보',
-                '107': '경남도민일보',
-                '108': '경남신문',
-                '109': '경남일보',
-                '110': '경남도민일보'
-              };
-              source = sourceMap[oid] || '네이버 뉴스';
-            }
-          }
-          
-          if (title && link) {
-            articles.push({
-              title: title.replace(/<[^>]*>/g, ''), // HTML 태그 제거
-              summary: description.replace(/<[^>]*>/g, ''), // HTML 태그 제거
-              link,
-              source,
-              publishedAt: pubDate
-            });
-          }
+    // 각 뉴스 요소에서 정보 추출
+    for (const element of newsElements) {
+      try {
+        // 제목 추출
+        const titleElement = await element.findElement(By.css('.sds-comps-text-type-headline1'));
+        const title = await titleElement.getText();
+        
+        // 요약 내용 추출
+        const summaryElement = await element.findElement(By.css('.sds-comps-text-type-body1'));
+        const summary = await summaryElement.getText();
+        
+        // 링크 추출
+        const linkElement = await element.findElement(By.css('a[href*="news.naver.com"], a[href*="chosun.com"], a[href*="joongang.co.kr"], a[href*="donga.com"]'));
+        const link = await linkElement.getAttribute('href');
+        
+        // 언론사 추출
+        const sourceElement = await element.findElement(By.css('.sds-comps-profile-info-title-text'));
+        const source = await sourceElement.getText();
+        
+        // 발행일 추출
+        const dateElement = await element.findElement(By.css('.sds-comps-profile-info-subtext'));
+        const publishedAt = await dateElement.getText();
+        
+        if (title && summary && link) {
+          articles.push({
+            title: title.trim(),
+            summary: summary.trim(),
+            link: link.trim(),
+            source: source.trim(),
+            publishedAt: publishedAt.trim()
+          });
         }
-      });
+      } catch (error) {
+        console.error('기사 추출 중 오류:', error);
+      }
     }
     
     console.log('📊 추출된 기사 수:', articles.length);
@@ -193,5 +178,15 @@ export async function POST(request: NextRequest) {
       isMock: true,
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  } finally {
+    // WebDriver 정리
+    if (driver) {
+      try {
+        await driver.quit();
+        console.log('🔧 WebDriver 정리 완료');
+      } catch (error) {
+        console.error('WebDriver 정리 중 오류:', error);
+      }
+    }
   }
 } 

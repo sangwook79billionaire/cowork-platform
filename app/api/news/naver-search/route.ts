@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Builder, By, until, WebDriver } from 'selenium-webdriver';
-import chrome from 'selenium-webdriver/chrome.js';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 interface NaverNewsArticle {
   title: string;
@@ -12,7 +12,6 @@ interface NaverNewsArticle {
 
 export async function POST(request: NextRequest) {
   let keywords = ['노인 건강', '시니어 건강'];
-  let driver: WebDriver | null = null;
   
   try {
     const requestData = await request.json();
@@ -20,78 +19,91 @@ export async function POST(request: NextRequest) {
     
     console.log('🔍 네이버 뉴스 검색 시작:', keywords);
     
-    // Selenium WebDriver 설정
-    const options = new chrome.Options();
-    options.addArguments('--headless');
-    options.addArguments('--no-sandbox');
-    options.addArguments('--disable-dev-shm-usage');
-    options.addArguments('--disable-gpu');
-    options.addArguments('--window-size=1920,1080');
-    
-    driver = await new Builder()
-      .forBrowser('chrome')
-      .setChromeOptions(options)
-      .build();
-    
-    // 네이버 뉴스 검색 페이지로 이동
+    // 네이버 뉴스 검색 페이지 URL
     const searchQuery = encodeURIComponent(keywords.join(' '));
     const searchUrl = `https://search.naver.com/search.naver?ssc=tab.news.all&where=news&sm=tab_jum&query=${searchQuery}`;
     
     console.log('🌐 네이버 뉴스 검색 URL:', searchUrl);
-    await driver.get(searchUrl);
     
-    // 페이지 로딩 대기
-    await driver.wait(until.elementLocated(By.css('.sds-comps-vertical-layout')), 10000);
+    // HTTP 요청으로 페이지 가져오기
+    const response = await axios.get(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+      },
+      timeout: 15000
+    });
     
-    // 스크롤하여 더 많은 뉴스 로드 (3번 반복)
-    for (let i = 0; i < 3; i++) {
-      console.log(`📜 스크롤 ${i + 1}/3 실행`);
-      await driver.executeScript('window.scrollTo(0, document.body.scrollHeight);');
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
-    }
+    const html = response.data;
+    const $ = cheerio.load(html);
     
-    // 뉴스 기사 요소들 찾기
-    const newsElements = await driver.findElements(By.css('.sds-comps-vertical-layout.sds-comps-full-layout.AJXJAbKYw_DYV0IDSE8f'));
-    
-    console.log('📊 찾은 뉴스 요소 수:', newsElements.length);
+    console.log('📄 HTML 로드 완료');
     
     const articles: NaverNewsArticle[] = [];
     
-    // 각 뉴스 요소에서 정보 추출
-    for (const element of newsElements) {
+    // 네이버 뉴스 검색 결과 파싱
+    $('.news_wrap.api_ani_send').each((index, element) => {
       try {
+        const $element = $(element);
+        
         // 제목 추출
-        const titleElement = await element.findElement(By.css('.sds-comps-text-type-headline1'));
-        const title = await titleElement.getText();
+        const title = $element.find('.news_tit').text().trim();
         
         // 요약 내용 추출
-        const summaryElement = await element.findElement(By.css('.sds-comps-text-type-body1'));
-        const summary = await summaryElement.getText();
+        const summary = $element.find('.dsc_txt_wrap').text().trim();
         
         // 링크 추출
-        const linkElement = await element.findElement(By.css('a[href*="news.naver.com"], a[href*="chosun.com"], a[href*="joongang.co.kr"], a[href*="donga.com"]'));
-        const link = await linkElement.getAttribute('href');
+        const link = $element.find('.news_tit').attr('href') || '';
         
         // 언론사 추출
-        const sourceElement = await element.findElement(By.css('.sds-comps-profile-info-title-text'));
-        const source = await sourceElement.getText();
+        const source = $element.find('.info_group a').first().text().trim();
         
         // 발행일 추출
-        const dateElement = await element.findElement(By.css('.sds-comps-profile-info-subtext'));
-        const publishedAt = await dateElement.getText();
+        const publishedAt = $element.find('.info_group span').last().text().trim();
         
         if (title && summary && link) {
           articles.push({
-            title: title.trim(),
-            summary: summary.trim(),
-            link: link.trim(),
-            source: source.trim(),
-            publishedAt: publishedAt.trim()
+            title,
+            summary,
+            link,
+            source: source || '네이버 뉴스',
+            publishedAt: publishedAt || '최근'
           });
         }
       } catch (error) {
-        console.error('기사 추출 중 오류:', error);
+        console.error('기사 파싱 중 오류:', error);
       }
+    });
+    
+    // 대안: 다른 선택자로 시도
+    if (articles.length === 0) {
+      $('.sds-comps-vertical-layout').each((index, element) => {
+        try {
+          const $element = $(element);
+          
+          const title = $element.find('.sds-comps-text-type-headline1').text().trim();
+          const summary = $element.find('.sds-comps-text-type-body1').text().trim();
+          const link = $element.find('a').attr('href') || '';
+          const source = $element.find('.sds-comps-profile-info-title-text').text().trim();
+          const publishedAt = $element.find('.sds-comps-profile-info-subtext').text().trim();
+          
+          if (title && summary && link) {
+            articles.push({
+              title,
+              summary,
+              link,
+              source: source || '네이버 뉴스',
+              publishedAt: publishedAt || '최근'
+            });
+          }
+        } catch (error) {
+          console.error('대안 파싱 중 오류:', error);
+        }
+      });
     }
     
     console.log('📊 추출된 기사 수:', articles.length);
@@ -108,7 +120,7 @@ export async function POST(request: NextRequest) {
     if (uniqueArticles.length > 0) {
       return NextResponse.json({
         success: true,
-        articles: uniqueArticles,
+        articles: uniqueArticles.slice(0, 10), // 최대 10개
         totalCount: uniqueArticles.length,
         keywords,
         isMock: false
@@ -178,15 +190,5 @@ export async function POST(request: NextRequest) {
       isMock: true,
       error: error instanceof Error ? error.message : 'Unknown error'
     });
-  } finally {
-    // WebDriver 정리
-    if (driver) {
-      try {
-        await driver.quit();
-        console.log('🔧 WebDriver 정리 완료');
-      } catch (error) {
-        console.error('WebDriver 정리 중 오류:', error);
-      }
-    }
   }
 } 

@@ -41,7 +41,7 @@ jobs:
       run: |
         echo "Starting Vercel deployment..."
         echo "Deploying to production..."
-        vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_TEAM_ID }} --yes
         echo "Deployment completed successfully!"
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

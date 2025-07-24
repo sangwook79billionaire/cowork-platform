@@ -135,10 +135,10 @@ export default function SavedArticles() {
 
                 <p className="text-gray-600 mb-3">{article.description}</p>
 
-                {article.summary && (
+                {article.content && article.content !== article.description && (
                   <div className="mb-3 p-3 bg-blue-50 rounded-lg">
                     <span className="text-sm font-medium text-blue-600">AI 요약:</span>
-                    <p className="text-sm text-gray-700 mt-1">{article.summary}</p>
+                    <p className="text-sm text-gray-700 mt-1">{article.content}</p>
                   </div>
                 )}
 

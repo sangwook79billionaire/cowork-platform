@@ -6,10 +6,10 @@
   "devCommand": "npm run dev",
   "functions": {
     "app/api/news/collect/route.ts": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@18"
     },
     "app/api/news/firebase/route.ts": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@18"
     }
   },
   "crons": [

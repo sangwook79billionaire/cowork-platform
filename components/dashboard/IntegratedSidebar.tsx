@@ -47,7 +47,7 @@ export function IntegratedSidebar({
     },
     { 
       id: 'news-search' as ActiveFeature, 
-      name: '뉴스 검색', 
+      name: '구글 RSS 뉴스 수집', 
       icon: MagnifyingGlassIcon, 
       color: 'text-green-600', 
       bgColor: 'bg-green-50', 

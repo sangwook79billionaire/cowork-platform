@@ -1,8 +1,28 @@
 'use client';
 
 import React, { useState } from 'react';
-import { NewsArticle } from '@/lib/newsService';
 import { toast } from 'react-hot-toast';
+
+interface NewsArticle {
+  id: string;
+  title: string;
+  link: string;
+  source: string;
+  published_at: string;
+  description: string;
+  keyword: string;
+  collected_at: string;
+}
+
+interface NewsCollectionResult {
+  total_collected: number;
+  total_unique: number;
+  keywords: string[];
+  failed_keywords: string[];
+  excel_file: string | null;
+  firebase_uploaded: boolean;
+  message: string;
+}
 
 interface NewsSearchProps {
   onArticleSelect?: (article: NewsArticle) => void;
@@ -13,9 +33,10 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set());
+  const [collectionResult, setCollectionResult] = useState<NewsCollectionResult | null>(null);
 
-  // 뉴스 검색
-  const handleSearch = async () => {
+  // 뉴스 수집 (구글 RSS 기반)
+  const handleNewsCollection = async () => {
     if (!keywords.trim()) {
       toast.error('검색 키워드를 입력해주세요.');
       return;
@@ -23,31 +44,60 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/news/search', {
+      const response = await fetch('/api/news/collect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          keywords: keywords.trim(),
-          language: 'ko',
-          includeSummary: true
+          keywords: keywords.trim().split(',').map(k => k.trim()).filter(k => k)
         }),
       });
 
       const result = await response.json();
 
-      if (result.success) {
-        setArticles(result.data.articles);
-        toast.success(`${result.data.totalResults}개의 기사를 찾았습니다.`);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      setCollectionResult(result);
+      
+      if (result.total_unique > 0) {
+        toast.success(`${result.total_unique}개의 뉴스를 수집했습니다.`);
+        
+        // Firebase에서 수집된 뉴스 가져오기
+        await fetchCollectedNews();
       } else {
-        toast.error(result.error || '뉴스 검색에 실패했습니다.');
+        toast.warning('수집된 뉴스가 없습니다.');
       }
     } catch (error) {
-      console.error('뉴스 검색 오류:', error);
-      toast.error('뉴스 검색 중 오류가 발생했습니다.');
+      console.error('뉴스 수집 오류:', error);
+      toast.error('뉴스 수집 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Firebase에서 수집된 뉴스 가져오기
+  const fetchCollectedNews = async () => {
+    try {
+      const response = await fetch('/api/news/firebase', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setArticles(result.articles);
+      } else {
+        console.error('Firebase에서 뉴스 가져오기 실패:', result.error);
+      }
+    } catch (error) {
+      console.error('Firebase 뉴스 가져오기 오류:', error);
     }
   };
 
@@ -114,20 +164,27 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   return (
     <div className="max-w-6xl mx-auto p-6">
       {/* 검색 입력 */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">뉴스 검색 및 요약</h2>
+        <h2 className="text-2xl font-bold mb-4">구글 RSS 뉴스 수집</h2>
+        <p className="text-gray-600 mb-4">
+          키워드를 입력하고 "수집" 버튼을 클릭하면 구글 뉴스 RSS에서 관련 뉴스를 수집하여 Firebase에 저장합니다.
+        </p>
         <div className="flex gap-4">
           <input
             type="text"
@@ -135,19 +192,48 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
             name="keywords"
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
-            placeholder="검색할 키워드를 입력하세요 (예: AI, 기술, 경제)"
+            placeholder="검색할 키워드를 입력하세요 (쉼표로 구분, 예: AI, 기술, 경제)"
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyPress={(e) => e.key === 'Enter' && handleNewsCollection()}
           />
           <button
-            onClick={handleSearch}
+            onClick={handleNewsCollection}
             disabled={loading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '검색 중...' : '검색'}
+            {loading ? '수집 중...' : '수집'}
           </button>
         </div>
       </div>
+
+      {/* 수집 결과 요약 */}
+      {collectionResult && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="font-semibold text-blue-900 mb-2">수집 결과</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-medium">총 수집:</span> {collectionResult.total_collected}개
+            </div>
+            <div>
+              <span className="font-medium">중복 제거 후:</span> {collectionResult.total_unique}개
+            </div>
+            <div>
+              <span className="font-medium">키워드:</span> {collectionResult.keywords.join(', ')}
+            </div>
+            <div>
+              <span className="font-medium">Firebase 업로드:</span> 
+              <span className={collectionResult.firebase_uploaded ? 'text-green-600' : 'text-red-600'}>
+                {collectionResult.firebase_uploaded ? '성공' : '실패'}
+              </span>
+            </div>
+          </div>
+          {collectionResult.failed_keywords.length > 0 && (
+            <div className="mt-2 text-sm text-red-600">
+              실패한 키워드: {collectionResult.failed_keywords.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 선택된 기사 저장 버튼 */}
       {selectedArticles.size > 0 && (
@@ -162,11 +248,11 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         </div>
       )}
 
-      {/* 검색 결과 */}
+      {/* 수집된 뉴스 목록 */}
       {articles.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">
-            검색 결과 ({articles.length}개)
+            수집된 뉴스 ({articles.length}개)
           </h3>
           <div className="grid gap-4">
             {articles.map((article) => (
@@ -191,27 +277,25 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                     <h4 className="font-semibold text-lg mb-2">{article.title}</h4>
                     <p className="text-gray-600 mb-2">{article.description}</p>
                     
-                    {article.content && article.content !== article.description && (
-                      <div className="mb-3">
-                        <span className="text-sm font-medium text-blue-600">AI 요약:</span>
-                        <p className="text-sm text-gray-700 mt-1">{article.content}</p>
-                      </div>
-                    )}
-                    
                     <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{article.source.name}</span>
-                      <span>{formatDate(article.publishedAt)}</span>
+                      <span>{article.source}</span>
+                      <span>{formatDate(article.published_at)}</span>
                     </div>
                     
-                    <a
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm mt-2 inline-block"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      원문 보기 →
-                    </a>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        키워드: {article.keyword}
+                      </span>
+                      <a
+                        href={article.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        원문 보기 →
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

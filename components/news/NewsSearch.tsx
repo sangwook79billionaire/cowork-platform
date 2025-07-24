@@ -181,6 +181,21 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
     }
   };
 
+  // HTML 태그 제거 및 텍스트 정리
+  const cleanHtmlText = (htmlText: string): string => {
+    if (!htmlText) return '내용 없음';
+    
+    return htmlText
+      .replace(/<[^>]*>/g, '') // HTML 태그 제거
+      .replace(/&nbsp;/g, ' ') // &nbsp; 제거
+      .replace(/&amp;/g, '&') // &amp; 제거
+      .replace(/&lt;/g, '<') // &lt; 제거
+      .replace(/&gt;/g, '>') // &gt; 제거
+      .replace(/&quot;/g, '"') // &quot; 제거
+      .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+      .trim();
+  };
+
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
     try {
@@ -305,7 +320,9 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                         <h4 className="font-semibold text-lg flex-1 mr-2">{article.title}</h4>
                         <span className="text-xs text-gray-400">#{index + 1}</span>
                       </div>
-                      <p className="text-gray-600 mb-2 line-clamp-2">{article.description}</p>
+                      <p className="text-gray-600 mb-2 line-clamp-2">
+                        {cleanHtmlText(article.description)}
+                      </p>
                       
                       <div className="flex items-center justify-between text-sm text-gray-500">
                         <span>{article.source}</span>

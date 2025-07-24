@@ -99,7 +99,8 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   // Firebase에서 수집된 뉴스 가져오기
   const fetchCollectedNews = async () => {
     try {
-      const response = await fetch('/api/news/firebase', {
+      // 더 많은 뉴스를 가져오기 위해 limit을 200으로 설정
+      const response = await fetch('/api/news/firebase?limit=200', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -109,6 +110,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       const result = await response.json();
 
       if (result.success) {
+        console.log(`✅ Firebase에서 ${result.articles.length}개의 뉴스를 가져왔습니다.`);
         setArticles(result.articles);
       } else {
         console.error('Firebase에서 뉴스 가져오기 실패:', result.error);
@@ -268,56 +270,75 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       {/* 수집된 뉴스 목록 */}
       {articles.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">
-            수집된 뉴스 ({articles.length}개)
-          </h3>
-          <div className="grid gap-4">
-            {articles.map((article) => (
-              <div
-                key={article.id}
-                className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                  selectedArticles.has(article.id)
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => toggleArticleSelection(article.id)}
-              >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedArticles.has(article.id)}
-                    onChange={() => toggleArticleSelection(article.id)}
-                    className="mt-1"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-lg mb-2">{article.title}</h4>
-                    <p className="text-gray-600 mb-2">{article.description}</p>
-                    
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{article.source}</span>
-                      <span>{formatDate(article.published_at)}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                        키워드: {article.keyword}
-                      </span>
-                      <a
-                        href={article.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        원문 보기 →
-                      </a>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">
+              수집된 뉴스 ({articles.length}개)
+            </h3>
+            <div className="text-sm text-gray-500">
+              총 {articles.length}개 중 {selectedArticles.size}개 선택됨
+            </div>
+          </div>
+          
+          {/* 뉴스 목록 컨테이너 - 스크롤 가능하도록 설정 */}
+          <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+            <div className="space-y-2 p-2">
+              {articles.map((article, index) => (
+                <div
+                  key={article.id}
+                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                    selectedArticles.has(article.id)
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => toggleArticleSelection(article.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedArticles.has(article.id)}
+                      onChange={() => toggleArticleSelection(article.id)}
+                      className="mt-1"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-lg flex-1 mr-2">{article.title}</h4>
+                        <span className="text-xs text-gray-400">#{index + 1}</span>
+                      </div>
+                      <p className="text-gray-600 mb-2 line-clamp-2">{article.description}</p>
+                      
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>{article.source}</span>
+                        <span>{formatDate(article.published_at)}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                          키워드: {article.keyword}
+                        </span>
+                        <a
+                          href={article.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          원문 보기 →
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+          
+          {/* 페이지네이션 정보 */}
+          {articles.length > 50 && (
+            <div className="text-center text-sm text-gray-500">
+              스크롤하여 더 많은 뉴스를 확인하세요
+            </div>
+          )}
         </div>
       )}
 

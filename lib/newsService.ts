@@ -27,21 +27,81 @@ export interface NewsSearchResult {
 // 뉴스 API 서비스 클래스
 export class NewsService {
   private geminiAI: GoogleGenerativeAI;
+  private naverClientId: string;
+  private naverClientSecret: string;
 
   constructor() {
     this.geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    this.naverClientId = process.env.NAVER_CLIENT_ID || '';
+    this.naverClientSecret = process.env.NAVER_CLIENT_SECRET || '';
   }
 
-  // 키워드로 뉴스 검색 (모의 데이터 사용)
+  // 키워드로 뉴스 검색 (Naver News API 사용)
   async searchNews(keywords: string, language: string = 'ko'): Promise<NewsArticle[]> {
     try {
-      // 모의 뉴스 데이터 생성
+      // Naver News API가 설정되어 있으면 실제 API 사용
+      if (this.naverClientId && this.naverClientSecret) {
+        return await this.searchNaverNews(keywords);
+      }
+      
+      // 설정이 없으면 모의 데이터 사용
+      console.log('Naver API 키가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
       const mockArticles = this.generateMockArticles(keywords);
       return this.removeDuplicates(mockArticles);
     } catch (error) {
       console.error('뉴스 검색 오류:', error);
+      // 오류 발생 시 모의 데이터 사용
+      const mockArticles = this.generateMockArticles(keywords);
+      return this.removeDuplicates(mockArticles);
+    }
+  }
+
+  // Naver News API 검색
+  private async searchNaverNews(keywords: string): Promise<NewsArticle[]> {
+    try {
+      const response = await axios.get('https://openapi.naver.com/v1/search/news.json', {
+        params: {
+          query: keywords,
+          display: 50,
+          sort: 'date'
+        },
+        headers: {
+          'X-Naver-Client-Id': this.naverClientId,
+          'X-Naver-Client-Secret': this.naverClientSecret
+        }
+      });
+
+      if (response.data.items) {
+        return response.data.items.map((item: any, index: number) => ({
+          id: `naver-${index}`,
+          title: this.decodeHtmlEntities(item.title),
+          description: this.decodeHtmlEntities(item.description),
+          content: this.decodeHtmlEntities(item.description),
+          url: item.link,
+          publishedAt: new Date().toISOString(), // Naver API는 날짜를 제공하지 않음
+          source: {
+            name: 'Naver News',
+            id: 'naver'
+          }
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Naver News API 오류:', error);
       throw error;
     }
+  }
+
+  // HTML 엔티티 디코딩
+  private decodeHtmlEntities(text: string): string {
+    return text
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ');
   }
 
   // 모의 뉴스 데이터 생성

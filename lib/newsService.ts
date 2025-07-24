@@ -26,36 +26,49 @@ export interface NewsSearchResult {
 
 // 뉴스 API 서비스 클래스
 export class NewsService {
-  private apiKey: string;
   private geminiAI: GoogleGenerativeAI;
 
   constructor() {
-    this.apiKey = process.env.NEWS_API_KEY || '';
     this.geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   }
 
-  // 키워드로 뉴스 검색
+  // 키워드로 뉴스 검색 (모의 데이터 사용)
   async searchNews(keywords: string, language: string = 'ko'): Promise<NewsArticle[]> {
     try {
-      const response = await axios.get(`https://newsapi.org/v2/everything`, {
-        params: {
-          q: keywords,
-          language: language,
-          sortBy: 'publishedAt',
-          pageSize: 50,
-          apiKey: this.apiKey
-        }
-      });
-
-      if (response.data.status === 'ok') {
-        return this.removeDuplicates(response.data.articles);
-      } else {
-        throw new Error(`뉴스 API 오류: ${response.data.message}`);
-      }
+      // 모의 뉴스 데이터 생성
+      const mockArticles = this.generateMockArticles(keywords);
+      return this.removeDuplicates(mockArticles);
     } catch (error) {
       console.error('뉴스 검색 오류:', error);
       throw error;
     }
+  }
+
+  // 모의 뉴스 데이터 생성
+  private generateMockArticles(keywords: string): NewsArticle[] {
+    const sources = ['한국일보', '조선일보', '중앙일보', '동아일보', '경향신문'];
+    const mockArticles: NewsArticle[] = [];
+
+    for (let i = 1; i <= 10; i++) {
+      const source = sources[Math.floor(Math.random() * sources.length)];
+      const date = new Date();
+      date.setDate(date.getDate() - Math.floor(Math.random() * 7));
+
+      mockArticles.push({
+        id: `mock-${i}`,
+        title: `${keywords} 관련 뉴스 제목 ${i}`,
+        description: `${keywords}에 대한 상세한 내용을 담은 뉴스 기사입니다. 이 기사는 ${keywords}와 관련된 최신 정보를 제공합니다.`,
+        content: `${keywords}에 대한 포괄적인 분석과 함께 최신 동향을 다루는 기사입니다. 전문가들의 의견과 함께 ${keywords}의 미래 전망도 함께 살펴봅니다.`,
+        url: `https://example.com/news/${i}`,
+        publishedAt: date.toISOString(),
+        source: {
+          name: source,
+          id: source.toLowerCase()
+        }
+      });
+    }
+
+    return mockArticles;
   }
 
   // 중복 기사 제거 (제목 유사성 기반)

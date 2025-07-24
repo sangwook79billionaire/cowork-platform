@@ -498,6 +498,18 @@ export function BulletinBoard({
     })
   )
 
+  // Firebase 데이터 새로고침 함수
+  const refreshFirebaseData = () => {
+    console.log('🔄 Firebase 데이터 새로고침 시작...')
+    setRefreshTrigger(prev => prev + 1)
+    setLoading(true)
+    
+    // 1초 후 로딩 상태 해제
+    setTimeout(() => {
+      setLoading(false)
+    }, 1000)
+  }
+
   useEffect(() => {
     let bulletinsUnsubscribe: (() => void) | undefined
     let postsUnsubscribe: (() => void) | undefined
@@ -510,6 +522,7 @@ export function BulletinBoard({
           setLoading(false)
         } else {
           try {
+            console.log('📥 Firebase에서 게시판 데이터 로드 중...')
             const q = query(
               collection(db, 'bulletins')
               // 임시로 복합 쿼리 제거 (인덱스 빌드 중)
@@ -544,6 +557,7 @@ export function BulletinBoard({
                 })
               })
               
+              console.log(`✅ 총 ${bulletinData.length}개의 게시판을 로드했습니다.`)
               setBulletins(bulletinData)
               setLoading(false)
             }, (error) => {
@@ -584,7 +598,7 @@ export function BulletinBoard({
         postsUnsubscribe()
       }
     }
-  }, [user])
+  }, [user, refreshTrigger]) // refreshTrigger 추가
 
   // 게시판 로드 후 기본적으로 접힌 상태로 시작
   useEffect(() => {
@@ -1159,6 +1173,10 @@ export function BulletinBoard({
   if (loading) {
     return (
       <div className="p-4">
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+          <span className="text-sm text-gray-600">Firebase에서 데이터를 불러오는 중...</span>
+        </div>
         <div className="animate-pulse space-y-3">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-16 bg-gray-200 rounded"></div>
@@ -1175,6 +1193,16 @@ export function BulletinBoard({
         <div className="flex items-center justify-between">
           <h2 className="text-base lg:text-lg font-semibold text-gray-900">게시글 목록</h2>
           <div className="flex items-center space-x-1 lg:space-x-2">
+            {/* 새로고침 버튼 */}
+            <button
+              onClick={refreshFirebaseData}
+              className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="데이터 새로고침"
+            >
+              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
             {selectedBulletinId && (
               <button
                 onClick={onCreatePost}

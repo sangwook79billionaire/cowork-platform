@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import path from 'path';
+import { db } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
-
-// Firebase Admin 초기화
-const initializeFirebaseAdmin = () => {
-  if (getApps().length === 0) {
-    const serviceAccountPath = path.join(process.cwd(), 'firebase', 'serviceAccountKey.json');
-    initializeApp({
-      credential: cert(serviceAccountPath),
-    });
-  }
-  return getFirestore();
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +11,10 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔍 Firebase에서 뉴스 가져오기: keyword=${keyword}, limit=${limit}`);
 
-    const db = initializeFirebaseAdmin();
+    if (!db) {
+      throw new Error('Firebase Admin SDK가 초기화되지 않았습니다.');
+    }
+
     let query = db.collection('news').orderBy('collected_at', 'desc').limit(limit);
 
     // 키워드 필터링
@@ -33,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     const snapshot = await query.get();
-    const articles = snapshot.docs.map(doc => ({
+    const articles = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data()
     }));

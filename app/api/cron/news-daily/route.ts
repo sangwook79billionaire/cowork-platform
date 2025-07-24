@@ -3,6 +3,8 @@ import { generatePost, summarizeText, extractKeywords } from '@/lib/gemini';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+export const dynamic = 'force-dynamic';
+
 interface NewsArticle {
   title: string;
   url: string;
@@ -17,7 +19,7 @@ interface NewsArticle {
 export async function GET(request: NextRequest) {
   try {
     // Vercel Cron에서 호출되는 경우
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request.url || 'http://localhost');
     const timeSlot = searchParams.get('timeSlot') || 'morning';
     const userId = searchParams.get('userId');
     const includeAutoSummary = searchParams.get('includeAutoSummary') === 'true';

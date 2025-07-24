@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 
+export const dynamic = 'force-dynamic';
+
 // Google OAuth2 클라이언트 설정
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -10,7 +12,7 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request.url || 'http://localhost');
     const accessToken = searchParams.get('accessToken');
     const email = searchParams.get('email');
 

@@ -4,6 +4,8 @@ import { db } from '@/lib/firebase';
 import { getTasksToExecute, executeTask } from '@/lib/scheduler';
 import { ScheduledTask } from '@/types/schedule';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await request.json();
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request.url || 'http://localhost');
     const userId = searchParams.get('userId');
 
     if (!userId) {

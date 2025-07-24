@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request.url || 'http://localhost');
     const keywords = searchParams.get('keywords');
     const language = searchParams.get('language') || 'ko';
     const includeSummary = searchParams.get('includeSummary') === 'true';

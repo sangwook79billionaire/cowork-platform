@@ -12,6 +12,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 환경 변수 상태 확인
+    console.log('=== API 엔드포인트 환경 변수 확인 ===');
+    console.log('NAVER_CLIENT_ID 설정 여부:', !!process.env.NAVER_CLIENT_ID);
+    console.log('NAVER_CLIENT_SECRET 설정 여부:', !!process.env.NAVER_CLIENT_SECRET);
+    console.log('GEMINI_API_KEY 설정 여부:', !!process.env.GEMINI_API_KEY);
+
     // 뉴스 검색
     const articles = await newsService.searchNews(keywords, language);
 

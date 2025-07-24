@@ -39,14 +39,23 @@ export class NewsService {
   // 키워드로 뉴스 검색 (Naver News API 사용)
   async searchNews(keywords: string, language: string = 'ko'): Promise<NewsArticle[]> {
     try {
+      console.log('=== 뉴스 검색 시작 ===');
+      console.log('검색 키워드:', keywords);
+      console.log('Naver Client ID 설정 여부:', !!this.naverClientId);
+      console.log('Naver Client Secret 설정 여부:', !!this.naverClientSecret);
+      
       // Naver News API가 설정되어 있으면 실제 API 사용
       if (this.naverClientId && this.naverClientSecret) {
         console.log('Naver API 키가 설정되어 있습니다. 실제 뉴스를 검색합니다.');
+        console.log('Client ID 길이:', this.naverClientId.length);
+        console.log('Client Secret 길이:', this.naverClientSecret.length);
         return await this.searchNaverNews(keywords);
       }
       
       // 설정이 없으면 모의 데이터 사용
       console.log('Naver API 키가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
+      console.log('Client ID:', this.naverClientId);
+      console.log('Client Secret:', this.naverClientSecret);
       const mockArticles = this.generateMockArticles(keywords);
       return this.removeDuplicates(mockArticles);
     } catch (error) {

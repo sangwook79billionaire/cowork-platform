@@ -4,6 +4,14 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
+  "functions": {
+    "app/api/news/collect/route.ts": {
+      "runtime": "nodejs18.x"
+    },
+    "app/api/news/firebase/route.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/news-daily?timeSlot=morning&userId=system&includeAutoSummary=true",

@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 뉴스 수집 시작: ${keywords.join(', ')}`);
 
-    // Python 스크립트 실행
-    const pythonScript = 'news_collector_improved_v2.py';
+                    // Python 스크립트 실행
+                const pythonScript = 'scripts/news/news_collector_improved_v2.py';
     const keywordsStr = keywords.join(' ');
     
     const { stdout, stderr } = await execAsync(

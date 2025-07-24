@@ -41,4 +41,20 @@ next-env.d.ts
 .idea/
 
 # OS
-Thumbs.db 
+Thumbs.db
+
+# Firebase
+firebase/serviceAccountKey.json
+firebase/*.json
+*.xlsx
+*.xls
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/ 

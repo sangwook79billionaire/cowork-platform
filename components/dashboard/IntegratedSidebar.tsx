@@ -6,10 +6,12 @@ import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
   RssIcon,
+  MagnifyingGlassIcon,
+  BookmarkIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 
-type ActiveFeature = 'bulletin' | 'google-news-alerts'
+type ActiveFeature = 'bulletin' | 'google-news-alerts' | 'news-search' | 'saved-articles'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -42,6 +44,22 @@ export function IntegratedSidebar({
       color: 'text-purple-600', 
       bgColor: 'bg-purple-50', 
       borderColor: 'border-purple-200' 
+    },
+    { 
+      id: 'news-search' as ActiveFeature, 
+      name: '뉴스 검색', 
+      icon: MagnifyingGlassIcon, 
+      color: 'text-green-600', 
+      bgColor: 'bg-green-50', 
+      borderColor: 'border-green-200' 
+    },
+    { 
+      id: 'saved-articles' as ActiveFeature, 
+      name: '저장된 기사', 
+      icon: BookmarkIcon, 
+      color: 'text-orange-600', 
+      bgColor: 'bg-orange-50', 
+      borderColor: 'border-orange-200' 
     },
   ]
 

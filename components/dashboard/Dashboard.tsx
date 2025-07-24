@@ -5,10 +5,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { IntegratedSidebar } from './IntegratedSidebar'
 import { BulletinBoard } from './BulletinBoard'
 import GoogleNewsAlerts from './GoogleNewsAlerts'
+import NewsSearch from '@/components/news/NewsSearch'
+import SavedArticles from '@/components/news/SavedArticles'
 import { Bars3Icon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'google-news-alerts'
+type ActiveFeature = 'bulletin' | 'google-news-alerts' | 'news-search' | 'saved-articles'
 
 export function Dashboard() {
   const { user, loading } = useAuth()
@@ -98,6 +100,14 @@ export function Dashboard() {
 
           {activeFeature === 'google-news-alerts' && (
             <GoogleNewsAlerts />
+          )}
+
+          {activeFeature === 'news-search' && (
+            <NewsSearch />
+          )}
+
+          {activeFeature === 'saved-articles' && (
+            <SavedArticles />
           )}
         </div>
       </div>

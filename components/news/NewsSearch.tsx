@@ -191,10 +191,10 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                     <h4 className="font-semibold text-lg mb-2">{article.title}</h4>
                     <p className="text-gray-600 mb-2">{article.description}</p>
                     
-                    {article.summary && (
+                    {article.content && article.content !== article.description && (
                       <div className="mb-3">
                         <span className="text-sm font-medium text-blue-600">AI 요약:</span>
-                        <p className="text-sm text-gray-700 mt-1">{article.summary}</p>
+                        <p className="text-sm text-gray-700 mt-1">{article.content}</p>
                       </div>
                     )}
                     

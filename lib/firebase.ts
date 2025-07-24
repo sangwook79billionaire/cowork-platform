@@ -25,7 +25,9 @@ let storage: any = null
 
 try {
   if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'dummy-key') {
+      process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'dummy-key' &&
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID !== 'dummy-project') {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
     db = getFirestore(app)

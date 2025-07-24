@@ -53,8 +53,10 @@ interface BulletinBoardProps {
   selectedBulletinId?: string | null
 }
 
-// 테스트 모드 확인
-const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+// 테스트 모드 확인 - 클라이언트 사이드에서만 체크
+const isTestMode = typeof window !== 'undefined' && 
+  process.env.NODE_ENV === 'development' && 
+  (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'dummy-key')
 
 // 드래그 가능한 게시판 컴포넌트
 function SortableBulletinItem({ 
@@ -516,6 +518,14 @@ export function BulletinBoard({
 
     const initializeData = async () => {
       if (user) {
+        // Firebase가 초기화되지 않은 경우 처리
+        if (!db && !isTestMode) {
+          console.warn('Firebase가 초기화되지 않았습니다. 모의 모드로 전환합니다.')
+          setBulletins(mockBulletins)
+          setLoading(false)
+          return
+        }
+
         // 게시판 실시간 리스너 설정
         if (isTestMode) {
           setBulletins(mockBulletins)

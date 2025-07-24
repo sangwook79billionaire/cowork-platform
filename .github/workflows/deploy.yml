@@ -29,8 +29,17 @@ jobs:
     - name: Build application
       run: npm run build
     
+    - name: Check Vercel configuration
+      run: |
+        echo "Checking Vercel configuration..."
+        vercel --version
+        echo "Vercel token exists: ${{ secrets.VERCEL_TOKEN != '' }}"
+        echo "Vercel project ID exists: ${{ secrets.VERCEL_PROJECT_ID != '' }}"
+    
     - name: Deploy to Vercel
-      run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+      run: |
+        echo "Starting Vercel deployment..."
+        vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_TEAM_ID }}

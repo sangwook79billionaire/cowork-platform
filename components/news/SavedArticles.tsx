@@ -86,6 +86,8 @@ export default function SavedArticles() {
         <div className="mb-4">
           <input
             type="text"
+            id="saved-articles-search"
+            name="searchKeyword"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             placeholder="저장된 기사에서 검색..."

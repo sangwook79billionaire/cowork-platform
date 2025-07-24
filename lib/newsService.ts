@@ -41,6 +41,7 @@ export class NewsService {
     try {
       // Naver News API가 설정되어 있으면 실제 API 사용
       if (this.naverClientId && this.naverClientSecret) {
+        console.log('Naver API 키가 설정되어 있습니다. 실제 뉴스를 검색합니다.');
         return await this.searchNaverNews(keywords);
       }
       
@@ -59,6 +60,8 @@ export class NewsService {
   // Naver News API 검색
   private async searchNaverNews(keywords: string): Promise<NewsArticle[]> {
     try {
+      console.log('Naver News API 호출 시작:', keywords);
+      
       const response = await axios.get('https://openapi.naver.com/v1/search/news.json', {
         params: {
           query: keywords,
@@ -71,7 +74,10 @@ export class NewsService {
         }
       });
 
-      if (response.data.items) {
+      console.log('Naver API 응답:', response.data);
+
+      if (response.data.items && response.data.items.length > 0) {
+        console.log(`Naver에서 ${response.data.items.length}개의 뉴스를 찾았습니다.`);
         return response.data.items.map((item: any, index: number) => ({
           id: `naver-${index}`,
           title: this.decodeHtmlEntities(item.title),
@@ -86,6 +92,7 @@ export class NewsService {
         }));
       }
 
+      console.log('Naver API에서 뉴스를 찾지 못했습니다.');
       return [];
     } catch (error) {
       console.error('Naver News API 오류:', error);

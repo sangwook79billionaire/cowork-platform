@@ -131,6 +131,8 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         <div className="flex gap-4">
           <input
             type="text"
+            id="news-search-keywords"
+            name="keywords"
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
             placeholder="검색할 키워드를 입력하세요 (예: AI, 기술, 경제)"

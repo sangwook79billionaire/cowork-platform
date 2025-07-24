@@ -35,11 +35,14 @@ jobs:
         vercel --version
         echo "Vercel token exists: ${{ secrets.VERCEL_TOKEN != '' }}"
         echo "Vercel project ID exists: ${{ secrets.VERCEL_PROJECT_ID != '' }}"
+        echo "Vercel team ID exists: ${{ secrets.VERCEL_TEAM_ID != '' }}"
     
     - name: Deploy to Vercel
       run: |
         echo "Starting Vercel deployment..."
+        echo "Deploying to production..."
         vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        echo "Deployment completed successfully!"
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_TEAM_ID }}

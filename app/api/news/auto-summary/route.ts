@@ -80,53 +80,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 뉴스 검색 함수
+// 뉴스 검색 함수 (모의 데이터 사용)
 async function searchNews(keyword: string, maxResults: number = 10): Promise<any[]> {
-  const newsApiKey = process.env.NEWS_API_KEY;
-  
-  if (!newsApiKey) {
-    console.warn('NEWS_API_KEY가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
-    return getMockArticles(keyword);
-  }
-
-  try {
-    // NewsAPI.org API 호출
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - 30); // 30일 전부터
-    
-    const params = new URLSearchParams({
-      q: keyword,
-      from: fromDate.toISOString().split('T')[0],
-      sortBy: 'publishedAt',
-      language: 'ko,en',
-      pageSize: maxResults.toString(),
-      apiKey: newsApiKey
-    });
-
-    const response = await fetch(`https://newsapi.org/v2/everything?${params}`);
-    
-    if (!response.ok) {
-      throw new Error(`NewsAPI 오류: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.status === 'error') {
-      throw new Error(`NewsAPI 오류: ${data.message}`);
-    }
-
-    return data.articles.map((article: any) => ({
-      title: article.title,
-      url: article.url,
-      content: article.content || article.description,
-      source: article.source.name,
-      publishedAt: article.publishedAt
-    }));
-
-  } catch (error) {
-    console.error('뉴스 API 호출 오류:', error);
-    return getMockArticles(keyword);
-  }
+  return getMockArticles(keyword);
 }
 
 // 연관성 점수 계산 함수

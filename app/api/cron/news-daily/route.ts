@@ -109,56 +109,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 뉴스 검색 함수 (실제 NewsAPI.org 사용)
+// 뉴스 검색 함수 (모의 데이터 사용)
 async function searchNews(query: string, sources: string[] = []): Promise<any[]> {
-  const newsApiKey = process.env.NEWS_API_KEY;
-  
-  if (!newsApiKey) {
-    console.warn('NEWS_API_KEY가 설정되지 않았습니다. 모의 데이터를 사용합니다.');
-    return getMockArticles(query);
-  }
-
-  try {
-    // NewsAPI.org API 호출
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - 1);
-    
-    const params = new URLSearchParams({
-      q: query,
-      from: fromDate.toISOString().split('T')[0],
-      sortBy: 'publishedAt',
-      language: 'ko,en',
-      apiKey: newsApiKey
-    });
-
-    if (sources.length > 0) {
-      params.append('sources', sources.join(','));
-    }
-
-    const response = await fetch(`https://newsapi.org/v2/everything?${params}`);
-    
-    if (!response.ok) {
-      throw new Error(`NewsAPI 오류: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.status === 'error') {
-      throw new Error(`NewsAPI 오류: ${data.message}`);
-    }
-
-    return data.articles.map((article: any) => ({
-      title: article.title,
-      url: article.url,
-      content: article.content || article.description,
-      source: article.source.name,
-      publishedAt: article.publishedAt
-    }));
-
-  } catch (error) {
-    console.error('뉴스 API 호출 오류:', error);
-    return getMockArticles(query);
-  }
+  return getMockArticles(query);
 }
 
 // 모의 데이터 함수

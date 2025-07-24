@@ -34,6 +34,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   const [loading, setLoading] = useState(false);
   const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set());
   const [collectionResult, setCollectionResult] = useState<NewsCollectionResult | null>(null);
+  const [filterKeyword, setFilterKeyword] = useState<string>('');
 
   // 뉴스 수집 (구글 RSS 기반)
   const handleNewsCollection = async () => {
@@ -97,10 +98,20 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   };
 
   // Firebase에서 수집된 뉴스 가져오기
-  const fetchCollectedNews = async () => {
+  const fetchCollectedNews = async (filterByKeyword: string = '') => {
     try {
-      // 더 많은 뉴스를 가져오기 위해 limit을 200으로 설정
-      const response = await fetch('/api/news/firebase?limit=200', {
+      // 필터링할 키워드 결정 (필터 키워드가 있으면 사용, 없으면 수집 키워드 사용)
+      const keywordArray = keywords.trim().split(',').map(k => k.trim()).filter(k => k);
+      const keywordParam = filterByKeyword || (keywordArray.length > 0 ? keywordArray[0] : '');
+      
+      console.log(`🔍 키워드로 뉴스 필터링: ${keywordParam}`);
+      
+      // 키워드가 있으면 필터링, 없으면 모든 뉴스 가져오기
+      const url = keywordParam 
+        ? `/api/news/firebase?keyword=${encodeURIComponent(keywordParam)}&limit=200`
+        : '/api/news/firebase?limit=200';
+        
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +121,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       const result = await response.json();
 
       if (result.success) {
-        console.log(`✅ Firebase에서 ${result.articles.length}개의 뉴스를 가져왔습니다.`);
+        console.log(`✅ Firebase에서 ${result.articles.length}개의 뉴스를 가져왔습니다. (키워드: ${keywordParam})`);
         setArticles(result.articles);
       } else {
         console.error('Firebase에서 뉴스 가져오기 실패:', result.error);
@@ -118,6 +129,11 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
     } catch (error) {
       console.error('Firebase 뉴스 가져오기 오류:', error);
     }
+  };
+
+  // 키워드로 필터링
+  const handleFilterByKeyword = () => {
+    fetchCollectedNews(filterKeyword);
   };
 
   // 기사 선택/해제
@@ -289,8 +305,36 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
             <h3 className="text-lg font-semibold">
               수집된 뉴스 ({articles.length}개)
             </h3>
-            <div className="text-sm text-gray-500">
-              총 {articles.length}개 중 {selectedArticles.size}개 선택됨
+            <div className="flex items-center gap-4">
+              {/* 키워드 필터링 */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={filterKeyword}
+                  onChange={(e) => setFilterKeyword(e.target.value)}
+                  placeholder="키워드로 필터링..."
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && handleFilterByKeyword()}
+                />
+                <button
+                  onClick={handleFilterByKeyword}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  필터
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterKeyword('');
+                    fetchCollectedNews('');
+                  }}
+                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  전체
+                </button>
+              </div>
+              <div className="text-sm text-gray-500">
+                총 {articles.length}개 중 {selectedArticles.size}개 선택됨
+              </div>
             </div>
           </div>
           

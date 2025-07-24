@@ -69,7 +69,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         // Firebase에서 수집된 뉴스 가져오기
         await fetchCollectedNews();
       } else {
-        toast.warning('수집된 뉴스가 없습니다.');
+        toast.error('수집된 뉴스가 없습니다.');
       }
     } catch (error) {
       console.error('뉴스 수집 오류:', error);

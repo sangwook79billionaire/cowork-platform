@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const { keywords, language = 'ko' } = await request.json();
     
     console.log('=== API 엔드포인트 환경 변수 확인 ===');
-    console.log('GEMINI_API_KEY 설정 여부:', !!process.env.GEMINI_API_KEY);
+    console.log('Google News RSS 사용 - 별도 API 키 불필요');
     
     if (!keywords) {
       return NextResponse.json(
@@ -31,21 +31,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // AI 요약
-    console.log('AI 요약 시작...');
-    const summarizedArticles = await newsService.summarizeArticles(articles);
+    // 중복 제거
+    const uniqueArticles = newsService.removeDuplicates(articles);
     
-    console.log('요약 완료:', summarizedArticles.length, '개');
+    console.log(`검색 완료: ${uniqueArticles.length}개의 뉴스`);
 
     return NextResponse.json({
-      articles: summarizedArticles,
-      totalResults: summarizedArticles.length,
-      searchKeywords: keywords
+      articles: uniqueArticles,
+      totalResults: uniqueArticles.length,
+      searchKeywords: keywords,
+      message: '뉴스 검색이 완료되었습니다.'
     });
+
   } catch (error) {
     console.error('뉴스 검색 API 오류:', error);
     return NextResponse.json(
-      { error: '뉴스 검색 중 오류가 발생했습니다.' },
+      { error: '뉴스 검색에 실패했습니다.' },
       { status: 500 }
     );
   }
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
     const language = searchParams.get('language') || 'ko';
     
     console.log('=== API 엔드포인트 환경 변수 확인 ===');
-    console.log('GEMINI_API_KEY 설정 여부:', !!process.env.GEMINI_API_KEY);
+    console.log('Google News RSS 사용 - 별도 API 키 불필요');
     
     if (!keywords) {
       return NextResponse.json(
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('뉴스 검색 요청 (GET):', { keywords, language });
+    console.log('뉴스 검색 요청:', { keywords, language });
     
     // 뉴스 검색
     const articles = await newsService.searchNews(keywords, language);
@@ -81,21 +82,22 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // AI 요약
-    console.log('AI 요약 시작...');
-    const summarizedArticles = await newsService.summarizeArticles(articles);
+    // 중복 제거
+    const uniqueArticles = newsService.removeDuplicates(articles);
     
-    console.log('요약 완료:', summarizedArticles.length, '개');
+    console.log(`검색 완료: ${uniqueArticles.length}개의 뉴스`);
 
     return NextResponse.json({
-      articles: summarizedArticles,
-      totalResults: summarizedArticles.length,
-      searchKeywords: keywords
+      articles: uniqueArticles,
+      totalResults: uniqueArticles.length,
+      searchKeywords: keywords,
+      message: '뉴스 검색이 완료되었습니다.'
     });
+
   } catch (error) {
     console.error('뉴스 검색 API 오류:', error);
     return NextResponse.json(
-      { error: '뉴스 검색 중 오류가 발생했습니다.' },
+      { error: '뉴스 검색에 실패했습니다.' },
       { status: 500 }
     );
   }

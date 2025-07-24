@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { googleNewsRSSService, GoogleNewsArticle } from './googleNewsRSS';
 
 export interface NewsArticle {
@@ -22,10 +21,8 @@ export interface NewsSearchResult {
 }
 
 export class NewsService {
-  private geminiAI: GoogleGenerativeAI;
-
   constructor() {
-    this.geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    // Gemini API 제거
   }
 
   async searchNews(keywords: string, language: string = 'ko'): Promise<NewsArticle[]> {
@@ -34,85 +31,49 @@ export class NewsService {
       console.log('검색 키워드:', keywords);
       
       // Google News RSS 사용
-      console.log('Google News RSS를 사용하여 뉴스를 검색합니다.');
       const articles = await googleNewsRSSService.searchNews(keywords, language);
       
-      console.log(`총 ${articles.length}개의 뉴스를 찾았습니다.`);
-      return this.removeDuplicates(articles);
+      if (articles.length > 0) {
+        console.log(`Google News RSS에서 ${articles.length}개의 뉴스를 찾았습니다.`);
+        return articles;
+      }
+      
+      console.log('Google News RSS에서 뉴스를 찾지 못했습니다.');
+      return [];
     } catch (error) {
       console.error('뉴스 검색 오류:', error);
-      const mockArticles = this.generateMockArticles(keywords);
-      return this.removeDuplicates(mockArticles);
+      return [];
     }
   }
 
-  private removeDuplicates(articles: NewsArticle[]): NewsArticle[] {
+  // AI 요약 기능 제거
+  async summarizeArticles(articles: NewsArticle[]): Promise<NewsArticle[]> {
+    // AI 요약 없이 원본 기사 반환
+    return articles.map(article => ({
+      ...article,
+      content: article.description // AI 요약 대신 description 사용
+    }));
+  }
+
+  // 중복 제거 기능 유지
+  removeDuplicates(articles: NewsArticle[]): NewsArticle[] {
     const seen = new Set<string>();
-    const uniqueArticles: NewsArticle[] = [];
-
-    for (const article of articles) {
+    return articles.filter(article => {
       const normalizedTitle = this.normalizeTitle(article.title);
-      if (!seen.has(normalizedTitle)) {
-        seen.add(normalizedTitle);
-        uniqueArticles.push(article);
+      if (seen.has(normalizedTitle)) {
+        return false;
       }
-    }
-
-    console.log(`중복 제거 후 ${uniqueArticles.length}개의 뉴스가 남았습니다.`);
-    return uniqueArticles;
+      seen.add(normalizedTitle);
+      return true;
+    });
   }
 
   private normalizeTitle(title: string): string {
     return title
       .toLowerCase()
-      .replace(/[^\w\s가-힣]/g, '')
+      .replace(/[^\w\s]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-  }
-
-  async summarizeArticle(article: NewsArticle): Promise<string> {
-    try {
-      const model = this.geminiAI.getGenerativeModel({ model: 'gemini-pro' });
-      
-      const prompt = `
-다음 뉴스 기사를 한국어로 간결하게 요약해주세요. 
-핵심 내용만 2-3문장으로 요약하고, 중요한 정보나 데이터가 있다면 포함해주세요.
-
-제목: ${article.title}
-내용: ${article.content}
-
-요약:
-`;
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('기사 요약 오류:', error);
-      return `요약을 생성할 수 없습니다: ${article.title}`;
-    }
-  }
-
-  async summarizeArticles(articles: NewsArticle[]): Promise<NewsArticle[]> {
-    console.log(`${articles.length}개의 기사를 요약합니다...`);
-    
-    const summarizedArticles = await Promise.all(
-      articles.map(async (article) => {
-        try {
-          const summary = await this.summarizeArticle(article);
-          return {
-            ...article,
-            content: summary
-          };
-        } catch (error) {
-          console.error(`기사 요약 실패 (${article.id}):`, error);
-          return article;
-        }
-      })
-    );
-
-    console.log('모든 기사 요약 완료');
-    return summarizedArticles;
   }
 
   async fetchFullContent(article: NewsArticle): Promise<string> {

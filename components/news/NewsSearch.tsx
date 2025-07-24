@@ -54,7 +54,18 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         }),
       });
 
+      console.log('API 응답 상태:', response.status);
+      console.log('API 응답 헤더:', response.headers);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API 오류 응답:', errorText);
+        toast.error(`API 오류: ${response.status} - ${errorText}`);
+        return;
+      }
+
       const result = await response.json();
+      console.log('API 응답 결과:', result);
 
       if (result.error) {
         toast.error(result.error);
@@ -73,7 +84,13 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       }
     } catch (error) {
       console.error('뉴스 수집 오류:', error);
-      toast.error('뉴스 수집 중 오류가 발생했습니다.');
+      console.error('오류 상세:', error);
+      
+      if (error instanceof Error) {
+        toast.error(`뉴스 수집 오류: ${error.message}`);
+      } else {
+        toast.error('뉴스 수집 중 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }

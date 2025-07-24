@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { db } from '@/lib/firebase-admin';
+import axios from 'axios';
+import { XMLParser } from 'fast-xml-parser';
 
 export const dynamic = 'force-dynamic';
+
+interface NewsArticle {
+  title: string;
+  link: string;
+  source: string;
+  published_at: string;
+  description: string;
+  keyword: string;
+  collected_at: string;
+}
 
 interface NewsCollectionResult {
   total_collected: number;
@@ -14,6 +23,91 @@ interface NewsCollectionResult {
   excel_file: string | null;
   firebase_uploaded: boolean;
   message: string;
+}
+
+// Google News RSS에서 뉴스 수집
+async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
+  try {
+    const encodedKeyword = encodeURIComponent(keyword);
+    const rssUrl = `https://news.google.com/rss/search?q=${encodedKeyword}&hl=ko&gl=KR&ceid=KR:ko`;
+    
+    console.log(`🔍 Google News RSS 검색 시작: ${keyword}`);
+    console.log(`📡 RSS URL: ${rssUrl}`);
+    
+    const response = await axios.get(rssUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 10000
+    });
+
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '_text',
+      parseAttributeValue: true
+    });
+
+    const result = parser.parse(response.data);
+    const articles: NewsArticle[] = [];
+
+    // RSS 구조에서 아이템 추출
+    let items: any[] = [];
+    if (result.rss && result.rss.channel && result.rss.channel.item) {
+      items = Array.isArray(result.rss.channel.item) 
+        ? result.rss.channel.item 
+        : [result.rss.channel.item];
+    }
+
+    console.log(`📊 RSS 파싱 결과: ${items.length}개 아이템`);
+
+    // 각 아이템을 뉴스 기사로 변환
+    for (const item of items.slice(0, 100)) { // 최대 100개
+      try {
+        const article: NewsArticle = {
+          title: item.title || '제목 없음',
+          link: item.link || '',
+          source: extractSourceFromTitle(item.title) || 'Unknown',
+          published_at: item.pubDate || new Date().toISOString(),
+          description: item.description || '',
+          keyword: keyword,
+          collected_at: new Date().toISOString()
+        };
+
+        if (article.title && article.link) {
+          articles.push(article);
+        }
+      } catch (error) {
+        console.error('아이템 파싱 오류:', error);
+      }
+    }
+
+    console.log(`✅ Google News RSS에서 ${articles.length}개의 뉴스를 수집했습니다.`);
+    return articles;
+
+  } catch (error) {
+    console.error('RSS 수집 오류:', error);
+    return [];
+  }
+}
+
+// 제목에서 소스 추출
+function extractSourceFromTitle(title: string): string {
+  const sourceMatch = title.match(/\s*-\s*([^-]+)$/);
+  return sourceMatch ? sourceMatch[1].trim() : 'Unknown';
+}
+
+// 중복 제거
+function removeDuplicates(articles: NewsArticle[]): NewsArticle[] {
+  const seen = new Set<string>();
+  return articles.filter(article => {
+    const key = `${article.title}-${article.link}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -29,86 +123,71 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 뉴스 수집 시작: ${keywords.join(', ')}`);
 
-                    // Python 스크립트 실행
-                const pythonScript = 'scripts/news/news_collector_improved_v2.py';
-    const keywordsStr = keywords.join(' ');
-    
-    const { stdout, stderr } = await execAsync(
-      `python3 ${pythonScript} "${keywordsStr}"`,
-      { timeout: 120000 } // 2분 타임아웃
-    );
+    const allArticles: NewsArticle[] = [];
+    const failedKeywords: string[] = [];
 
-    if (stderr) {
-      console.error('Python 스크립트 오류:', stderr);
-    }
-
-    console.log('Python 스크립트 출력:', stdout);
-
-    // JSON 결과 추출
-    const lines = stdout.split('\n');
-    let jsonResult = null;
-    
-    for (const line of lines) {
-      if (line.includes('JSON 결과:')) {
-        // JSON 결과 섹션 찾기
-        const jsonStartIndex = lines.indexOf(line) + 1;
-        const jsonEndIndex = lines.findIndex((l, i) => i > jsonStartIndex && l.includes('='));
-        
-        if (jsonEndIndex > jsonStartIndex) {
-          const jsonLines = lines.slice(jsonStartIndex, jsonEndIndex);
-          const jsonStr = jsonLines.join('\n');
-          try {
-            jsonResult = JSON.parse(jsonStr);
-            break;
-          } catch (e) {
-            console.error('JSON 파싱 오류:', e);
-          }
-        }
+    // 각 키워드별로 뉴스 수집
+    for (const keyword of keywords) {
+      try {
+        const articles = await collectNewsFromRSS(keyword);
+        allArticles.push(...articles);
+      } catch (error) {
+        console.error(`키워드 "${keyword}" 수집 실패:`, error);
+        failedKeywords.push(keyword);
       }
     }
 
-    if (jsonResult) {
-      return NextResponse.json(jsonResult);
+    // 중복 제거
+    const uniqueArticles = removeDuplicates(allArticles);
+    console.log(`🔄 중복 제거: ${allArticles.length} → ${uniqueArticles.length}`);
+
+    // Firebase에 저장
+    let firebaseUploaded = false;
+    if (uniqueArticles.length > 0 && db) {
+      try {
+        const batch = db.batch();
+        
+        for (const article of uniqueArticles) {
+          const docRef = db.collection('news').doc();
+          batch.set(docRef, article);
+        }
+        
+        await batch.commit();
+        firebaseUploaded = true;
+        console.log(`✅ Firebase 업로드 완료: ${uniqueArticles.length}개 문서`);
+      } catch (error) {
+        console.error('Firebase 업로드 오류:', error);
+      }
     }
 
-    // JSON 파싱 실패 시 기본 결과 반환
     const result: NewsCollectionResult = {
-      total_collected: 0,
-      total_unique: 0,
+      total_collected: allArticles.length,
+      total_unique: uniqueArticles.length,
       keywords: keywords,
-      failed_keywords: [],
-      excel_file: null,
-      firebase_uploaded: false,
+      failed_keywords: failedKeywords,
+      excel_file: null, // Vercel에서는 파일 생성 불가
+      firebase_uploaded: firebaseUploaded,
       message: '뉴스 수집이 완료되었습니다.'
     };
 
-    // 출력에서 결과 추출
-    for (const line of lines) {
-      if (line.includes('총 수집:')) {
-        const match = line.match(/총 수집:\s*(\d+)개/);
-        if (match) result.total_collected = parseInt(match[1]);
-      }
-      if (line.includes('중복 제거 후:')) {
-        const match = line.match(/중복 제거 후:\s*(\d+)개/);
-        if (match) result.total_unique = parseInt(match[1]);
-      }
-      if (line.includes('Firebase 업로드: 성공')) {
-        result.firebase_uploaded = true;
-      }
-      if (line.includes('엑셀 파일:')) {
-        const match = line.match(/엑셀 파일:\s*(.+)/);
-        if (match) result.excel_file = match[1].trim();
-      }
-    }
+    console.log(`📊 수집 결과:
+  - 총 수집: ${result.total_collected}개
+  - 중복 제거 후: ${result.total_unique}개
+  - 성공한 키워드: ${keywords.length - failedKeywords.length}개
+  - 실패한 키워드: ${failedKeywords.length}개
+  - Firebase 업로드: ${firebaseUploaded ? '성공' : '실패'}
+✅ 뉴스 수집 완료!`);
 
     return NextResponse.json(result);
 
   } catch (error) {
     console.error('뉴스 수집 API 오류:', error);
+    console.error('오류 스택:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
       { 
         error: '뉴스 수집 중 오류가 발생했습니다.',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     );

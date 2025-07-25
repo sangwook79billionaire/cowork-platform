@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Gemini API 초기화
@@ -16,6 +15,70 @@ interface SummarizeResponse {
   summary?: string;
   error?: string;
   originalText?: string;
+}
+
+// 간단한 HTML 태그 제거 함수
+function removeHtmlTags(html: string): string {
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// 메타 태그에서 본문 추출
+function extractContentFromMeta(html: string): string {
+  const descriptionMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i);
+  if (descriptionMatch) {
+    return descriptionMatch[1];
+  }
+  
+  const ogDescriptionMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["'][^>]*>/i);
+  if (ogDescriptionMatch) {
+    return ogDescriptionMatch[1];
+  }
+  
+  return '';
+}
+
+// 주요 텍스트 추출
+function extractMainContent(html: string): string {
+  // 일반적인 본문 선택자들
+  const selectors = [
+    'article',
+    '.article-content',
+    '.post-content',
+    '.entry-content',
+    '.content',
+    'main',
+    '.main-content',
+    '#content',
+    '.article-body',
+    '.post-body'
+  ];
+
+  for (const selector of selectors) {
+    const regex = new RegExp(`<${selector}[^>]*>([\\s\\S]*?)<\\/${selector}>`, 'i');
+    const match = html.match(regex);
+    if (match && match[1].length > 100) {
+      return removeHtmlTags(match[1]);
+    }
+  }
+
+  // p 태그들 수집
+  const pMatches = html.match(/<p[^>]*>([^<]*)<\/p>/gi);
+  if (pMatches) {
+    const paragraphs = pMatches.map(p => removeHtmlTags(p)).join(' ');
+    return paragraphs.substring(0, 3000);
+  }
+
+  return '';
 }
 
 export async function POST(request: NextRequest) {
@@ -40,40 +103,13 @@ export async function POST(request: NextRequest) {
     });
 
     const html = response.data;
-    const $ = cheerio.load(html);
-
+    
     // 메타 태그에서 본문 추출 시도
-    let content = $('meta[name="description"]').attr('content') || '';
+    let content = extractContentFromMeta(html);
     
     // 본문이 없으면 주요 텍스트 추출
     if (!content) {
-      // 일반적인 본문 선택자들
-      const selectors = [
-        'article',
-        '.article-content',
-        '.post-content',
-        '.entry-content',
-        '.content',
-        'main',
-        '.main-content',
-        '#content',
-        '.article-body',
-        '.post-body'
-      ];
-
-      for (const selector of selectors) {
-        const element = $(selector);
-        if (element.length > 0) {
-          content = element.text().trim();
-          if (content.length > 100) break; // 충분한 텍스트가 있으면 중단
-        }
-      }
-
-      // 여전히 본문이 없으면 p 태그들 수집
-      if (!content || content.length < 100) {
-        const paragraphs = $('p').map((i, el) => $(el).text().trim()).get();
-        content = paragraphs.join(' ').substring(0, 3000); // 3000자로 제한
-      }
+      content = extractMainContent(html);
     }
 
     if (!content || content.length < 50) {

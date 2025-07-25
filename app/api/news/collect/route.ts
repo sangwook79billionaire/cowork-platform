@@ -25,10 +25,53 @@ interface NewsCollectionResult {
   message: string;
 }
 
+// 키워드 처리 함수 - AND, OR, 정확한 구문 검색 지원
+function processKeywords(inputKeywords: string[]): string[] {
+  const processedKeywords: string[] = [];
+  
+  for (const keyword of inputKeywords) {
+    const trimmedKeyword = keyword.trim();
+    if (!trimmedKeyword) continue;
+    
+    // 정확한 구문 검색 (큰따옴표로 감싸진 경우)
+    if (trimmedKeyword.startsWith('"') && trimmedKeyword.endsWith('"')) {
+      processedKeywords.push(trimmedKeyword);
+      continue;
+    }
+    
+    // OR 검색 처리
+    if (trimmedKeyword.includes(' OR ')) {
+      const orParts = trimmedKeyword.split(' OR ').map(part => part.trim());
+      processedKeywords.push(...orParts);
+      continue;
+    }
+    
+    // AND 검색 처리 (공백으로 구분된 여러 단어)
+    if (trimmedKeyword.includes(' ')) {
+      // 공백으로 구분된 단어들을 하나의 검색어로 처리
+      processedKeywords.push(trimmedKeyword);
+      continue;
+    }
+    
+    // 단일 키워드
+    processedKeywords.push(trimmedKeyword);
+  }
+  
+  return processedKeywords;
+}
+
 // Google News RSS에서 뉴스 수집
 async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
   try {
-    const encodedKeyword = encodeURIComponent(keyword);
+    // 키워드 전처리
+    let searchKeyword = keyword;
+    
+    // 정확한 구문 검색인 경우 큰따옴표 제거하고 검색
+    if (keyword.startsWith('"') && keyword.endsWith('"')) {
+      searchKeyword = keyword.slice(1, -1);
+    }
+    
+    const encodedKeyword = encodeURIComponent(searchKeyword);
     const rssUrl = `https://news.google.com/rss/search?q=${encodedKeyword}&hl=ko&gl=KR&ceid=KR:ko`;
     
     console.log(`🔍 Google News RSS 검색 시작: ${keyword}`);
@@ -70,7 +113,7 @@ async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
           source: extractSourceFromTitle(item.title) || 'Unknown',
           published_at: item.pubDate || new Date().toISOString(),
           description: item.description || '',
-          keyword: keyword,
+          keyword: keyword, // 원본 키워드 저장
           collected_at: new Date().toISOString()
         };
 
@@ -121,13 +164,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 키워드 전처리
+    const processedKeywords = processKeywords(keywords);
     console.log(`🔍 뉴스 수집 시작: ${keywords.join(', ')}`);
+    console.log(`📝 처리된 키워드: ${processedKeywords.join(', ')}`);
 
     const allArticles: NewsArticle[] = [];
     const failedKeywords: string[] = [];
 
     // 각 키워드별로 뉴스 수집
-    for (const keyword of keywords) {
+    for (const keyword of processedKeywords) {
       try {
         const articles = await collectNewsFromRSS(keyword);
         allArticles.push(...articles);
@@ -163,7 +209,7 @@ export async function POST(request: NextRequest) {
     const result: NewsCollectionResult = {
       total_collected: allArticles.length,
       total_unique: uniqueArticles.length,
-      keywords: keywords,
+      keywords: keywords, // 원본 키워드 반환
       failed_keywords: failedKeywords,
       excel_file: null, // Vercel에서는 파일 생성 불가
       firebase_uploaded: firebaseUploaded,
@@ -173,7 +219,7 @@ export async function POST(request: NextRequest) {
     console.log(`📊 수집 결과:
   - 총 수집: ${result.total_collected}개
   - 중복 제거 후: ${result.total_unique}개
-  - 성공한 키워드: ${keywords.length - failedKeywords.length}개
+  - 성공한 키워드: ${processedKeywords.length - failedKeywords.length}개
   - 실패한 키워드: ${failedKeywords.length}개
   - Firebase 업로드: ${firebaseUploaded ? '성공' : '실패'}
 ✅ 뉴스 수집 완료!`);

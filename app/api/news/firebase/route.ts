@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
 
     let query = db.collection('news').orderBy('collected_at', 'desc').limit(limit);
 
-    // 키워드 필터링
-    if (keyword) {
-      query = query.where('keyword', '==', keyword);
+    // 키워드 필터링 (한글 키워드 처리 개선)
+    if (keyword && keyword.trim() !== '') {
+      try {
+        console.log(`🔍 키워드 필터링 적용: "${keyword}"`);
+        query = query.where('keyword', '==', keyword.trim());
+      } catch (error) {
+        console.error('키워드 필터링 오류:', error);
+        // 키워드 필터링 실패 시 전체 조회로 fallback
+        query = db.collection('news').orderBy('collected_at', 'desc').limit(limit);
+      }
     }
 
     const snapshot = await query.get();
@@ -28,7 +35,7 @@ export async function GET(request: NextRequest) {
       ...doc.data()
     }));
 
-    console.log(`✅ Firebase에서 ${articles.length}개의 뉴스를 가져왔습니다.`);
+    console.log(`✅ Firebase에서 ${articles.length}개의 뉴스를 가져왔습니다. (키워드: ${keyword || '전체'})`);
 
     return NextResponse.json({
       success: true,

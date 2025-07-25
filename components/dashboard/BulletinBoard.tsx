@@ -1199,14 +1199,14 @@ export function BulletinBoard({
   return (
     <div className="h-full flex flex-col">
       {/* 헤더 */}
-      <div className="p-3 lg:p-4 border-b border-gray-200">
+      <div className="p-3 lg:p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between">
           <h2 className="text-base lg:text-lg font-semibold text-gray-900">게시글 목록</h2>
           <div className="flex items-center space-x-1 lg:space-x-2">
             {/* 새로고침 버튼 */}
             <button
               onClick={refreshFirebaseData}
-              className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="데이터 새로고침"
             >
               <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1216,7 +1216,7 @@ export function BulletinBoard({
             {selectedBulletinId && (
               <button
                 onClick={onCreatePost}
-                className="p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 title="새 게시글 작성"
               >
                 <PlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />

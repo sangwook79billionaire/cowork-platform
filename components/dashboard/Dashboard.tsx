@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { IntegratedSidebar } from './IntegratedSidebar'
 import { BulletinBoard } from './BulletinBoard'
-import GoogleNewsAlerts from './GoogleNewsAlerts'
 import NewsSearch from '@/components/news/NewsSearch'
 import SavedArticles from '@/components/news/SavedArticles'
 import { Bars3Icon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'google-news-alerts' | 'news-search' | 'saved-articles'
+type ActiveFeature = 'bulletin' | 'news-search' | 'saved-articles'
 
 export function Dashboard() {
   const { user, loading } = useAuth()
@@ -41,7 +40,7 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     )
@@ -49,8 +48,8 @@ export function Dashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">로그인이 필요합니다</h1>
           <p className="text-gray-600">서비스를 이용하려면 로그인해주세요.</p>
         </div>
@@ -61,11 +60,11 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 모바일 헤더 */}
-      <div className="lg:hidden bg-white shadow-sm border-b border-gray-200">
+      <div className="lg:hidden bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
@@ -85,30 +84,31 @@ export function Dashboard() {
 
         {/* 메인 콘텐츠 */}
         <div className="flex-1 overflow-hidden">
-          {activeFeature === 'bulletin' && (
-            <BulletinBoard
-              selectedBulletinId={selectedBulletinId}
-              onBulletinSelect={setSelectedBulletinId}
-              expandedBulletins={expandedBulletins}
-              onExpandedBulletinsChange={setExpandedBulletins}
-              selectedPostId={selectedPostId}
-              onSelectPost={handleSelectPost}
-              onCreatePost={handleCreatePost}
-            />
-          )}
+          <div className="h-full overflow-y-auto">
+            {activeFeature === 'bulletin' && (
+              <BulletinBoard
+                selectedBulletinId={selectedBulletinId}
+                onBulletinSelect={setSelectedBulletinId}
+                expandedBulletins={expandedBulletins}
+                onExpandedBulletinsChange={setExpandedBulletins}
+                selectedPostId={selectedPostId}
+                onSelectPost={handleSelectPost}
+                onCreatePost={handleCreatePost}
+              />
+            )}
 
+            {activeFeature === 'news-search' && (
+              <div className="p-4 lg:p-6">
+                <NewsSearch />
+              </div>
+            )}
 
-          {activeFeature === 'google-news-alerts' && (
-            <GoogleNewsAlerts />
-          )}
-
-          {activeFeature === 'news-search' && (
-            <NewsSearch />
-          )}
-
-          {activeFeature === 'saved-articles' && (
-            <SavedArticles />
-          )}
+            {activeFeature === 'saved-articles' && (
+              <div className="p-4 lg:p-6">
+                <SavedArticles />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

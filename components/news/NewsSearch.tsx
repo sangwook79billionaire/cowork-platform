@@ -422,22 +422,22 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-4 lg:p-6">
       {/* 검색 입력 */}
       <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1 relative">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 mb-4">
+          <div className="flex-1 relative w-full">
             <input
               type="text"
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               placeholder="키워드를 입력하세요 (예: 삼성전자, AI OR 인공지능, '전기차 시장')"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm lg:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               onKeyPress={(e) => e.key === 'Enter' && handleNewsCollection()}
             />
             <button
               onClick={() => setShowKeywordGuide(!showKeywordGuide)}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
               title="검색 가이드 보기"
             >
               ?
@@ -446,7 +446,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
           <button
             onClick={handleNewsCollection}
             disabled={loading || !keywords.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full lg:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
           >
             {loading ? '수집 중...' : '뉴스 수집'}
           </button>
@@ -508,7 +508,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       {/* 수집된 뉴스 목록 */}
       {articles.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold">
               수집된 뉴스 ({sortedArticles.length}개)
               {isDateFilterActive && (
@@ -517,12 +517,12 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                 </span>
               )}
             </h3>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full lg:w-auto">
               {/* 정렬 드롭다운 */}
               <select
                 value={sortOrder}
                 onChange={e => setSortOrder(e.target.value as any)}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-auto"
               >
                 <option value="latest">최신순</option>
                 <option value="oldest">오래된순</option>
@@ -530,13 +530,13 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
               </select>
 
               {/* 기간 필터 */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2 w-full lg:w-auto">
+                <div className="flex items-center gap-1 w-full lg:w-auto">
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-2 py-2 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-auto"
                     placeholder="시작일"
                   />
                   <span className="text-xs text-gray-500">~</span>
@@ -544,84 +544,89 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-2 py-2 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-auto"
                     placeholder="종료일"
                   />
                 </div>
-                <button
-                  onClick={() => setIsDateFilterActive(true)}
-                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  적용
-                </button>
-                <button
-                  onClick={clearDateFilter}
-                  className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-                >
-                  해제
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setIsDateFilterActive(true)}
+                    className="px-2 py-2 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    적용
+                  </button>
+                  <button
+                    onClick={clearDateFilter}
+                    className="px-2 py-2 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                  >
+                    해제
+                  </button>
+                </div>
               </div>
 
               {/* 빠른 날짜 선택 */}
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setQuickDate(0)}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  className="px-2 py-2 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
                   오늘
                 </button>
                 <button
                   onClick={() => setQuickDate(7)}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  className="px-2 py-2 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
                   7일
                 </button>
                 <button
                   onClick={() => setQuickDate(30)}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  className="px-2 py-2 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                 >
                   30일
                 </button>
               </div>
 
               {/* 키워드 필터링 */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2 w-full lg:w-auto">
                 <input
                   type="text"
                   value={filterKeyword}
                   onChange={(e) => setFilterKeyword(e.target.value)}
                   placeholder="키워드로 필터링..."
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-auto"
                   onKeyPress={(e) => e.key === 'Enter' && handleFilterByKeyword()}
                 />
-                <button
-                  onClick={handleFilterByKeyword}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  필터
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterKeyword('');
-                    fetchCollectedNews('');
-                  }}
-                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                >
-                  전체
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={handleFilterByKeyword}
+                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    필터
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilterKeyword('');
+                      fetchCollectedNews('');
+                    }}
+                    className="px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  >
+                    전체
+                  </button>
+                </div>
               </div>
               <div className="text-sm text-gray-500">
                 총 {articles.length}개 중 {sortedArticles.length}개 표시됨
               </div>
             </div>
           </div>
+          
           {/* 뉴스 목록 컨테이너 - 스크롤 가능하도록 설정 */}
-          <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+          <div className="max-h-96 lg:max-h-[70vh] overflow-y-auto border border-gray-200 rounded-lg bg-white">
             <div className="space-y-2 p-2">
               {sortedArticles.map((article, index) => (
                 <div
                   key={article.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                  className={`border rounded-lg p-4 cursor-pointer transition-colors hover:shadow-sm ${
                     selectedArticles.has(article.id)
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
@@ -633,25 +638,27 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                       type="checkbox"
                       checked={selectedArticles.has(article.id)}
                       onChange={() => toggleArticleSelection(article.id)}
-                      className="mt-1"
+                      className="mt-1 flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-lg flex-1 mr-2">{article.title}</h4>
-                        <span className="text-xs text-gray-400">#{index + 1}</span>
-                        {sortOrder === 'relevance' && (
-                          <span className="ml-2 text-xs text-pink-600">관련도: {getRelevanceScore(article, keywords)}</span>
-                        )}
+                        <h4 className="font-semibold text-base lg:text-lg flex-1 mr-2 line-clamp-2">{article.title}</h4>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs text-gray-400">#{index + 1}</span>
+                          {sortOrder === 'relevance' && (
+                            <span className="text-xs text-pink-600">관련도: {getRelevanceScore(article, keywords)}</span>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-gray-600 mb-2 line-clamp-2">
+                      <p className="text-gray-600 mb-2 line-clamp-2 text-sm">
                         {cleanHtmlText(article.description, article.title)}
                       </p>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between text-sm text-gray-500 gap-2">
                         <span>{article.source}</span>
                         <span>{formatDate(article.published_at)}</span>
                       </div>
-                      <div className="flex items-center justify-between mt-2">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between mt-2 gap-2">
                         <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
                           키워드: {article.keyword}
                         </span>
@@ -693,8 +700,8 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
 
       {/* 요약 결과 모달 */}
       {showSummaryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 lg:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">기사 요약</h3>
               <button
@@ -702,7 +709,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                   setShowSummaryModal(false);
                   setSummaryResult(null);
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 p-2"
               >
                 ✕
               </button>
@@ -744,9 +751,9 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
 
       {/* 로딩 상태 */}
       {loading && (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">처리 중...</p>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+          <span className="text-gray-600">뉴스를 수집하고 있습니다...</span>
         </div>
       )}
     </div>

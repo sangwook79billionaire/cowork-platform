@@ -35,19 +35,29 @@ export default function NateRankingModal({ isOpen, onClose, onSaveArticle }: Nat
   const fetchNateRanking = async () => {
     setLoading(true);
     try {
+      console.log('🔍 네이트 뉴스 API 호출 시작...');
       const response = await fetch('/api/news/nate-ranking');
       const result = await response.json();
+      
+      console.log('🔍 네이트 뉴스 API 응답:', result);
+      console.log('🔍 result.success:', result.success);
+      console.log('🔍 result.articles:', result.articles);
+      console.log('🔍 result.articles?.length:', result.articles?.length);
 
-      if (result.success && result.articles) {
+      if (result.success && result.articles && result.articles.length > 0) {
+        console.log('✅ 네이트 뉴스 성공적으로 가져옴:', result.articles.length, '개');
         setArticles(result.articles);
         setLastUpdated(new Date());
         toast.success('네이트 뉴스 랭킹을 성공적으로 가져왔습니다.');
       } else {
-        console.error('네이트 뉴스 가져오기 오류:', result);
+        console.error('❌ 네이트 뉴스 가져오기 실패:', result);
+        console.error('❌ success:', result.success);
+        console.error('❌ articles:', result.articles);
+        console.error('❌ articles length:', result.articles?.length);
         toast.error('네이트 뉴스 랭킹을 가져오는데 실패했습니다.');
       }
     } catch (error) {
-      console.error('네이버 뉴스 가져오기 오류:', error);
+      console.error('❌ 네이트 뉴스 API 호출 오류:', error);
       toast.error('뉴스 가져오기 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

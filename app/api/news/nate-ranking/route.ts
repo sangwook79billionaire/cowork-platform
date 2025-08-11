@@ -168,10 +168,17 @@ export async function GET() {
 
     await browser.close();
 
+    console.log('🔍 크롤링 결과:', {
+      articlesLength: articles.length,
+      articles: articles.slice(0, 3) // 처음 3개만 로그
+    });
+
     // 최소 5개 이상의 기사가 수집되었는지 확인
     if (articles.length < 5) {
+      console.log('⚠️ 크롤링된 기사가 5개 미만, 대안 뉴스 사용');
       // 대안: 간단한 뉴스 링크 수집
       const fallbackArticles = await getFallbackNews();
+      console.log('✅ 대안 뉴스 반환:', fallbackArticles.length, '개');
       return NextResponse.json({
         success: true,
         articles: fallbackArticles,
@@ -181,6 +188,7 @@ export async function GET() {
       });
     }
 
+    console.log('✅ 크롤링 성공, 원본 뉴스 반환:', articles.length, '개');
     return NextResponse.json({
       success: true,
       articles,

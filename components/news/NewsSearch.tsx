@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserNickname } from '@/lib/firebase';
-import NateRankingModal from './NateRankingModal';
 
 interface NewsArticle {
   id: string;
@@ -67,7 +66,6 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [showKeywordGuide, setShowKeywordGuide] = useState<boolean>(false);
   const [savingArticle, setSavingArticle] = useState<string | null>(null);
-  const [showNateRankingModal, setShowNateRankingModal] = useState<boolean>(false);
 
   // 페이지 로드 시 자동으로 뉴스 가져오기 (최초 진입 시에만)
   useEffect(() => {
@@ -720,12 +718,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
           >
             {loading ? '수집 중...' : '뉴스 수집'}
           </button>
-          <button
-            onClick={() => setShowNateRankingModal(true)}
-            className="w-full lg:w-auto px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 font-medium transition-all transform hover:scale-105 shadow-lg"
-          >
-            🏆 네이트 랭킹 TOP 10
-          </button>
+
         </div>
 
         {/* 키워드 검색 가이드 */}
@@ -797,15 +790,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         </div>
       )}
 
-      {/* 네이트 뉴스 랭킹 버튼 */}
-      <div className="mb-4">
-        <button
-          onClick={() => setShowNateRankingModal(true)}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-        >
-          네이트 뉴스 랭킹 보기
-        </button>
-      </div>
+
 
       {/* 수집된 뉴스 목록 */}
       {articles.length > 0 && (
@@ -1085,11 +1070,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         </div>
       )}
 
-      {/* 네이트 뉴스 랭킹 모달 */}
-      <NateRankingModal 
-        isOpen={showNateRankingModal} 
-        onClose={() => setShowNateRankingModal(false)} 
-      />
+
     </div>
   );
 } 

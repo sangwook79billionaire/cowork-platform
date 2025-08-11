@@ -5,25 +5,59 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 let app: any;
 let db: Firestore | null = null;
 
-// Private Key 정규화 함수
+// Private Key 정규화 함수 - 더 강력한 처리
 function normalizePrivateKey(privateKey: string): string {
-  // 환경 변수에서 가져온 Private Key 정규화
-  if (privateKey.includes('\\n')) {
-    return privateKey.replace(/\\n/g, '\n');
+  console.log('🔍 Private Key 정규화 시작');
+  console.log('  - 원본 길이:', privateKey.length);
+  console.log('  - 원본 시작:', privateKey.substring(0, 50));
+  console.log('  - 원본 끝:', privateKey.substring(privateKey.length - 50));
+
+  let normalizedKey = privateKey;
+
+  // 1. \n 문자를 실제 줄바꿈으로 변환
+  if (normalizedKey.includes('\\n')) {
+    normalizedKey = normalizedKey.replace(/\\n/g, '\n');
+    console.log('  - \\n을 줄바꿈으로 변환 완료');
   }
-  
-  // 이미 올바른 형식인 경우
-  if (privateKey.includes('\n')) {
-    return privateKey;
+
+  // 2. 이미 올바른 형식인 경우
+  if (normalizedKey.includes('\n')) {
+    console.log('  - 이미 줄바꿈 포함됨');
   }
-  
-  // BEGIN과 END 마커가 있는지 확인
-  if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-    return privateKey;
+
+  // 3. BEGIN과 END 마커가 있는지 확인
+  if (normalizedKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    console.log('  - BEGIN/END 마커 확인됨');
+  } else {
+    console.log('  - BEGIN/END 마커 없음 - 추가 필요');
+    
+    // 4. Private Key 형식이 올바르지 않은 경우 수정
+    if (!normalizedKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+      normalizedKey = '-----BEGIN PRIVATE KEY-----\n' + normalizedKey;
+    }
+    if (!normalizedKey.endsWith('-----END PRIVATE KEY-----')) {
+      normalizedKey = normalizedKey + '\n-----END PRIVATE KEY-----';
+    }
   }
-  
-  // 기본적으로 줄바꿈 추가
-  return privateKey;
+
+  // 5. 줄바꿈이 부족한 경우 추가 (64자마다)
+  if (!normalizedKey.includes('\n') && normalizedKey.length > 64) {
+    console.log('  - 64자마다 줄바꿈 추가');
+    const keyContent = normalizedKey
+      .replace('-----BEGIN PRIVATE KEY-----', '')
+      .replace('-----END PRIVATE KEY-----', '')
+      .replace(/\s/g, '');
+    
+    const formattedKey = keyContent.match(/.{1,64}/g)?.join('\n') || keyContent;
+    normalizedKey = `-----BEGIN PRIVATE KEY-----\n${formattedKey}\n-----END PRIVATE KEY-----`;
+  }
+
+  console.log('  - 정규화 후 길이:', normalizedKey.length);
+  console.log('  - 줄바꿈 포함:', normalizedKey.includes('\n') ? '✅' : '❌');
+  console.log('  - BEGIN 마커:', normalizedKey.includes('-----BEGIN PRIVATE KEY-----') ? '✅' : '❌');
+  console.log('  - END 마커:', normalizedKey.includes('-----END PRIVATE KEY-----') ? '✅' : '❌');
+
+  return normalizedKey;
 }
 
 try {
@@ -61,6 +95,7 @@ try {
         console.log('✅ Firebase Admin SDK 초기화 완료 (환경 변수)');
       } catch (envError) {
         console.error('❌ 환경 변수로 초기화 실패:', envError);
+        console.error('❌ 오류 상세:', envError instanceof Error ? envError.message : 'Unknown error');
         throw envError;
       }
     } else {

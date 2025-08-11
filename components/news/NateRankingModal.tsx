@@ -36,14 +36,15 @@ export default function NateRankingModal({ isOpen, onClose, onSaveArticle }: Nat
     setLoading(true);
     try {
       const response = await fetch('/api/news/nate-ranking');
-      const data = await response.json();
+      const result = await response.json();
 
-      if (data.success) {
-        setArticles(data.articles);
+      if (result.success && result.articles) {
+        setArticles(result.articles);
         setLastUpdated(new Date());
-        toast.success('네이버 뉴스 랭킹을 성공적으로 가져왔습니다.');
+        toast.success('네이트 뉴스 랭킹을 성공적으로 가져왔습니다.');
       } else {
-        toast.error(data.error || '뉴스 가져오기에 실패했습니다.');
+        console.error('네이트 뉴스 가져오기 오류:', result);
+        toast.error('네이트 뉴스 랭킹을 가져오는데 실패했습니다.');
       }
     } catch (error) {
       console.error('네이버 뉴스 가져오기 오류:', error);
@@ -95,48 +96,19 @@ export default function NateRankingModal({ isOpen, onClose, onSaveArticle }: Nat
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
         
-        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4">
           {/* 헤더 */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="h-8 w-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">N</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">
-                    네이버 뉴스 랭킹 TOP 10
-                  </h3>
-                  <p className="text-blue-100 text-sm">
-                    실시간 인기 뉴스와 랭킹을 확인하세요
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  className="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors disabled:opacity-50"
-                  title="새로고침"
-                >
-                  <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
-                <button
-                  onClick={onClose}
-                  className="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
-                  title="닫기"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              </div>
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">🏆 네이트 뉴스 랭킹 TOP 10</h2>
+              <p className="text-gray-600 mt-1">실시간 인기 뉴스와 랭킹을 확인하세요</p>
             </div>
-            
-            {lastUpdated && (
-              <p className="text-blue-100 text-xs mt-2">
-                마지막 업데이트: {lastUpdated.toLocaleString('ko-KR')}
-              </p>
-            )}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
           </div>
 
           {/* 컨텐츠 */}

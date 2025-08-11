@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { getUserNickname } from '@/lib/firebase';
+import NateRankingModal from './NateRankingModal';
 
 interface NewsArticle {
   id: string;
@@ -12,6 +15,18 @@ interface NewsArticle {
   description: string;
   keyword: string;
   collected_at: string;
+}
+
+interface SavedArticle {
+  id: string;
+  title: string;
+  link: string;
+  source: string;
+  published_at: string;
+  content: string;
+  saved_at: string;
+  userId: string;
+  authorName: string;
 }
 
 interface NewsCollectionResult {
@@ -34,6 +49,7 @@ interface SummaryResult {
 }
 
 export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
+  const { user } = useAuth();
   const [keywords, setKeywords] = useState('');
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,6 +64,8 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
   const [summaryResult, setSummaryResult] = useState<SummaryResult | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [showKeywordGuide, setShowKeywordGuide] = useState<boolean>(false);
+  const [savingArticle, setSavingArticle] = useState<string | null>(null);
+  const [showNateRankingModal, setShowNateRankingModal] = useState<boolean>(false);
 
   // 페이지 로드 시 자동으로 뉴스 가져오기 (최초 진입 시에만)
   useEffect(() => {
@@ -104,6 +122,8 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         
         // 새로 수집된 키워드들로만 Firebase에서 뉴스 가져오기
         await fetchCollectedNewsByKeywords(result.keywords);
+        
+        // 자동으로 유사한 기사 삭제는 fetchCollectedNewsByKeywords 내부에서 처리됨
       } else {
         toast.error('수집된 뉴스가 없습니다.');
       }
@@ -127,41 +147,87 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       setLoading(true);
       setArticles([]); // 새로 수집된 키워드로만 보여주기 위해 초기화
       console.log('🔍 새로 수집된 키워드들로 뉴스 가져오기:', targetKeywords);
-      // Firestore에 저장이 완료된 후 약간 대기
-      await new Promise(res => setTimeout(res, 1000));
-      const allArticles: NewsArticle[] = [];
-      for (const keyword of targetKeywords) {
-        const url = `/api/news/firebase?keyword=${encodeURIComponent(keyword)}&limit=200`;
-        console.log(`🔍 키워드 "${keyword}" API 호출:`, url);
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        console.log(`🔍 키워드 "${keyword}" 응답 상태:`, response.status);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`❌ 키워드 "${keyword}" API 오류:`, response.status, errorText);
-          continue;
+      
+      // Firebase 저장 완료를 위한 대기 시간 증가 및 재시도 로직
+      const maxRetries = 3;
+      const retryDelay = 2000; // 2초 대기
+      
+      for (let retry = 0; retry < maxRetries; retry++) {
+        console.log(`🔄 Firebase 데이터 확인 시도 ${retry + 1}/${maxRetries}`);
+        
+        if (retry > 0) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
-        const result = await response.json();
-        console.log(`✅ [${keyword}] API 응답:`, result);
-        if (result.success && result.articles) {
-          console.log(`✅ 키워드 "${keyword}"에서 ${result.articles.length}개 뉴스 가져옴`);
-          allArticles.push(...result.articles);
-        } else {
-          console.warn(`⚠️ 키워드 "${keyword}"에서 뉴스를 가져오지 못함:`, result);
+        
+        const allArticles: NewsArticle[] = [];
+        let hasData = false;
+        
+        for (const keyword of targetKeywords) {
+          const url = `/api/news/firebase?keyword=${encodeURIComponent(keyword)}&limit=200`;
+          console.log(`🔍 키워드 "${keyword}" API 호출:`, url);
+          
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            
+            console.log(`🔍 키워드 "${keyword}" 응답 상태:`, response.status);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`❌ 키워드 "${keyword}" API 오류:`, response.status, errorText);
+              continue;
+            }
+            
+            const result = await response.json();
+            console.log(`✅ [${keyword}] API 응답:`, result);
+            
+            if (result.success && result.articles && result.articles.length > 0) {
+              console.log(`✅ 키워드 "${keyword}"에서 ${result.articles.length}개 뉴스 가져옴`);
+              allArticles.push(...result.articles);
+              hasData = true;
+            } else {
+              console.warn(`⚠️ 키워드 "${keyword}"에서 뉴스를 가져오지 못함:`, result);
+            }
+          } catch (error) {
+            console.error(`❌ 키워드 "${keyword}" 요청 오류:`, error);
+          }
+        }
+        
+        // 중복 제거
+        const uniqueArticles = allArticles.filter((article, index, self) => 
+          index === self.findIndex(a => a.id === article.id)
+        );
+        
+        console.log(`✅ 시도 ${retry + 1}: 총 ${uniqueArticles.length}개의 고유한 뉴스를 가져왔습니다.`);
+        
+        if (hasData && uniqueArticles.length > 0) {
+          console.log(`✅ Firebase 데이터 확인 완료: ${uniqueArticles.length}개 뉴스`);
+          setArticles(uniqueArticles);
+          setLoading(false);
+          
+          // 자동으로 유사한 기사 삭제 실행 (새로 가져온 기사들로만)
+          if (uniqueArticles.length > 1) {
+            toast.loading('수집된 뉴스에서 유사한 기사를 자동으로 분석하고 있습니다...');
+            await handleRemoveSimilarArticlesFromList(uniqueArticles, true);
+          } else if (uniqueArticles.length === 1) {
+            toast.success('1개의 뉴스를 수집했습니다.');
+          }
+          
+          return; // 성공적으로 데이터를 가져왔으면 종료
+        }
+        
+        if (retry < maxRetries - 1) {
+          console.log(`⏳ ${retryDelay/1000}초 후 재시도...`);
         }
       }
-      // 중복 제거
-      const uniqueArticles = allArticles.filter((article, index, self) => 
-        index === self.findIndex(a => a.id === article.id)
-      );
-      console.log(`✅ 총 ${uniqueArticles.length}개의 고유한 뉴스를 가져왔습니다.`);
-      setArticles(uniqueArticles); // 반드시 즉시 반영
+      
+      // 모든 재시도 후에도 데이터가 없으면
+      console.warn('⚠️ 모든 재시도 후에도 Firebase에서 데이터를 가져오지 못했습니다.');
       setLoading(false);
-      if (uniqueArticles.length === 0) {
-        toast.success('수집된 뉴스가 없습니다. 키워드를 입력하고 뉴스를 수집해보세요.');
-      }
+      toast.error('수집된 뉴스가 아직 Firebase에 저장되지 않았습니다. 잠시 후 다시 시도해주세요.');
+      
     } catch (error) {
       console.error('키워드별 뉴스 가져오기 오류:', error);
       setLoading(false);
@@ -389,6 +455,13 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
 
       console.log(`🔍 기사 요약 시작: ${article.title}`);
 
+      // URL 유효성 검사
+      if (!article.link || article.link.trim() === '') {
+        toast.error('유효하지 않은 기사 링크입니다.');
+        setShowSummaryModal(false);
+        return;
+      }
+
       const response = await fetch('/api/news/summarize', {
         method: 'POST',
         headers: {
@@ -400,7 +473,18 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         }),
       });
 
+      console.log('요약 API 응답 상태:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('요약 API 오류:', errorText);
+        toast.error(`요약 API 오류: ${response.status} - ${errorText}`);
+        setShowSummaryModal(false);
+        return;
+      }
+
       const result = await response.json();
+      console.log('요약 API 응답:', result);
 
       if (result.success) {
         setSummaryResult({
@@ -409,15 +493,189 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
         });
         toast.success('기사 요약이 완료되었습니다.');
       } else {
+        console.error('요약 실패:', result.error);
         toast.error(result.error || '요약 중 오류가 발생했습니다.');
         setShowSummaryModal(false);
       }
     } catch (error) {
       console.error('요약 요청 오류:', error);
-      toast.error('요약 요청 중 오류가 발생했습니다.');
+      
+      // 구체적인 오류 메시지 제공
+      let errorMessage = '요약 요청 중 오류가 발생했습니다.';
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = '요약 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+        } else {
+          errorMessage = `오류: ${error.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
       setShowSummaryModal(false);
     } finally {
       setSummaryLoading(false);
+    }
+  };
+
+  // 유사한 기사 삭제 함수 (기본 - 현재 articles 상태 사용)
+  const handleRemoveSimilarArticles = async (isAutoRun = false) => {
+    return handleRemoveSimilarArticlesFromList(articles, isAutoRun);
+  };
+
+  // 유사한 기사 삭제 함수 (특정 기사 목록 사용)
+  const handleRemoveSimilarArticlesFromList = async (articleList: NewsArticle[], isAutoRun = false) => {
+    if (articleList.length === 0) {
+      if (!isAutoRun) {
+        toast.error('삭제할 기사가 없습니다.');
+      }
+      return;
+    }
+
+    try {
+      if (!isAutoRun) {
+        setLoading(true);
+        toast.loading('유사한 기사를 분석하고 삭제하고 있습니다...');
+      }
+
+      console.log(`🔍 유사한 기사 삭제 시작: ${articleList.length}개 기사`);
+
+      const response = await fetch('/api/gemini/detect-similar-articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          articles: articleList.map(article => ({
+            id: article.id,
+            title: article.title,
+            description: article.description,
+            source: article.source,
+            published_at: article.published_at
+          }))
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const { removedCount, remainingArticles } = result;
+        
+        // 삭제된 기사들을 제외하고 목록 업데이트
+        setArticles(remainingArticles);
+        
+        if (isAutoRun) {
+          toast.success(`자동으로 유사한 기사 ${removedCount}개를 제거했습니다. (남은 기사: ${remainingArticles.length}개)`);
+        } else {
+          toast.success(`유사한 기사 ${removedCount}개를 삭제했습니다. (남은 기사: ${remainingArticles.length}개)`);
+        }
+        
+        // 선택된 기사들도 업데이트
+        const newSelected = new Set(selectedArticles);
+        const removedIds = result.removedArticleIds || [];
+        removedIds.forEach((id: string) => newSelected.delete(id));
+        setSelectedArticles(newSelected);
+        
+      } else {
+        if (!isAutoRun) {
+          toast.dismiss(); // 로딩 토스트 닫기
+        }
+        toast.error(result.error || '유사한 기사 삭제 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('유사한 기사 삭제 오류:', error);
+      if (!isAutoRun) {
+        toast.dismiss(); // 로딩 토스트 닫기
+      }
+      toast.error('유사한 기사 삭제 중 오류가 발생했습니다.');
+    } finally {
+      if (!isAutoRun) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 기사 저장 함수
+  const handleSaveArticle = async (article: NewsArticle) => {
+    if (!article) {
+      toast.error('저장할 기사를 선택해주세요.');
+      return;
+    }
+
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setSavingArticle(article.id);
+    
+    try {
+      // 사용자 닉네임 가져오기
+      let authorName = '익명'
+      if (user?.uid) {
+        const nickname = await getUserNickname(user.uid)
+        // 닉네임이 '익명'이거나 비어있으면 이메일 사용
+        if (nickname && nickname !== '익명') {
+          authorName = nickname
+        } else if (user.email) {
+          authorName = user.email
+        }
+      }
+
+      // 기사 본문 텍스트 정리
+      const cleanContent = cleanHtmlText(article.description, article.title);
+      
+      const savedArticleData = {
+        title: article.title,
+        link: article.link,
+        source: article.source,
+        published_at: article.published_at,
+        content: cleanContent,
+        saved_at: new Date().toISOString(),
+        userId: user.uid,
+        authorName: authorName,
+      };
+
+      console.log('전송할 데이터:', savedArticleData);
+      console.log('기사 정보:', {
+        title: article.title,
+        link: article.link,
+        source: article.source,
+        description: article.description,
+        cleanContent: cleanContent
+      });
+
+      const response = await fetch('/api/news/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(savedArticleData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('기사 저장 오류:', errorText);
+        toast.error('기사 저장에 실패했습니다.');
+        return;
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success('기사가 저장되었습니다!');
+      console.log('기사 저장 완료:', result);
+      
+    } catch (error) {
+      console.error('기사 저장 오류:', error);
+      toast.error('기사 저장 중 오류가 발생했습니다.');
+    } finally {
+      setSavingArticle(null);
     }
   };
 
@@ -449,6 +707,12 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
             className="w-full lg:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
           >
             {loading ? '수집 중...' : '뉴스 수집'}
+          </button>
+          <button
+            onClick={() => setShowNateRankingModal(true)}
+            className="w-full lg:w-auto px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 font-medium transition-all transform hover:scale-105 shadow-lg"
+          >
+            🏆 네이트 랭킹 TOP 10
           </button>
         </div>
 
@@ -504,6 +768,32 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
           </button>
         </div>
       )}
+
+      {/* 유사한 기사 삭제 버튼 */}
+      {articles.length > 0 && (
+        <div className="mb-4">
+          <button
+            onClick={() => handleRemoveSimilarArticles(false)}
+            disabled={loading}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 mr-2"
+          >
+            {loading ? '분석 중...' : '유사한 기사 삭제'}
+          </button>
+          <span className="text-sm text-gray-600">
+            Gemini AI가 유사한 기사를 분석하여 중복을 제거합니다. (뉴스 수집 후 자동 실행)
+          </span>
+        </div>
+      )}
+
+      {/* 네이트 뉴스 랭킹 버튼 */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowNateRankingModal(true)}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+        >
+          네이트 뉴스 랭킹 보기
+        </button>
+      </div>
 
       {/* 수집된 뉴스 목록 */}
       {articles.length > 0 && (
@@ -662,25 +952,51 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                         <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
                           키워드: {article.keyword}
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveArticle(article);
+                            }}
+                            disabled={savingArticle === article.id}
+                            className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                          >
+                            {savingArticle === article.id ? '저장 중...' : '저장'}
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSummarizeArticle(article);
                             }}
-                            className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
+                            className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 font-medium"
                           >
                             요약하기
                           </button>
-                          <a
-                            href={article.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-sm"
-                            onClick={(e) => e.stopPropagation()}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (article.link && article.link.trim() !== '') {
+                                try {
+                                  // URL이 http로 시작하지 않으면 https:// 추가
+                                  let urlString = article.link;
+                                  if (!urlString.startsWith('http')) {
+                                    urlString = `https://${urlString}`;
+                                  }
+                                  
+                                  const url = new URL(urlString);
+                                  window.open(url.toString(), '_blank', 'noopener,noreferrer');
+                                } catch (error) {
+                                  console.error('잘못된 URL:', article.link);
+                                  toast.error('잘못된 기사 링크입니다.');
+                                }
+                              } else {
+                                toast.error('기사 링크가 없습니다.');
+                              }
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-sm hover:underline px-2 py-2"
                           >
                             원문 보기 →
-                          </a>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -756,6 +1072,12 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
           <span className="text-gray-600">뉴스를 수집하고 있습니다...</span>
         </div>
       )}
+
+      {/* 네이트 뉴스 랭킹 모달 */}
+      <NateRankingModal 
+        isOpen={showNateRankingModal} 
+        onClose={() => setShowNateRankingModal(false)} 
+      />
     </div>
   );
 } 

@@ -1,11 +1,36 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'
-import { db, getDisplayName } from '@/lib/firebase'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { collection, query, where, getDocs, addDoc, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore'
+import { db, getDisplayName, getDisplayNameFromUser, getUserNickname } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin, BulletinPost } from '@/types/firebase'
 import toast from 'react-hot-toast'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import { Table } from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import TextAlign from '@tiptap/extension-text-align'
+import { TextStyle } from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import Typography from '@tiptap/extension-typography'
+import Underline from '@tiptap/extension-underline'
+import Strike from '@tiptap/extension-strike'
+import Code from '@tiptap/extension-code'
+import CodeBlock from '@tiptap/extension-code-block'
+import Blockquote from '@tiptap/extension-blockquote'
+import HorizontalRule from '@tiptap/extension-horizontal-rule'
+import Image from '@tiptap/extension-image'
+import Placeholder from '@tiptap/extension-placeholder'
+import Highlight from '@tiptap/extension-highlight'
+import Subscript from '@tiptap/extension-subscript'
+import Superscript from '@tiptap/extension-superscript'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
+import BubbleMenuExtension from '@tiptap/extension-bubble-menu'
+import FloatingMenuExtension from '@tiptap/extension-floating-menu'
 import {
   DndContext,
   closestCenter,
@@ -28,11 +53,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
+  useDroppable,
+} from '@dnd-kit/core'
+import {
   PlusIcon,
   ChatBubbleLeftRightIcon,
-  ChevronRightIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   EyeIcon,
   HeartIcon,
   StarIcon,
@@ -40,6 +66,14 @@ import {
   FolderPlusIcon,
   PencilIcon,
   TrashIcon,
+  ChevronRightIcon,
+  XMarkIcon,
+  BoldIcon,
+  ItalicIcon,
+  UnderlineIcon,
+  ListBulletIcon,
+  LinkIcon,
+  ArrowsUpDownIcon,
 } from '@heroicons/react/24/outline'
 
 interface BulletinBoardProps {
@@ -48,51 +82,60 @@ interface BulletinBoardProps {
   onCreatePost: () => void
   onBulletinSelect?: (bulletinId: string) => void
   onRefreshPosts?: () => void
-  expandedBulletins?: Set<string>
-  onExpandedBulletinsChange?: (expanded: Set<string>) => void
   selectedBulletinId?: string | null
+  isSidebar?: boolean
+  isMainContent?: boolean
+  showCreatePost?: boolean
+  setShowCreatePost?: (show: boolean) => void
+  onAddTopLevelBulletin?: () => void
 }
 
-// 테스트 모드 확인 - 클라이언트 사이드에서만 체크
-const isTestMode = typeof window !== 'undefined' && 
-  process.env.NODE_ENV === 'development' && 
-  (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'dummy-key')
+// Firebase 연결 상태 확인
+const isFirebaseConnected = typeof window !== 'undefined' && 
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'dummy-key' &&
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID !== 'dummy-project'
 
-// 드래그 가능한 게시판 컴포넌트
+// 드래그 가능한 게시판 아이템 컴포넌트
 function SortableBulletinItem({ 
   bulletin, 
-  level, 
-  hasChildren, 
-  isExpanded, 
   isSelected, 
-  childCount, 
-  onToggleExpansion, 
-  onSelect, 
-  onEdit, 
-  onDelete,
-  isChecked,
-  onCheckChange,
-  isAdmin,
-  user,
-  allBulletins,
-  renderBulletinTree
+  isExpanded, 
+  hasChildren,
+  onBulletinSelect,
+  onToggleExpansion,
+  onEditBulletin,
+  onOpenCreateBulletin,
+  onDeleteBulletin,
+  onToggleLevelDropdown,
+  onSelectLevel,
+  levelDropdownOpen,
+  onLongPressStart,
+  onLongPressEnd,
+  onLongPressCancel,
+  longPressedBulletin,
+  closeMobileEditOptions,
+  level = 0
 }: {
   bulletin: Bulletin
-  level: number
-  hasChildren: boolean
-  isExpanded: boolean
   isSelected: boolean
-  childCount: number
-  onToggleExpansion: () => void
-  onSelect: () => void
-  onEdit: () => void
-  onDelete: () => void
-  isChecked: boolean
-  onCheckChange: (checked: boolean) => void
-  isAdmin: boolean
-  user: any
-  allBulletins: Bulletin[]
-  renderBulletinTree: (bulletins: Bulletin[], allBulletins: Bulletin[], level: number) => JSX.Element[]
+  isExpanded: boolean
+  hasChildren: boolean
+  onBulletinSelect: (bulletin: Bulletin) => void
+  onToggleExpansion: (bulletinId: string) => void
+  onEditBulletin: (bulletin: Bulletin) => void
+  onOpenCreateBulletin: (type: 'same-level' | 'sub-level' | 'top-level', bulletin?: Bulletin) => void
+  onDeleteBulletin: (bulletinId: string) => void
+  onToggleLevelDropdown: (bulletinId: string | null) => void
+  onSelectLevel: (bulletin: Bulletin, newLevel: number) => void
+  levelDropdownOpen: string | null
+  onLongPressStart: (bulletinId: string) => void
+  onLongPressEnd: () => void
+  onLongPressCancel: () => void
+  longPressedBulletin: string | null
+  closeMobileEditOptions: () => void
+  level?: number
 }) {
   const {
     attributes,
@@ -103,358 +146,266 @@ function SortableBulletinItem({
     isDragging,
   } = useSortable({ id: bulletin.id })
 
+  const {
+    setNodeRef: setDroppableRef,
+    isOver,
+  } = useDroppable({ id: `droppable-${bulletin.id}` })
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="mb-1">
+    <div
+      ref={setDroppableRef}
+      className={`relative ${isOver ? 'bg-blue-50 border-2 border-blue-300 rounded-lg' : ''}`}
+    >
       <div
-        onClick={onSelect}
-        className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
-          isSelected 
-            ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm' 
-            : level === 0 
-              ? 'bg-gray-50 hover:bg-gray-100 border-gray-200' 
-              : level === 1 
-                ? 'bg-white hover:bg-gray-50 border-gray-100'
-                : 'bg-gray-25 hover:bg-gray-50 border-transparent hover:border-gray-200'
-        }`}
-        style={{ 
-          paddingLeft: `${level * 24 + 16}px`,
-          marginLeft: `${level * 8}px`,
-          marginRight: '8px',
-          minWidth: `${Math.max(300, level * 50 + 300)}px`
-        }}
+        ref={setNodeRef}
+        style={style}
+        className={`
+          flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors
+          ${isSelected 
+            ? 'bg-blue-100 text-blue-700' 
+            : 'text-gray-700 hover:bg-gray-50'
+          }
+          ${isDragging ? 'opacity-50' : ''}
+          ${isOver ? 'bg-blue-100' : ''}
+        `}
+        onClick={() => onBulletinSelect(bulletin)}
+        onTouchStart={() => onLongPressStart(bulletin.id)}
+        onTouchEnd={onLongPressEnd}
+        onTouchCancel={onLongPressCancel}
+        onMouseDown={() => onLongPressStart(bulletin.id)}
+        onMouseUp={onLongPressEnd}
+        onMouseLeave={onLongPressCancel}
       >
-        {/* (admin) 체크박스 */}
-        {isAdmin && (
-          <input
-            type="checkbox"
-            className="mr-2"
-            checked={isChecked}
-            onChange={e => onCheckChange(e.target.checked)}
-            onClick={e => e.stopPropagation()}
-          />
-        )}
-
-        {/* 드래그 핸들 */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex-shrink-0 w-4 h-4 cursor-grab active:cursor-grabbing mr-2"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="w-full h-full flex flex-col justify-center items-center">
-            <div className="w-3 h-0.5 bg-gray-400 mb-0.5"></div>
-            <div className="w-3 h-0.5 bg-gray-400 mb-0.5"></div>
-            <div className="w-3 h-0.5 bg-gray-400"></div>
+        {/* 왼쪽 영역: 게시판 제목 (모바일에서는 우선적으로 표시) */}
+        <div className="flex items-center flex-1 min-w-0">
+          {/* 데스크톱에서만 드래그 핸들 표시 */}
+          <div className="hidden md:block">
+            <div
+              {...attributes}
+              {...listeners}
+              className="p-1 hover:bg-gray-200 rounded transition-colors cursor-grab active:cursor-grabbing mr-2"
+              title="드래그하여 이동"
+            >
+              <ArrowsUpDownIcon className="w-3 h-3 text-gray-400" />
+            </div>
+          </div>
+          
+          {/* 게시판 제목 (모바일에서 우선 표시) */}
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
+            {/* 데스크톱에서만 레벨 표시 */}
+            <div className="hidden md:block relative flex-shrink-0 level-dropdown">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleLevelDropdown(bulletin.id)
+                }}
+                className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-medium hover:bg-gray-200 transition-colors flex items-center space-x-1"
+              >
+                <span>Lv.{bulletin.level + 1}</span>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* 레벨 선택 드롭다운 */}
+              {levelDropdownOpen === bulletin.id && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-32">
+                  <div className="py-1">
+                    {Array.from({ length: Math.max(1, bulletin.level + 2) }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelectLevel(bulletin, i)
+                          onToggleLevelDropdown(null)
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                          i === bulletin.level ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        Lv.{i + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <span className="truncate font-medium">{bulletin.title}</span>
           </div>
         </div>
-
-        {/* 확장/축소 버튼 */}
-        <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
-          {hasChildren ? (
+        
+        {/* 오른쪽 영역: 데스크톱에서만 편집 버튼들 표시 */}
+        <div className="hidden md:flex items-center space-x-1 ml-2">
+          {/* 하위 게시판이 있을 때만 확장/축소 버튼 표시 */}
+          {hasChildren && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onToggleExpansion()
+                onToggleExpansion(bulletin.id)
               }}
               className="p-1 hover:bg-gray-200 rounded transition-colors"
+              title={isExpanded ? "축소" : "확장"}
             >
-              {isExpanded ? (
-                <ChevronDownIcon className="w-4 h-4" />
-              ) : (
-                <ChevronRightIcon className="w-4 h-4" />
-              )}
+              <ChevronDownIcon 
+                className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+              />
             </button>
-          ) : (
-            <div className="w-4 h-6 flex items-center justify-center">
-              {level > 0 && (
-                <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              )}
-            </div>
           )}
-        </div>
-
-        {/* 게시판 아이콘 */}
-        <div className="flex-shrink-0">
-          {level === 0 ? (
-            <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
-          ) : level === 1 ? (
-            <div className="w-5 h-5 flex items-center justify-center">
-              <div className="w-3 h-3 bg-blue-400 rounded-sm"></div>
-            </div>
-          ) : level === 2 ? (
-            <div className="w-5 h-5 flex items-center justify-center">
-              <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
-            </div>
-          ) : level === 3 ? (
-            <div className="w-5 h-5 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-green-400 rounded-sm"></div>
-            </div>
-          ) : level === 4 ? (
-            <div className="w-5 h-5 flex items-center justify-center">
-              <div className="w-1 h-1 bg-purple-400 rounded-sm"></div>
-            </div>
-          ) : (
-            <div className="w-5 h-5 flex items-center justify-center">
-              <div className="w-1 h-1 bg-gray-400 rounded-sm"></div>
-            </div>
-          )}
-        </div>
-
-        {/* 게시판 정보 */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2">
-            <h3 
-              className={`text-sm font-medium truncate cursor-pointer hover:text-primary-600 transition-colors ${
-                isSelected ? 'text-primary-700' : 'text-gray-900'
-              }`}
-              onClick={(e) => {
-                // 디버깅을 위한 임시 로그
-                console.log('🔍 Bulletin edit check:', {
-                  bulletinTitle: bulletin.title,
-                  bulletinUserId: bulletin.userId,
-                  currentUserId: user?.uid,
-                  isAdmin: isAdmin,
-                  canEdit: isAdmin || (user && bulletin.userId === user.uid)
-                })
-                
-                // 편집 가능한 게시판인 경우 편집 모드로 전환
-                if (isAdmin || (user && bulletin.userId === user.uid)) {
-                  console.log('✏️ Opening edit modal for:', bulletin.title)
-                  onEdit()
-                } else {
-                  // 편집 불가능한 경우 선택만
-                  console.log('📋 Selecting bulletin:', bulletin.title)
-                  onSelect()
-                }
-              }}
-              title={
-                isAdmin || (user && bulletin.userId === user.uid) 
-                  ? "클릭하여 게시판 이름 편집" 
-                  : "클릭하여 게시판 선택"
-              }
-            >
-              {level > 0 && (
-                <span className="text-xs text-gray-400 mr-1">L{level}</span>
-              )}
-              {bulletin.title}
-              {/* 편집 가능한 게시판 표시 */}
-              {(isAdmin || (user && bulletin.userId === user.uid)) && (
-                <span className="ml-1 text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                  ✏️
-                </span>
-              )}
-            </h3>
-            {/* 권한 표시 배지 */}
-            <div className="flex items-center space-x-1">
-              {(isAdmin || (user && bulletin.userId === user.uid)) && (
-                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
-                  {isAdmin ? '관리' : '내 게시판'}
-                </span>
-              )}
-              {!(isAdmin || (user && bulletin.userId === user.uid)) && (
-                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200 font-medium">
-                  읽기 전용
-                </span>
-              )}
-              {hasChildren && (
-                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                  {childCount}
-                </span>
-              )}
-            </div>
-          </div>
-          {bulletin.description && (
-            <p className={`text-xs mt-1 truncate ${
-              isSelected ? 'text-primary-500' : 'text-gray-500'
-            }`}>
-              {bulletin.description}
-            </p>
-          )}
-        </div>
-
-        {/* 계층 레벨 표시 */}
-        {level > 0 && (
-          <div className="flex-shrink-0 text-xs text-gray-400">
-            L{level}
-          </div>
-        )}
-
-        {/* 수정/삭제 버튼 - 모든 게시판에 표시 */}
-        <div className="flex-shrink-0 flex items-center space-x-1 ml-2">
-          {/* 편집 버튼 - 모든 게시판에 표시하되 권한에 따라 다르게 처리 */}
+          
           <button
             onClick={(e) => {
               e.stopPropagation()
-              // 권한 확인
-              if (isAdmin || (user && bulletin.userId === user.uid)) {
-                console.log('✏️ Edit button clicked for bulletin:', bulletin.title)
-                onEdit()
-              } else {
-                // 권한이 없는 경우 안내
-                toast.error('게시판을 수정할 권한이 없습니다. 관리자이거나 게시판 생성자만 수정할 수 있습니다.')
-                console.log('❌ No permission to edit bulletin:', bulletin.title)
-              }
+              onOpenCreateBulletin('same-level', bulletin)
             }}
-            className={`flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 border shadow-sm ${
-              isAdmin || (user && bulletin.userId === user.uid)
-                ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-300'
-            }`}
-            title={
-              isAdmin || (user && bulletin.userId === user.uid)
-                ? "게시판 수정 (권한 있음)"
-                : "게시판 수정 (권한 없음)"
-            }
+            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="같은 레벨에 게시판 추가"
+          >
+            <PlusIcon className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditBulletin(bulletin)
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+            title="편집"
           >
             <PencilIcon className="w-4 h-4" />
           </button>
           
-          {/* 삭제 버튼 (admin만) */}
-          {isAdmin && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenCreateBulletin('sub-level', bulletin)
+            }}
+            className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+            title="하위 게시판 추가"
+          >
+            <FolderPlusIcon className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteBulletin(bulletin.id)
+            }}
+            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+            title="삭제"
+          >
+            <TrashIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* 모바일에서 확장/축소 버튼만 표시 */}
+        <div className="md:hidden">
+          {hasChildren && (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onDelete()
+                onToggleExpansion(bulletin.id)
               }}
-              className="flex items-center justify-center w-8 h-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-all duration-200 border border-red-200 hover:border-red-300 shadow-sm"
-              title="게시판 삭제 (관리자만 가능)"
+              className="p-2 hover:bg-gray-200 rounded transition-colors"
+              title={isExpanded ? "축소" : "확장"}
             >
-              <TrashIcon className="w-4 h-4" />
+              <ChevronDownIcon 
+                className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+              />
             </button>
           )}
         </div>
       </div>
 
-      {/* 하위 게시판들 - 드롭다운 형태 */}
-      {hasChildren && isExpanded && (
-        <div className="ml-4">
-          {renderBulletinTree(
-            allBulletins.filter(b => b.parentId === bulletin.id),
-            allBulletins,
-            level + 1
-          )}
+      {/* 모바일 롱프레스 편집 옵션 */}
+      {longPressedBulletin === bulletin.id && (
+        <div className="absolute inset-0 bg-blue-500 bg-opacity-90 rounded-lg flex items-center justify-center z-20">
+          <div className="bg-white rounded-lg p-4 shadow-lg max-w-xs w-full mx-4">
+            <div className="text-center mb-4">
+              <h3 className="font-semibold text-gray-900">{bulletin.title}</h3>
+              <p className="text-sm text-gray-600">편집 옵션</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditBulletin(bulletin)
+                  closeMobileEditOptions()
+                }}
+                className="flex flex-col items-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                <PencilIcon className="w-6 h-6 text-blue-600 mb-1" />
+                <span className="text-xs text-blue-600">편집</span>
+              </button>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenCreateBulletin('same-level', bulletin)
+                  closeMobileEditOptions()
+                }}
+                className="flex flex-col items-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+              >
+                <PlusIcon className="w-6 h-6 text-green-600 mb-1" />
+                <span className="text-xs text-green-600">추가</span>
+              </button>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenCreateBulletin('sub-level', bulletin)
+                  closeMobileEditOptions()
+                }}
+                className="flex flex-col items-center p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+              >
+                <FolderPlusIcon className="w-6 h-6 text-purple-600 mb-1" />
+                <span className="text-xs text-purple-600">하위</span>
+              </button>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteBulletin(bulletin.id)
+                  closeMobileEditOptions()
+                }}
+                className="flex flex-col items-center p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+              >
+                <TrashIcon className="w-6 h-6 text-red-600 mb-1" />
+                <span className="text-xs text-red-600">삭제</span>
+              </button>
+            </div>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                closeMobileEditOptions()
+              }}
+              className="w-full mt-3 p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* 드롭 영역 표시 */}
+      {isOver && (
+        <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 rounded-lg pointer-events-none z-10">
+          <div className="flex items-center justify-center h-full">
+            <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium">
+              순서 변경
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 }
-
-// 모의 데이터
-const mockBulletins: Bulletin[] = [
-  {
-    id: 'bulletin-1',
-    title: '공지사항',
-    description: '중요한 공지사항을 확인하세요',
-    parentId: '',
-    level: 0,
-    order: 1,
-    isActive: true,
-    userId: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'bulletin-2',
-    title: '자유게시판',
-    description: '자유롭게 의견을 나누세요',
-    parentId: '',
-    level: 0,
-    order: 2,
-    isActive: true,
-    userId: 'user-1',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'bulletin-3',
-    title: '질문과 답변',
-    description: '궁금한 점을 물어보세요',
-    parentId: '',
-    level: 0,
-    order: 3,
-    isActive: true,
-    userId: 'user-2',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'bulletin-4',
-    title: '프로젝트 공유',
-    description: '프로젝트 관련 게시판',
-    parentId: 'bulletin-2',
-    level: 1,
-    order: 1,
-    isActive: true,
-    userId: 'user-1',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'bulletin-5',
-    title: '일상 이야기',
-    description: '일상적인 이야기를 나누세요',
-    parentId: 'bulletin-2',
-    level: 1,
-    order: 2,
-    isActive: true,
-    userId: 'user-3',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
-
-const mockPosts: BulletinPost[] = [
-  {
-    id: 'post-1',
-    bulletinId: 'bulletin-1',
-    title: '시스템 점검 안내',
-    content: '오늘 밤 12시부터 시스템 점검이 있을 예정입니다.',
-    userId: 'user-1',
-    authorName: '관리자',
-    isPinned: true,
-    isLocked: false,
-    viewCount: 150,
-    likeCount: 12,
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15'),
-  },
-  {
-    id: 'post-2',
-    bulletinId: 'bulletin-2',
-    title: '새로운 프로젝트 아이디어',
-    content: '다음 프로젝트로 어떤 것을 해보면 좋을까요?',
-    userId: 'user-2',
-    authorName: '개발자A',
-    isPinned: false,
-    isLocked: false,
-    viewCount: 89,
-    likeCount: 23,
-    tags: ['아이디어', '프로젝트'],
-    createdAt: new Date('2024-01-14'),
-    updatedAt: new Date('2024-01-14'),
-  },
-  {
-    id: 'post-3',
-    bulletinId: 'bulletin-3',
-    title: 'React 성능 최적화 질문',
-    content: 'React 컴포넌트의 성능을 어떻게 최적화할 수 있을까요?',
-    userId: 'user-3',
-    authorName: '초보개발자',
-    isPinned: false,
-    isLocked: false,
-    viewCount: 234,
-    likeCount: 45,
-    tags: ['React', '성능최적화'],
-    createdAt: new Date('2024-01-13'),
-    updatedAt: new Date('2024-01-13'),
-  },
-]
 
 export function BulletinBoard({ 
   onSelectPost, 
@@ -462,231 +413,757 @@ export function BulletinBoard({
   onCreatePost, 
   onBulletinSelect, 
   onRefreshPosts,
-  expandedBulletins: externalExpandedBulletins,
-  onExpandedBulletinsChange,
-  selectedBulletinId: externalSelectedBulletinId
+  selectedBulletinId: externalSelectedBulletinId,
+  isSidebar = false,
+  isMainContent = false,
+  showCreatePost: externalShowCreatePost,
+  setShowCreatePost: externalSetShowCreatePost
 }: BulletinBoardProps) {
   const { user, isAdmin } = useAuth()
   const [bulletins, setBulletins] = useState<Bulletin[]>([])
   const [posts, setPosts] = useState<BulletinPost[]>([])
-  const [internalSelectedBulletinId, setInternalSelectedBulletinId] = useState<string | null>(null)
-  
-  // 외부에서 전달된 selectedBulletinId가 있으면 사용, 없으면 내부 상태 사용
-  const selectedBulletinId = externalSelectedBulletinId || internalSelectedBulletinId
-  const [internalExpandedBulletins, setInternalExpandedBulletins] = useState<Set<string>>(new Set())
-  
-  // 외부에서 전달된 확장 상태가 있으면 사용, 없으면 내부 상태 사용
-  const expandedBulletins = externalExpandedBulletins || internalExpandedBulletins
-  const setExpandedBulletins = onExpandedBulletinsChange || setInternalExpandedBulletins
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showCreateBulletin, setShowCreateBulletin] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [newBulletin, setNewBulletin] = useState({
+  const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null)
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
+  const [newBulletin, setNewBulletin] = useState<Partial<Bulletin>>({
     title: '',
     description: '',
     parentId: '',
   })
-  const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null)
-  const [editingPost, setEditingPost] = useState<BulletinPost | null>(null)
+  const [editBulletinForm, setEditBulletinForm] = useState<Partial<Bulletin>>({
+    title: '',
+    description: '',
+  })
+  const [newPost, setNewPost] = useState<Partial<BulletinPost>>({
+    title: '',
+    content: '',
+    tags: [],
+  })
   const [selectedBulletinIds, setSelectedBulletinIds] = useState<Set<string>>(new Set())
   const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set())
+  const [currentBulletin, setCurrentBulletin] = useState<Bulletin | null>(null)
+  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
+  const [internalSelectedBulletinId, setInternalSelectedBulletinId] = useState<string | null>(null)
   
-  // 드래그 앤 드롭 상태
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
+  // 게시판 생성 관련 상태
+  const [showCreateBulletinModal, setShowCreateBulletinModal] = useState(false)
+  const [createBulletinType, setCreateBulletinType] = useState<'same-level' | 'sub-level' | 'top-level'>('same-level')
+  const [createBulletinForm, setCreateBulletinForm] = useState({
+    title: '',
+    description: '',
+    parentId: '',
+  })
+  const [selectedParentBulletin, setSelectedParentBulletin] = useState<Bulletin | null>(null)
+  
+  // 외부에서 전달된 selectedBulletinId가 있으면 사용, 없으면 내부 상태 사용
+  const selectedBulletinId = externalSelectedBulletinId || internalSelectedBulletinId
 
-  // Firebase 데이터 새로고침 함수
-  const refreshFirebaseData = () => {
-    console.log('🔄 Firebase 데이터 새로고침 시작...')
-    setRefreshTrigger(prev => prev + 1)
-    setLoading(true)
-    
-    // 1초 후 로딩 상태 해제
-    setTimeout(() => {
-      setLoading(false)
-    }, 1000)
+  // 모달 상태를 useRef로 관리 (상태 초기화 문제 우회)
+  const modalRef = useRef({
+    showEditBulletin: false,
+    editingBulletin: null as Bulletin | null,
+    editBulletinForm: { title: '', description: '' }
+  })
+
+  // 모달 강제 렌더링을 위한 상태
+  const [modalKey, setModalKey] = useState(0)
+
+  // 레벨 드롭다운 관련 상태
+  const [levelDropdownOpen, setLevelDropdownOpen] = useState<string | null>(null)
+
+  // 모바일 롱프레스 관련 상태
+  const [longPressedBulletin, setLongPressedBulletin] = useState<string | null>(null)
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null)
+
+  // 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (levelDropdownOpen && !(event.target as Element).closest('.level-dropdown')) {
+        setLevelDropdownOpen(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [levelDropdownOpen])
+
+  // 모달 상태 설정 함수
+  const setModalState = useCallback((show: boolean, bulletin: Bulletin | null, form: Partial<Bulletin>) => {
+    console.log('🔧 모달 상태 업데이트 (useRef):', { show, bulletin, form })
+    modalRef.current = {
+      showEditBulletin: show,
+      editingBulletin: bulletin,
+      editBulletinForm: { ...modalRef.current.editBulletinForm, ...form }
+    }
+    // 강제 리렌더링
+    setModalKey(prev => prev + 1)
+  }, [])
+
+  // 게시판 편집 핸들러
+  const handleEditBulletin = useCallback((bulletin: Bulletin) => {
+    console.log('✏️ 게시판 편집 버튼 클릭됨:', bulletin)
+    setModalState(true, bulletin, { title: bulletin.title, description: bulletin.description })
+  }, [setModalState])
+
+  // 레벨 드롭다운 토글
+  const handleToggleLevelDropdown = useCallback((bulletinId: string | null) => {
+    setLevelDropdownOpen(bulletinId)
+  }, [])
+
+  // 레벨 선택 핸들러
+  const handleSelectLevel = useCallback(async (bulletin: Bulletin, newLevel: number) => {
+    try {
+      if (newLevel === bulletin.level) {
+        return // 같은 레벨이면 변경하지 않음
+      }
+
+      // 새로운 부모 찾기
+      let newParentId: string | null = null
+      
+      if (newLevel === 0) {
+        // 최상위 레벨로 이동
+        newParentId = null
+      } else {
+        // 해당 레벨의 부모 찾기
+        const targetParent = bulletins.find(b => b.level === newLevel - 1)
+        if (targetParent) {
+          newParentId = targetParent.id
+        } else {
+          toast.error('해당 레벨로 이동할 수 없습니다.')
+          return
+        }
+      }
+
+      // 게시판 이동
+      const bulletinRef = doc(db, 'bulletins', bulletin.id)
+      await updateDoc(bulletinRef, {
+        parentId: newParentId,
+        level: newLevel,
+        updatedAt: serverTimestamp(),
+      })
+      
+      toast.success(`Lv.${newLevel + 1}로 이동되었습니다.`)
+    } catch (error) {
+      console.error('레벨 변경 오류:', error)
+      toast.error('레벨 변경에 실패했습니다.')
+    }
+  }, [bulletins])
+
+  // 모바일 롱프레스 시작
+  const handleLongPressStart = useCallback((bulletinId: string) => {
+    const timer = setTimeout(() => {
+      setLongPressedBulletin(bulletinId)
+      toast.success('편집 옵션이 표시되었습니다.')
+    }, 500) // 0.5초 길게 누르기
+    setLongPressTimer(timer)
+  }, [])
+
+  // 모바일 롱프레스 종료
+  const handleLongPressEnd = useCallback(() => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      setLongPressTimer(null)
+    }
+  }, [longPressTimer])
+
+  // 모바일 롱프레스 취소
+  const handleLongPressCancel = useCallback(() => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      setLongPressTimer(null)
+    }
+    setLongPressedBulletin(null)
+  }, [longPressTimer])
+
+  // 모바일에서 편집 옵션 닫기
+  const closeMobileEditOptions = useCallback(() => {
+    setLongPressedBulletin(null)
+  }, [])
+
+  // 모바일 롱프레스 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer)
+      }
+    }
+  }, [longPressTimer])
+
+  // 게시판 저장 핸들러
+  const handleSaveEditBulletin = async () => {
+    const { editingBulletin, editBulletinForm } = modalRef.current
+    if (!editingBulletin || !editBulletinForm.title?.trim()) {
+      toast.error('게시판 제목을 입력해주세요.')
+      return
+    }
+    try {
+      const bulletinRef = doc(db, 'bulletins', editingBulletin.id)
+      await updateDoc(bulletinRef, {
+        title: editBulletinForm.title.trim(),
+        description: editBulletinForm.description || '',
+        updatedAt: serverTimestamp(),
+      })
+      toast.success('게시판이 수정되었습니다.')
+      setModalState(false, null, { title: '', description: '' })
+    } catch (error) {
+      console.error('게시판 수정 오류:', error)
+      toast.error('게시판 수정에 실패했습니다.')
+    }
   }
 
+  // 게시판 생성 모달 열기
+  const handleOpenCreateBulletin = (type: 'same-level' | 'sub-level' | 'top-level', parentBulletin?: Bulletin) => {
+    setCreateBulletinType(type)
+    setSelectedParentBulletin(parentBulletin || null)
+    
+    if (type === 'top-level') {
+      // 최상위 레벨에 추가
+      setCreateBulletinForm({
+        title: '',
+        description: '',
+        parentId: '',
+      })
+    } else if (type === 'same-level') {
+      // 같은 레벨에 추가 (같은 부모 하위에)
+      setCreateBulletinForm({
+        title: '',
+        description: '',
+        parentId: parentBulletin?.parentId || '',
+      })
+    } else {
+      // 하위 레벨에 추가 (현재 게시판의 자식으로)
+      setCreateBulletinForm({
+        title: '',
+        description: '',
+        parentId: parentBulletin?.id || '',
+      })
+    }
+    
+    setShowCreateBulletinModal(true)
+  }
+
+  // 게시판 생성 저장
+  const handleSaveCreateBulletin = async () => {
+    if (!createBulletinForm.title?.trim()) {
+      toast.error('게시판 제목을 입력해주세요.')
+      return
+    }
+    
+    try {
+      const parentId = createBulletinForm.parentId
+      const parentLevel = parentId ? getBulletinLevel(parentId) : 0
+      const newLevel = parentLevel + 1
+      
+      // 같은 레벨의 게시판 개수 확인하여 order 설정
+      const sameLevelBulletins = bulletins.filter(b => 
+        b.level === newLevel && b.parentId === parentId
+      )
+      const newOrder = sameLevelBulletins.length
+
+      const bulletinData = {
+        title: createBulletinForm.title.trim(),
+        description: createBulletinForm.description || '',
+        parentId: parentId || '',
+        level: newLevel,
+        order: newOrder,
+        isActive: true,
+        userId: user?.uid || 'unknown',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+      
+      await addDoc(collection(db, 'bulletins'), bulletinData)
+      
+      toast.success('게시판이 생성되었습니다.')
+      setShowCreateBulletinModal(false)
+      setCreateBulletinForm({ title: '', description: '', parentId: '' })
+      setSelectedParentBulletin(null)
+      
+      // 새로 생성된 게시판이 하위 레벨인 경우 부모를 확장
+      if (createBulletinType === 'sub-level' && selectedParentBulletin) {
+        setExpandedBulletins(prev => new Set([...prev, selectedParentBulletin.id]))
+      }
+    } catch (error) {
+      console.error('게시판 생성 오류:', error)
+      toast.error('게시판 생성에 실패했습니다.')
+    }
+  }
+
+  // 게시판 선택
+  const handleBulletinSelect = (bulletin: Bulletin) => {
+    setInternalSelectedBulletinId(bulletin.id)
+    if (onBulletinSelect) {
+      onBulletinSelect(bulletin.id)
+    }
+  }
+
+  // 게시글 확장/축소 토글
+  const handleSelectPost = (post: BulletinPost) => {
+    setSelectedPost(post)
+    setShowPostModal(true)
+    setIsReadingMode(true)
+    onSelectPost(post.id)
+  }
+
+  const handleEditPost = (post: BulletinPost) => {
+    setSelectedPost(post)
+    setEditingPostData(post)
+    setShowPostModal(true)
+    setIsReadingMode(false)
+    // 에디터에 기존 내용 설정
+    if (editor) {
+      editor.commands.setContent(post.content || '')
+    }
+  }
+
+  // 드래그 앤 드롭 이벤트 핸들러
+  const handleDragStart = (event: DragStartEvent) => {
+    setIsDragging(true)
+    const activeBulletin = bulletins.find(b => b.id === event.active.id)
+    setDraggedBulletin(activeBulletin || null)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setIsDragging(false)
+    setDraggedBulletin(null)
+    const { active, over } = event
+
+    if (active.id !== over?.id && over?.id) {
+      const activeBulletin = bulletins.find(b => b.id === active.id)
+      const overBulletin = bulletins.find(b => b.id === over.id)
+
+      if (activeBulletin && overBulletin) {
+        // 같은 레벨에서만 드래그 앤 드롭 허용
+        if (activeBulletin.level !== overBulletin.level) {
+          toast.error('같은 레벨 내에서만 순서를 변경할 수 있습니다.')
+          return
+        }
+
+        try {
+          // 같은 레벨의 게시판들을 찾기
+          const sameLevelBulletins = bulletins.filter(b => 
+            b.level === activeBulletin.level && 
+            b.parentId === activeBulletin.parentId
+          ).sort((a, b) => (a.order || 0) - (b.order || 0))
+
+          // 드래그된 게시판의 원래 위치와 목표 위치 찾기
+          const activeIndex = sameLevelBulletins.findIndex(b => b.id === activeBulletin.id)
+          const overIndex = sameLevelBulletins.findIndex(b => b.id === overBulletin.id)
+
+          if (activeIndex === -1 || overIndex === -1) {
+            toast.error('순서 변경에 실패했습니다.')
+            return
+          }
+
+          // 새로운 순서 배열 생성
+          const newOrderedBulletins = [...sameLevelBulletins]
+          const [movedBulletin] = newOrderedBulletins.splice(activeIndex, 1)
+          newOrderedBulletins.splice(overIndex, 0, movedBulletin)
+
+          // 모든 게시판의 order 업데이트
+          const batch = writeBatch(db)
+          newOrderedBulletins.forEach((bulletin, index) => {
+            const ref = doc(db, 'bulletins', bulletin.id)
+            batch.update(ref, { 
+              order: index,
+              updatedAt: serverTimestamp()
+            })
+          })
+          
+          await batch.commit()
+          
+          toast.success('게시판 순서가 변경되었습니다.')
+        } catch (error) {
+          console.error('게시판 순서 변경 오류:', error)
+          toast.error('게시판 순서 변경에 실패했습니다.')
+        }
+      }
+    }
+  }
+
+  // 게시판 삭제
+  const handleDeleteBulletin = async (bulletinId: string) => {
+    if (!confirm('정말로 이 게시판을 삭제하시겠습니까?')) {
+      return
+    }
+    try {
+      await deleteDoc(doc(db, 'bulletins', bulletinId))
+      toast.success('게시판이 삭제되었습니다.')
+    } catch (error) {
+      console.error('게시판 삭제 오류:', error)
+      toast.error('게시판 삭제에 실패했습니다.')
+    }
+  }
+
+  // 상위 게시판으로 이동
+  const handleMoveToParent = async (bulletin: Bulletin) => {
+    try {
+      // 현재 게시판의 부모를 찾기
+      const currentParent = bulletins.find(b => b.id === bulletin.parentId)
+      
+      if (!currentParent) {
+        // 이미 최상위 레벨인 경우
+        toast.error('이미 최상위 레벨입니다.')
+        return
+      }
+
+      // 부모의 부모를 찾기 (상위 레벨로 이동)
+      const grandParent = bulletins.find(b => b.id === currentParent.parentId)
+      
+      let newParentId: string | null = null
+      let newLevel: number = 0
+
+      if (grandParent) {
+        // 할아버지가 있는 경우: 할아버지의 하위로 이동
+        newParentId = grandParent.id
+        newLevel = grandParent.level + 1
+      } else {
+        // 할아버지가 없는 경우: 최상위 레벨로 이동
+        newParentId = null
+        newLevel = 0
+      }
+
+      // 게시판 이동
+      const bulletinRef = doc(db, 'bulletins', bulletin.id)
+      await updateDoc(bulletinRef, {
+        parentId: newParentId,
+        level: newLevel,
+        updatedAt: serverTimestamp(),
+      })
+      
+      toast.success('상위 레벨로 이동되었습니다.')
+      
+      // 모달 닫기
+      setModalState(false, null, { title: '', description: '' })
+    } catch (error) {
+      console.error('상위 레벨 이동 오류:', error)
+      toast.error('상위 레벨 이동에 실패했습니다.')
+    }
+  }
+
+  // 게시판 확장/축소 토글
+  const toggleBulletinExpansion = (bulletinId: string) => {
+    setExpandedBulletins(prev => {
+      const next = new Set(prev)
+      if (next.has(bulletinId)) {
+        next.delete(bulletinId)
+      } else {
+        next.add(bulletinId)
+      }
+      return next
+    })
+  }
+
+  // 하위 게시판 가져오기
+  const getChildBulletins = (parentId: string) => {
+    return bulletins.filter(b => b.parentId === parentId)
+  }
+
+  // 최상위 게시판 가져오기
+  const getTopLevelBulletins = () => {
+    return bulletins.filter(b => !b.parentId || b.parentId === '')
+  }
+
+  // 게시판 레벨 가져오기
+  const getBulletinLevel = (bulletinId: string): number => {
+    const bulletin = bulletins.find(b => b.id === bulletinId)
+    if (!bulletin) return 0
+    if (!bulletin.parentId || bulletin.parentId === '') return 0
+    return 1 + getBulletinLevel(bulletin.parentId)
+  }
+
+  // 게시판 경로 가져오기
+  const getBulletinPath = (bulletinId: string): Bulletin[] => {
+    const path: Bulletin[] = []
+    let currentBulletin = bulletins.find(b => b.id === bulletinId)
+
+    while (currentBulletin) {
+      path.unshift(currentBulletin)
+      const parentBulletin = bulletins.find(b => b.id === currentBulletin!.parentId)
+      currentBulletin = parentBulletin
+    }
+    return path
+  }
+
+  // 게시판 트리 렌더링
+  const renderBulletinTree = (
+    bulletins: Bulletin[],
+    allBulletins: Bulletin[],
+    level: number = 0
+  ) => {
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={bulletins.map(b => b.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-1">
+
+            
+            {bulletins.map((bulletin) => {
+              const isSelected = selectedBulletinId === bulletin.id
+              const isExpanded = expandedBulletins.has(bulletin.id)
+              const hasChildren = allBulletins.some(b => b.parentId === bulletin.id)
+              const childBulletins = allBulletins.filter(b => b.parentId === bulletin.id)
+
+              return (
+                <div key={bulletin.id} className="space-y-1">
+                  <SortableBulletinItem
+                    bulletin={bulletin}
+                    isSelected={isSelected}
+                    isExpanded={isExpanded}
+                    hasChildren={hasChildren}
+                    onBulletinSelect={handleBulletinSelect}
+                    onToggleExpansion={toggleBulletinExpansion}
+                    onEditBulletin={handleEditBulletin}
+                    onOpenCreateBulletin={handleOpenCreateBulletin}
+                    onDeleteBulletin={handleDeleteBulletin}
+                    onToggleLevelDropdown={handleToggleLevelDropdown}
+                    onSelectLevel={handleSelectLevel}
+                    levelDropdownOpen={levelDropdownOpen}
+                    onLongPressStart={handleLongPressStart}
+                    onLongPressEnd={handleLongPressEnd}
+                    onLongPressCancel={handleLongPressCancel}
+                    longPressedBulletin={longPressedBulletin}
+                    closeMobileEditOptions={closeMobileEditOptions}
+                    level={level}
+                  />
+                  
+                  {hasChildren && isExpanded && (
+                    <div className="ml-4 space-y-1">
+                      {renderBulletinTree(childBulletins, allBulletins, level + 1)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </SortableContext>
+        
+        {/* 드래그 오버레이 */}
+        <DragOverlay>
+          {draggedBulletin ? (
+            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-90">
+              <div className="flex items-center space-x-2">
+                <ArrowsUpDownIcon className="w-4 h-4 text-gray-400" />
+                <span className="font-medium">{draggedBulletin.title}</span>
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+              </DndContext>
+    )
+  }
+
+  // 게시글 생성
+  const handleCreatePost = async () => {
+    if (!selectedBulletinId || !newPost.title?.trim()) {
+      toast.error('게시판을 선택하고 제목을 입력해주세요.')
+      return
+    }
+    if (!user) {
+      toast.error('로그인이 필요합니다.')
+      return
+    }
+    try {
+      // 사용자 닉네임 가져오기
+      let authorName = '익명'
+      if (user?.uid) {
+        const nickname = await getUserNickname(user.uid)
+        // 닉네임이 '익명'이거나 비어있으면 이메일 사용
+        if (nickname && nickname !== '익명') {
+          authorName = nickname
+        } else if (user.email) {
+          authorName = user.email
+        }
+      }
+
+      const postData = {
+        title: newPost.title.trim(),
+        content: newPost.content || '',
+        bulletinId: selectedBulletinId,
+        userId: user?.uid || 'unknown',
+        authorName: authorName,
+        isPinned: false,
+        isLocked: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+      await addDoc(collection(db, 'bulletinPosts'), postData)
+      toast.success('게시글이 작성되었습니다.')
+      setNewPost({ title: '', content: '', tags: [] })
+      editor?.commands.setContent('') // Clear editor content
+      externalSetShowCreatePost?.(false) // Close modal
+      onRefreshPosts?.() // Refresh posts list
+    } catch (error) {
+      console.error('게시글 작성 오류:', error)
+      toast.error('게시글 작성에 실패했습니다.')
+    }
+  }
+
+  // 게시글 삭제
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+      return
+    }
+    try {
+      await deleteDoc(doc(db, 'bulletinPosts', postId))
+      toast.success('게시글이 삭제되었습니다.')
+    } catch (error) {
+      console.error('게시글 삭제 오류:', error)
+      toast.error('게시글 삭제에 실패했습니다.')
+    }
+  }
+
+  // 게시글 수정 저장
+  const handleSaveEditPost = async () => {
+    if (!editingPostData || !editingPostData.title?.trim()) {
+      toast.error('게시글 제목을 입력해주세요.')
+      return
+    }
+    try {
+      const postRef = doc(db, 'bulletinPosts', editingPostData.id)
+      await setDoc(postRef, {
+        ...editingPostData,
+        title: editingPostData.title.trim(),
+        content: editingPostData.content || '',
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+      toast.success('게시글이 수정되었습니다.')
+      setEditingPostData(null)
+    } catch (error) {
+      console.error('게시글 수정 오류:', error)
+      toast.error('게시글 수정에 실패했습니다.')
+    }
+  }
+
+  // 날짜 포맷팅
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date)
+  }
+
+  // 게시판 데이터 초기화
   useEffect(() => {
     let bulletinsUnsubscribe: (() => void) | undefined
-    let postsUnsubscribe: (() => void) | undefined
 
     const initializeData = async () => {
       if (user) {
-        // Firebase가 초기화되지 않은 경우 처리
-        if (!db && !isTestMode) {
-          console.warn('Firebase가 초기화되지 않았습니다. 모의 모드로 전환합니다.')
-          setBulletins(mockBulletins)
+        if (!db || !isFirebaseConnected) {
+          setError('Firebase 연결이 설정되지 않았습니다.')
           setLoading(false)
           return
         }
 
-        // 게시판 실시간 리스너 설정
-        if (isTestMode) {
-          setBulletins(mockBulletins)
-          setLoading(false)
-        } else {
-          try {
-            console.log('📥 Firebase에서 게시판 데이터 로드 중...')
-            const q = query(
-              collection(db, 'bulletins')
-              // 임시로 복합 쿼리 제거 (인덱스 빌드 중)
-              // where('isActive', '==', true),
-              // orderBy('order', 'asc')
-            )
-            
-            bulletinsUnsubscribe = onSnapshot(q, (querySnapshot) => {
-              const bulletinData: Bulletin[] = []
-              
-              querySnapshot.forEach((doc) => {
-                const data = doc.data()
-                const bulletin = {
-                  id: doc.id,
-                  title: data.title,
-                  description: data.description,
-                  parentId: data.parentId,
-                  level: data.level,
-                  order: data.order,
-                  isActive: data.isActive,
-                  userId: data.userId || 'unknown',
-                  createdAt: data.createdAt?.toDate() || new Date(),
-                  updatedAt: data.updatedAt?.toDate() || new Date(),
-                }
-                bulletinData.push(bulletin)
-                console.log(`📥 Loaded bulletin:`, {
-                  id: bulletin.id,
-                  title: bulletin.title,
-                  parentId: bulletin.parentId,
-                  level: bulletin.level,
-                  hasParent: !!bulletin.parentId
-                })
-              })
-              
-              console.log(`✅ 총 ${bulletinData.length}개의 게시판을 로드했습니다.`)
-              setBulletins(bulletinData)
-              setLoading(false)
-            }, (error) => {
-              console.error('실시간 게시판 데이터 가져오기 오류:', error)
-              
-              // 연결 타임아웃 오류인 경우 재연결 시도
-              if (error.code === 'cancelled' || error.message.includes('CANCELLED')) {
-                console.log('🔄 Firestore 연결이 끊어졌습니다. 재연결을 시도합니다...')
-                // 3초 후 재연결 시도
-                setTimeout(() => {
-                  initializeData()
-                }, 3000)
-              } else {
-                toast.error('실시간 업데이트에 실패했습니다.')
+        try {
+          const q = query(collection(db, 'bulletins'))
+          bulletinsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+            const bulletinData: Bulletin[] = []
+            querySnapshot.forEach((doc) => {
+              const data = doc.data()
+              const bulletin = {
+                id: doc.id,
+                title: data.title,
+                description: data.description,
+                parentId: data.parentId,
+                level: data.level,
+                order: data.order || 0,
+                isActive: data.isActive,
+                userId: data.userId || 'unknown',
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate() || new Date(),
               }
-              setLoading(false)
+              bulletinData.push(bulletin)
             })
-          } catch (error: any) {
-            toast.error('게시판을 불러오는데 실패했습니다.')
-            console.error('Error fetching bulletins:', error)
+            // order 필드로 정렬
+            bulletinData.sort((a, b) => a.order - b.order)
+            setBulletins(bulletinData)
             setLoading(false)
-          }
+          }, (error) => {
+            console.error('실시간 게시판 데이터 가져오기 오류:', error)
+            setError('게시판 데이터를 가져오는 중 오류가 발생했습니다.')
+            setLoading(false)
+          })
+        } catch (error) {
+          console.error('게시판 데이터 초기화 오류:', error)
+          setError('게시판 데이터를 초기화하는 중 오류가 발생했습니다.')
+          setLoading(false)
         }
-
-        // 기존 게시판들의 userId를 현재 사용자로 업데이트
-        updateExistingBulletinsUserId()
       }
     }
 
     initializeData()
 
-    // 컴포넌트 언마운트 시 리스너 해제
     return () => {
       if (bulletinsUnsubscribe) {
         bulletinsUnsubscribe()
       }
-      if (postsUnsubscribe) {
-        postsUnsubscribe()
-      }
     }
-  }, [user, refreshTrigger]) // refreshTrigger 추가
+  }, [user])
 
-  // 게시판 로드 후 기본적으로 접힌 상태로 시작
-  useEffect(() => {
-    if (bulletins.length > 0) {
-      setExpandedBulletins(new Set())
-    }
-  }, [bulletins])
-
+  // 게시글 데이터 초기화
   useEffect(() => {
     let postsUnsubscribe: (() => void) | undefined
 
     const initializePosts = async () => {
-      if (selectedBulletinId) {
-        if (isTestMode) {
-          const bulletinPosts = mockPosts.filter(post => post.bulletinId === selectedBulletinId)
-          setPosts(bulletinPosts)
-        } else {
-          try {
-            const q = query(
-              collection(db, 'bulletinPosts'),
-              where('bulletinId', '==', selectedBulletinId)
-            )
-            
-            postsUnsubscribe = onSnapshot(q, (querySnapshot) => {
-              const postData: BulletinPost[] = []
-              
-              querySnapshot.forEach((doc) => {
-                const data = doc.data()
-                postData.push({
-                  id: doc.id,
-                  bulletinId: data.bulletinId,
-                  title: data.title,
-                  content: data.content,
-                  userId: data.userId,
-                  authorName: data.authorName,
-                  isPinned: data.isPinned || false,
-                  isLocked: data.isLocked || false,
-                  viewCount: data.viewCount || 0,
-                  likeCount: data.likeCount || 0,
-                  tags: data.tags || [],
-                  createdAt: data.createdAt?.toDate() || new Date(),
-                  updatedAt: data.updatedAt?.toDate() || new Date(),
-                })
-              })
-              
-              // 클라이언트 사이드에서 정렬
-              postData.sort((a, b) => {
-                if (a.isPinned !== b.isPinned) {
-                  return b.isPinned ? 1 : -1
-                }
-                return b.createdAt.getTime() - a.createdAt.getTime()
-              })
-              
-              setPosts(postData)
-            }, (error) => {
-              console.error('실시간 게시글 데이터 가져오기 오류:', error)
-              
-              // 연결 타임아웃 오류인 경우 재연결 시도
-              if (error.code === 'cancelled' || error.message.includes('CANCELLED')) {
-                console.log('🔄 Firestore posts 연결이 끊어졌습니다. 재연결을 시도합니다...')
-                // 3초 후 재연결 시도
-                setTimeout(() => {
-                  initializePosts()
-                }, 3000)
-              } else {
-                toast.error('실시간 업데이트에 실패했습니다.')
-              }
-            })
-          } catch (error: any) {
-            console.error('Error fetching posts:', error)
-            if (error.code === 'unavailable' || error.message?.includes('QUIC_PROTOCOL_ERROR')) {
-              console.warn('Firestore connection error, setting empty posts array')
-              setPosts([])
-            } else {
-              toast.error('게시글을 불러오는데 실패했습니다.')
-            }
-          }
+      if (user && selectedBulletinId) {
+        if (!db || !isFirebaseConnected) {
+          return
         }
+
+        try {
+          const q = query(
+            collection(db, 'bulletinPosts'),
+            where('bulletinId', '==', selectedBulletinId)
+          )
+          
+          postsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+            const postData: BulletinPost[] = []
+            querySnapshot.forEach((doc) => {
+              const data = doc.data()
+              const post = {
+                id: doc.id,
+                title: data.title,
+                content: data.content,
+                bulletinId: data.bulletinId,
+                userId: data.userId,
+                authorName: data.authorName,
+                isPinned: data.isPinned || false,
+                isLocked: data.isLocked || false,
+                viewCount: data.viewCount || 0,
+                likeCount: data.likeCount || 0,
+                tags: data.tags || [],
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate() || new Date(),
+              }
+              postData.push(post)
+            })
+            
+            // 클라이언트 사이드에서 정렬
+            postData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            setPosts(postData)
+          }, (error) => {
+            console.error('실시간 게시글 데이터 가져오기 오류:', error)
+          })
+        } catch (error) {
+          console.error('게시글 데이터 초기화 오류:', error)
+        }
+      } else {
+        setPosts([])
       }
     }
 
@@ -697,629 +1174,229 @@ export function BulletinBoard({
         postsUnsubscribe()
       }
     }
-  }, [selectedBulletinId, refreshTrigger])
+  }, [user, selectedBulletinId])
 
-  // 기존 게시판들의 userId를 현재 사용자로 업데이트
-  const updateExistingBulletinsUserId = async () => {
-    if (!user?.uid || isTestMode) return
-
-    try {
-      const q = query(
-        collection(db, 'bulletins'),
-        where('userId', '==', 'unknown')
-      )
-      
-      const querySnapshot = await getDocs(q)
-      const updatePromises = querySnapshot.docs.map(docSnapshot => {
-        const bulletinRef = doc(db, 'bulletins', docSnapshot.id)
-        return setDoc(bulletinRef, {
-          userId: user.uid,
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
-      })
-
-      if (updatePromises.length > 0) {
-        await Promise.all(updatePromises)
-        console.log(`🔄 Updated ${updatePromises.length} bulletins with userId: ${user.uid}`)
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      }
-    } catch (error: any) {
-      console.error('Error updating bulletin user IDs:', error)
-    }
-  }
-
-  const toggleBulletinExpansion = (bulletinId: string) => {
-    const newExpanded = new Set(expandedBulletins)
-    if (newExpanded.has(bulletinId)) {
-      newExpanded.delete(bulletinId)
+  // currentBulletin 자동 설정
+  useEffect(() => {
+    if (selectedBulletinId && bulletins.length > 0) {
+      const bulletin = bulletins.find(b => b.id === selectedBulletinId)
+      setCurrentBulletin(bulletin || null)
     } else {
-      newExpanded.add(bulletinId)
+      setCurrentBulletin(null)
     }
-    setExpandedBulletins(newExpanded)
-  }
+  }, [selectedBulletinId, bulletins])
 
-  const getChildBulletins = (parentId: string) => {
-    const children = bulletins.filter(bulletin => bulletin.parentId === parentId)
-    console.log(`🔍 getChildBulletins for ${parentId}:`, children)
-    console.log(`📊 All bulletins:`, bulletins)
-    return children
-  }
+  // 게시글 작성 모달 상태
+  const [showCreatePost, setShowCreatePost] = useState(false)
+  const [showEditPost, setShowEditPost] = useState(false)
+  const [editingPostData, setEditingPostData] = useState<BulletinPost | null>(null)
+  const [showPostModal, setShowPostModal] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<BulletinPost | null>(null)
+  const [isReadingMode, setIsReadingMode] = useState(true)
+  const [isDragging, setIsDragging] = useState(false)
+  const [draggedBulletin, setDraggedBulletin] = useState<Bulletin | null>(null)
 
-  const getTopLevelBulletins = () => {
-    return bulletins.filter(bulletin => !bulletin.parentId || bulletin.parentId === null || bulletin.parentId === undefined)
-  }
-
-  // 게시판의 레벨을 계산하는 함수
-  const getBulletinLevel = (bulletinId: string): number => {
-    const bulletin = bulletins.find(b => b.id === bulletinId)
-    if (!bulletin || !bulletin.parentId) return 0
-    
-    return 1 + getBulletinLevel(bulletin.parentId)
-  }
-
-  const formatDate = (date: Date) => {
-    const now = new Date()
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
-    
-    if (diffInHours < 24) {
-      return `${diffInHours}시간 전`
-    } else {
-      return date.toLocaleDateString('ko-KR')
-    }
-  }
-
-  const renderBulletinTree = (
-    bulletins: Bulletin[],
-    allBulletins: Bulletin[],
-    level: number = 0
-  ) => {
-    return bulletins.map((bulletin) => {
-      const hasChildren = allBulletins.some(b => b.parentId === bulletin.id)
-      const isExpanded = expandedBulletins.has(bulletin.id)
-      const isSelected = selectedBulletinId === bulletin.id
-      const childCount = allBulletins.filter(b => b.parentId === bulletin.id).length
-
-      return (
-        <SortableBulletinItem
-          key={bulletin.id}
-          bulletin={bulletin}
-          level={level}
-          hasChildren={hasChildren}
-          isExpanded={isExpanded}
-          isSelected={isSelected}
-          childCount={childCount}
-          onToggleExpansion={() => toggleBulletinExpansion(bulletin.id)}
-          onSelect={() => {
-            setInternalSelectedBulletinId(bulletin.id)
-            onBulletinSelect?.(bulletin.id)
-          }}
-          onEdit={() => setEditingBulletin(bulletin)}
-          onDelete={() => handleDeleteBulletin(bulletin.id)}
-          isChecked={selectedBulletinIds.has(bulletin.id)}
-          onCheckChange={(checked) => {
-            setSelectedBulletinIds(prev => {
-              const next = new Set(prev)
-              if (checked) next.add(bulletin.id)
-              else next.delete(bulletin.id)
-              return next
-            })
-          }}
-          isAdmin={isAdmin}
-          user={user}
-          allBulletins={allBulletins}
-          renderBulletinTree={renderBulletinTree}
-        />
-      )
+  // 드래그 앤 드롭 센서 설정
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
-  }
+  )
 
-  const handleRefreshPosts = () => {
-    setRefreshTrigger(prev => prev + 1)
-  }
-
-  const toggleAllBulletins = () => {
-    const allBulletinIds = bulletins.map(b => b.id)
-    const hasExpanded = allBulletinIds.some(id => expandedBulletins.has(id))
-    
-    if (hasExpanded) {
-      // 모든 게시판 접기
-      setExpandedBulletins(new Set())
-    } else {
-      // 모든 게시판 펼치기
-      setExpandedBulletins(new Set(allBulletinIds))
-    }
-  }
-
-  const handleCreateBulletin = async () => {
-    if (!newBulletin.title.trim()) {
-      toast.error('게시판 제목을 입력해주세요.')
-      return
-    }
-
-    if (!user?.uid) {
-      toast.error('로그인이 필요합니다.')
-      return
-    }
-
-    try {
-      const bulletinData = {
-        title: newBulletin.title.trim(),
-        description: newBulletin.description.trim(),
-        parentId: newBulletin.parentId || null,
-        level: newBulletin.parentId ? getBulletinLevel(newBulletin.parentId) + 1 : 0,
-        order: bulletins.length + 1,
-        isActive: true,
-        userId: user.uid, // 반드시 현재 사용자 ID로 설정
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+  // TipTap 에디터 설정
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        // StarterKit에서 중복되는 확장 프로그램들을 비활성화
+        underline: false,
+        strike: false,
+        code: false,
+        codeBlock: false,
+        blockquote: false,
+        horizontalRule: false,
+      }),
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      Color,
+      Typography,
+      Underline,
+      Strike,
+      Code,
+      CodeBlock,
+      Blockquote,
+      HorizontalRule,
+      Image,
+      Placeholder.configure({
+        placeholder: '내용을 입력해주세요...',
+      }),
+      Highlight,
+      Subscript,
+      Superscript,
+      TaskList.configure({
+        itemTypeName: 'taskItem',
+      }),
+      TaskItem,
+      BubbleMenuExtension,
+      FloatingMenuExtension,
+    ],
+    content: '',
+    onUpdate: ({ editor }) => {
+      setNewPost({ ...newPost, content: editor.getHTML() })
+      // 수정 모달이 열려있을 때는 editingPostData도 업데이트
+      if (editingPostData) {
+        setEditingPostData({ ...editingPostData, content: editor.getHTML() })
       }
-      
-      console.log('🚀 Creating bulletin with data:', bulletinData)
+    },
+  })
 
-      if (isTestMode) {
-        const newBulletinItem: Bulletin = {
-          id: `bulletin-${Date.now()}`,
-          title: bulletinData.title,
-          description: bulletinData.description,
-          parentId: bulletinData.parentId || '',
-          level: bulletinData.level,
-          order: bulletinData.order,
-          isActive: bulletinData.isActive,
-          userId: bulletinData.userId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-        setBulletins(prev => [...prev, newBulletinItem])
-        
-        // 부모 게시판이 있다면 부모 게시판을 펼친 상태로 설정
-        if (bulletinData.parentId && typeof bulletinData.parentId === 'string') {
-          const newExpanded = new Set([...Array.from(expandedBulletins), bulletinData.parentId as string])
-          setExpandedBulletins(newExpanded)
-        }
-        
-        // 새로 생성된 게시판을 펼친 상태로 설정
-        const newExpanded = new Set([...Array.from(expandedBulletins), newBulletinItem.id])
-        setExpandedBulletins(newExpanded)
-        
-        // 새로 생성된 게시판을 선택
-        setInternalSelectedBulletinId(newBulletinItem.id)
-        onBulletinSelect?.(newBulletinItem.id)
-        
-        toast.success('게시판이 생성되었습니다.')
-      } else {
-        const docRef = await addDoc(collection(db, 'bulletins'), bulletinData)
-        toast.success('게시판이 생성되었습니다.')
-        
-        // 부모 게시판이 있다면 부모 게시판을 펼친 상태로 설정
-        if (bulletinData.parentId && typeof bulletinData.parentId === 'string') {
-          const newExpanded = new Set([...Array.from(expandedBulletins), bulletinData.parentId as string])
-          setExpandedBulletins(newExpanded)
-        }
-        
-        // 새로 생성된 게시판을 펼친 상태로 설정
-        const newExpanded = new Set([...Array.from(expandedBulletins), docRef.id])
-        setExpandedBulletins(newExpanded)
-        
-        // 현재 확장된 게시판 상태를 저장하고 fetchBulletins에 전달
-        const currentExpandedState = new Set([...Array.from(expandedBulletins), docRef.id])
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-        
-        // 새로 생성된 게시판을 선택
-        setInternalSelectedBulletinId(docRef.id)
-        onBulletinSelect?.(docRef.id)
-      }
-
-      setNewBulletin({ title: '', description: '', parentId: '' })
-      setShowCreateBulletin(false)
-    } catch (error: any) {
-      toast.error('게시판 생성에 실패했습니다.')
-      console.error('Error creating bulletin:', error)
-    }
-  }
-
-  // 게시판 수정
-  const handleEditBulletin = async (bulletin: Bulletin) => {
-    if (isTestMode) {
-      setBulletins(prev => prev.map(b => 
-        b.id === bulletin.id ? { ...bulletin, updatedAt: new Date() } : b
-      ))
-      setEditingBulletin(null)
-      toast.success('게시판이 수정되었습니다.')
-      return
-    }
-
-    try {
-      const bulletinRef = doc(db, 'bulletins', bulletin.id)
-      await setDoc(bulletinRef, {
-        ...bulletin,
-        updatedAt: serverTimestamp(),
-      })
-      setEditingBulletin(null)
-      
-      // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      
-      toast.success('게시판이 수정되었습니다.')
-    } catch (error: any) {
-      toast.error('게시판 수정에 실패했습니다.')
-      console.error('Error updating bulletin:', error)
-    }
-  }
-
-  // 게시판 삭제
-  const handleDeleteBulletin = async (bulletinId: string) => {
-    if (!confirm('정말로 이 게시판을 삭제하시겠습니까?')) {
-      return
-    }
-
-    if (isTestMode) {
-      setBulletins(prev => prev.filter(b => b.id !== bulletinId))
-      toast.success('게시판이 삭제되었습니다.')
-      return
-    }
-
-    try {
-      const bulletinRef = doc(db, 'bulletins', bulletinId)
-      await deleteDoc(bulletinRef)
-      
-      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판들 제외)하고 fetchBulletins에 전달
-      const currentExpandedState = new Set(
-        Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
-      )
-      // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      
-      toast.success('게시판이 삭제되었습니다.')
-    } catch (error: any) {
-      toast.error('게시판 삭제에 실패했습니다.')
-      console.error('Error deleting bulletin:', error)
-    }
-  }
-
-  // 게시글 수정
-  const handleEditPost = async (post: BulletinPost) => {
-    console.log('📝 Editing post:', post)
-    
-    // 권한 확인
-    if (!isAdmin && (!user || post.userId !== user.uid)) {
-      toast.error('게시글을 수정할 권한이 없습니다.')
-      return
-    }
-    
-    if (isTestMode) {
-      setPosts(prev => prev.map(p => 
-        p.id === post.id ? { ...post, updatedAt: new Date() } : p
-      ))
-      setEditingPost(null)
-      toast.success('게시글이 수정되었습니다.')
-      return
-    }
-
-    try {
-      const postRef = doc(db, 'bulletinPosts', post.id)
-      await setDoc(postRef, {
-        ...post,
-        updatedAt: serverTimestamp(),
-      })
-      setEditingPost(null)
-      
-      // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
-      if (selectedBulletinId) {
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      } else {
-        // selectedBulletinId가 없으면 post의 bulletinId로 새로고침
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      }
-      
-      toast.success('게시글이 수정되었습니다.')
-    } catch (error: any) {
-      toast.error('게시글 수정에 실패했습니다.')
-      console.error('Error updating post:', error)
-    }
-  }
-
-  // 게시글 삭제
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
-      return
-    }
-
-    // 삭제할 게시글 찾기
-    const postToDelete = posts.find(p => p.id === postId)
-    if (!postToDelete) {
-      toast.error('게시글을 찾을 수 없습니다.')
-      return
-    }
-
-    if (isTestMode) {
-      setPosts(prev => prev.filter(p => p.id !== postId))
-      toast.success('게시글이 삭제되었습니다.')
-      return
-    }
-
-    try {
-      const postRef = doc(db, 'bulletinPosts', postId)
-      await deleteDoc(postRef)
-      
-      // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
-      if (selectedBulletinId) {
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      } else {
-        // selectedBulletinId가 없으면 post의 bulletinId로 새로고침
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      }
-      
-      toast.success('게시글이 삭제되었습니다.')
-    } catch (error: any) {
-      toast.error('게시글 삭제에 실패했습니다.')
-      console.error('Error deleting post:', error)
-    }
-  }
-
-  const handleBulkDeleteBulletins = async () => {
-    if (!window.confirm('선택한 게시판을 모두 삭제하시겠습니까?')) return
-    if (isTestMode) {
-      setBulletins(prev => prev.filter(b => !selectedBulletinIds.has(b.id)))
-      setSelectedBulletinIds(new Set())
-      toast.success('선택한 게시판이 삭제되었습니다.')
-      return
-    }
-    try {
-      for (const id of selectedBulletinIds) {
-        const bulletinRef = doc(db, 'bulletins', id)
-        await deleteDoc(bulletinRef)
-      }
-      setSelectedBulletinIds(new Set())
-      
-      // 현재 확장된 게시판 상태를 저장 (삭제된 게시판들 제외)하고 fetchBulletins에 전달
-      const currentExpandedState = new Set(
-        Array.from(expandedBulletins).filter(id => !selectedBulletinIds.has(id))
-      )
-      // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      
-      toast.success('선택한 게시판이 삭제되었습니다.')
-    } catch (e) {
-      console.error('일괄 삭제 오류:', e)
-      toast.error('일괄 삭제 중 오류 발생')
-    }
-  }
-
-  const handleBulkDeletePosts = async () => {
-    if (!window.confirm('선택한 게시글을 모두 삭제하시겠습니까?')) return
-    if (isTestMode) {
-      setPosts(prev => prev.filter(p => !selectedPostIds.has(p.id)))
-      setSelectedPostIds(new Set())
-      toast.success('선택한 게시글이 삭제되었습니다.')
-      return
-    }
-    try {
-      for (const id of selectedPostIds) {
-        const postRef = doc(db, 'bulletinPosts', id)
-        await deleteDoc(postRef)
-      }
-      setSelectedPostIds(new Set())
-      
-      // selectedBulletinId가 있으면 해당 게시판의 게시글만 새로고침
-      if (selectedBulletinId) {
-        // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-      }
-      
-      toast.success('선택한 게시글이 삭제되었습니다.')
-    } catch (e) {
-      console.error('일괄 삭제 오류:', e)
-      toast.error('일괄 삭제 중 오류 발생')
-    }
-  }
-
-  // 드래그 앤 드롭 핸들러
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
-  }
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveId(null)
-
-    if (!over || active.id === over.id) {
-      return
-    }
-
-    const draggedBulletin = bulletins.find(b => b.id === active.id)
-    const targetBulletin = bulletins.find(b => b.id === over.id)
-
-    if (!draggedBulletin || !targetBulletin) {
-      return
-    }
-
-    // 같은 게시판으로는 이동 불가
-    if (draggedBulletin.id === targetBulletin.id) {
-      return
-    }
-
-    // 자기 자신의 하위로는 이동 불가
-    if (isDescendant(draggedBulletin.id, targetBulletin.id)) {
-      toast.error('자기 자신의 하위로는 이동할 수 없습니다.')
-      return
-    }
-
-    try {
-      // 새로운 부모 설정
-      const newParentId = targetBulletin.id
-      const newLevel = targetBulletin.level + 1
-
-      if (isTestMode) {
-        // 테스트 모드: 로컬 상태 업데이트
-        setBulletins(prev => prev.map(b => 
-          b.id === draggedBulletin.id 
-            ? { ...b, parentId: newParentId, level: newLevel }
-            : b
-        ))
-        toast.success('게시판 위치가 변경되었습니다.')
-      } else {
-        // 실제 모드: Firestore 업데이트
-        const bulletinRef = doc(db, 'bulletins', draggedBulletin.id)
-        await setDoc(bulletinRef, {
-          parentId: newParentId,
-          level: newLevel,
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
-        
-              // 실시간 리스너가 이미 설정되어 있으므로 별도 새로고침 불필요
-        
-        toast.success('게시판 위치가 변경되었습니다.')
-      }
-    } catch (error) {
-      console.error('게시판 이동 오류:', error)
-      toast.error('게시판 이동에 실패했습니다.')
-    }
-  }
-
-  // 하위 게시판인지 확인하는 함수
-  const isDescendant = (parentId: string, childId: string): boolean => {
-    const child = bulletins.find(b => b.id === childId)
-    if (!child || !child.parentId) return false
-    if (child.parentId === parentId) return true
-    return isDescendant(parentId, child.parentId)
-  }
+  // 에디터 툴바 버튼들
+  const ToolbarButton = ({ onClick, isActive, children, title }: any) => (
+    <button
+      onClick={onClick}
+      className={`p-2 rounded hover:bg-gray-100 transition-colors ${
+        isActive ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
+      }`}
+      title={title}
+    >
+      {children}
+    </button>
+  )
 
   if (loading) {
     return (
-      <div className="p-4">
-        <div className="flex items-center justify-center space-x-2 mb-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-          <span className="text-sm text-gray-600">Firebase에서 데이터를 불러오는 중...</span>
-        </div>
-        <div className="animate-pulse space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded"></div>
-          ))}
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-red-600">
+        <p>오류: {error}</p>
       </div>
     )
   }
 
   return (
     <div className="h-full flex flex-col">
-      {/* 헤더 */}
-      <div className="p-3 lg:p-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base lg:text-lg font-semibold text-gray-900">게시글 목록</h2>
-          <div className="flex items-center space-x-1 lg:space-x-2">
-            {/* 새로고침 버튼 */}
-            <button
-              onClick={refreshFirebaseData}
-              className="p-2 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="데이터 새로고침"
-            >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            {selectedBulletinId && (
-              <button
-                onClick={onCreatePost}
-                className="p-2 lg:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="새 게시글 작성"
-              >
-                <PlusIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-              </button>
-            )}
+      {/* 게시판 편집 모달 */}
+      {modalRef.current.showEditBulletin && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 opacity-100 pointer-events-auto" 
+          style={{ zIndex: 9999 }}
+        >
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <div className="flex items-center space-x-2 mb-4">
+              <PencilIcon className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">게시판 편집</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  게시판 제목 *
+                </label>
+                <input
+                  type="text"
+                  value={modalRef.current.editBulletinForm.title || ''}
+                  onChange={(e) => {
+                    modalRef.current.editBulletinForm.title = e.target.value
+                    setModalKey(prev => prev + 1)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  placeholder="게시판 제목을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  설명
+                </label>
+                <textarea
+                  value={modalRef.current.editBulletinForm.description || ''}
+                  onChange={(e) => {
+                    modalRef.current.editBulletinForm.description = e.target.value
+                    setModalKey(prev => prev + 1)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  placeholder="게시판 설명을 입력하세요"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="space-y-4 mt-6">
+              {/* 상위 게시판으로 이동 버튼 */}
+              {modalRef.current.editingBulletin && modalRef.current.editingBulletin.level > 0 && (
+                <button
+                  onClick={() => handleMoveToParent(modalRef.current.editingBulletin!)}
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  <span>상위 게시판으로 이동</span>
+                </button>
+              )}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setModalState(false, null, { title: '', description: '' })
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveEditBulletin}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  <span>수정 완료</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 게시판 생성 모달 */}
-      {showCreateBulletin && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
-            <h3 className="text-lg font-semibold mb-4">새 게시판 생성</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  게시판 제목 *
-                </label>
-                <input
-                  type="text"
-                  value={newBulletin.title}
-                  onChange={(e) => setNewBulletin({ ...newBulletin, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
-                  placeholder="게시판 제목을 입력하세요"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  설명
-                </label>
-                <textarea
-                  value={newBulletin.description}
-                  onChange={(e) => setNewBulletin({ ...newBulletin, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
-                  placeholder="게시판 설명을 입력하세요"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  상위 게시판 (선택사항)
-                </label>
-                <select
-                  value={newBulletin.parentId}
-                  onChange={(e) => setNewBulletin({ ...newBulletin, parentId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
-                >
-                  <option value="">📁 최상위 게시판</option>
-                  {bulletins
-                    .filter(bulletin => bulletin.isActive !== false) // 현재 존재하는 게시판만 필터링
-                    .map((bulletin) => {
-                      const level = getBulletinLevel(bulletin.id)
-                      const indent = '  '.repeat(level)
-                      const icon = level === 0 ? '📂' : level === 1 ? '📄' : level === 2 ? '📋' : '📌'
-                      return (
-                        <option key={bulletin.id} value={bulletin.id}>
-                          {indent}{icon} {bulletin.title}
-                        </option>
-                      )
-                    })}
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowCreateBulletin(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleCreateBulletin}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                생성
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 게시판 수정 모달 */}
-      {editingBulletin && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {showCreateBulletinModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-lg p-6 w-96 max-w-md">
             <div className="flex items-center space-x-2 mb-4">
-              <PencilIcon className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold">게시판 수정</h3>
+              {createBulletinType === 'same-level' ? (
+                <PlusIcon className="w-5 h-5 text-blue-600" />
+              ) : (
+                <FolderPlusIcon className="w-5 h-5 text-green-600" />
+              )}
+              <h3 className="text-lg font-semibold">
+                {createBulletinType === 'same-level' ? '같은 레벨에 게시판 추가' : '하위 레벨에 게시판 추가'}
+              </h3>
             </div>
             
-            {/* 권한 안내 */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-center space-x-2 text-sm text-blue-700">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>
-                  {isAdmin 
-                    ? "관리자 권한으로 수정 중입니다" 
-                    : "내가 만든 게시판을 수정 중입니다"
+            {selectedParentBulletin && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  선택된 게시판: <span className="font-medium">{selectedParentBulletin.title}</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {createBulletinType === 'same-level' 
+                    ? '같은 부모 하위에 새 게시판이 생성됩니다.' 
+                    : '이 게시판의 하위에 새 게시판이 생성됩니다.'
                   }
-                </span>
+                </p>
               </div>
-            </div>
+            )}
             
             <div className="space-y-4">
               <div>
@@ -1328,10 +1405,10 @@ export function BulletinBoard({
                 </label>
                 <input
                   type="text"
-                  value={editingBulletin.title}
-                  onChange={(e) => setEditingBulletin({ ...editingBulletin, title: e.target.value })}
+                  value={createBulletinForm.title}
+                  onChange={(e) => setCreateBulletinForm({ ...createBulletinForm, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
-                  placeholder="게시판 제목을 입력하세요"
+                  placeholder="새 게시판 제목을 입력하세요"
                 />
               </div>
               <div>
@@ -1339,8 +1416,8 @@ export function BulletinBoard({
                   설명
                 </label>
                 <textarea
-                  value={editingBulletin.description || ''}
-                  onChange={(e) => setEditingBulletin({ ...editingBulletin, description: e.target.value })}
+                  value={createBulletinForm.description}
+                  onChange={(e) => setCreateBulletinForm({ ...createBulletinForm, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   placeholder="게시판 설명을 입력하세요"
                   rows={3}
@@ -1349,234 +1426,581 @@ export function BulletinBoard({
             </div>
             <div className="flex justify-end space-x-3 mt-6">
               <button
-                onClick={() => setEditingBulletin(null)}
+                onClick={() => {
+                  setShowCreateBulletinModal(false)
+                  setCreateBulletinForm({ title: '', description: '', parentId: '' })
+                  setSelectedParentBulletin(null)
+                }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 취소
               </button>
               <button
-                onClick={() => handleEditBulletin(editingBulletin)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors flex items-center space-x-1"
+                onClick={handleSaveCreateBulletin}
+                className={`px-4 py-2 text-white rounded-md transition-colors flex items-center space-x-1 ${
+                  createBulletinType === 'same-level' 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
               >
-                <PencilIcon className="w-4 h-4" />
-                <span>수정 완료</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 게시글 수정 모달 */}
-      {editingPost && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
-            <div className="flex items-center space-x-2 mb-4">
-              <PencilIcon className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold">게시글 수정</h3>
-            </div>
-            
-            {/* 권한 안내 */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-center space-x-2 text-sm text-blue-700">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>
-                  {isAdmin 
-                    ? "관리자 권한으로 수정 중입니다" 
-                    : "내가 쓴 게시글을 수정 중입니다"
-                  }
-                </span>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  제목 *
-                </label>
-                <input
-                  type="text"
-                  value={editingPost.title}
-                  onChange={(e) => setEditingPost({ ...editingPost, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
-                  placeholder="게시글 제목을 입력하세요"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  내용
-                </label>
-                <textarea
-                  value={editingPost.content}
-                  onChange={(e) => setEditingPost({ ...editingPost, content: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
-                  placeholder="게시글 내용을 입력하세요"
-                  rows={5}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setEditingPost(null)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => handleEditPost(editingPost)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors flex items-center space-x-1"
-              >
-                <PencilIcon className="w-4 h-4" />
-                <span>수정 완료</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-        {/* 게시글 목록 */}
-        <div className="flex-1 flex flex-col">
-          {selectedBulletinId ? (
-            <>
-              <div className="p-3 lg:p-4 border-b border-gray-200">
-                <h3 className="text-sm lg:text-md font-semibold text-gray-900">
-                  {bulletins.find(b => b.id === selectedBulletinId)?.title}
-                </h3>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {posts.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
-                    <ChatBubbleLeftRightIcon className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-xs lg:text-sm">게시글이 없습니다</p>
-                    <button
-                      onClick={onCreatePost}
-                      className="mt-2 text-primary-600 hover:text-primary-700 text-xs lg:text-sm font-medium"
-                    >
-                      첫 번째 게시글 작성하기
-                    </button>
-                  </div>
+                {createBulletinType === 'same-level' ? (
+                  <PlusIcon className="w-4 h-4" />
                 ) : (
-                  <div className="p-2">
-                    {isAdmin && selectedPostIds.size > 0 && (
-                      <button
-                        onClick={handleBulkDeletePosts}
-                        className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
-                      >
-                        선택 게시글 삭제
-                      </button>
-                    )}
-                    {posts.map((post) => (
-                      <div
-                        key={post.id}
-                        onClick={() => onSelectPost(post.id)}
-                        className={`p-2 lg:p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedPostId === post.id
-                            ? 'bg-primary-50 border border-primary-200'
-                            : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-start space-x-2 lg:space-x-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-1 lg:space-x-2">
-                              {post.isPinned && (
-                                <StarIcon className="w-3 h-3 lg:w-4 lg:h-4 text-red-500" />
-                              )}
-                              {post.isLocked && (
-                                <LockClosedIcon className="w-3 h-3 lg:w-4 lg:h-4 text-gray-500" />
-                              )}
-                              <h3 className="text-xs lg:text-sm font-medium text-gray-900 truncate">
-                                {post.title}
-                              </h3>
-                              {/* 수정 가능한 게시글 표시 */}
-                              {(isAdmin || (user && post.userId === user.uid)) && (
-                                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full border border-green-200 font-medium">
-                                  {isAdmin ? '관리' : '내 글'}
-                                </span>
-                              )}
-                              {/* 게시글 수정/삭제 버튼 (admin 또는 게시글 작성자) */}
-                              {(isAdmin || (user && post.userId === user.uid)) && (
-                                <div className="flex items-center space-x-1 ml-auto">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setEditingPost(post)
-                                    }}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                    title={isAdmin ? "게시글 수정 (관리자)" : "게시글 수정 (내가 쓴 글)"}
-                                  >
-                                    <PencilIcon className="w-3 h-3" />
-                                  </button>
-                                  {isAdmin && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleDeletePost(post.id)
-                                      }}
-                                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                      title="게시글 삭제 (관리자만 가능)"
-                                    >
-                                      <TrashIcon className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2 lg:space-x-4 mt-1 text-xs text-gray-500">
-                              <span className="truncate">{getDisplayName(post.authorName)}</span>
-                              <span className="hidden sm:inline">{formatDate(post.createdAt)}</span>
-                              <div className="flex items-center space-x-1">
-                                <EyeIcon className="w-3 h-3" />
-                                <span className="hidden lg:inline">{post.viewCount}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <HeartIcon className="w-3 h-3" />
-                                <span className="hidden lg:inline">{post.likeCount}</span>
-                              </div>
-                            </div>
-                            {post.tags && post.tags.length > 0 && (
-                              <div className="flex space-x-1 mt-1">
-                                {post.tags.map((tag, index) => (
-                                  <span
-                                    key={index}
-                                    className="px-1 lg:px-2 py-0.5 lg:py-1 text-xs bg-gray-100 text-gray-600 rounded"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {isAdmin && (
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={selectedPostIds.has(post.id)}
-                            onChange={e => {
-                              e.stopPropagation()
-                              setSelectedPostIds(prev => {
-                                const next = new Set(prev)
-                                if (e.target.checked) next.add(post.id)
-                                else next.delete(post.id)
-                                return next
-                              })
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <FolderPlusIcon className="w-4 h-4" />
                 )}
+                <span>생성 완료</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 게시글 편집 모달 */}
+      {editingPostData && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setEditingPostData(null)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+              <input
+                type="text"
+                value={editingPostData.title || ''}
+                onChange={(e) => setEditingPostData({ ...editingPostData, title: e.target.value })}
+                className="text-2xl font-bold border-none outline-none bg-transparent"
+                placeholder="제목 없음"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setEditingPostData(null)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditPost}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                수정 완료
+              </button>
+            </div>
+          </div>
+
+          {/* 툴바 */}
+          <div className="flex items-center space-x-1 p-2 border-b border-gray-200 bg-gray-50">
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              isActive={editor?.isActive('bold')}
+              title="굵게"
+            >
+              <BoldIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              isActive={editor?.isActive('italic')}
+              title="기울임"
+            >
+              <ItalicIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              isActive={editor?.isActive('underline')}
+              title="밑줄"
+            >
+              <UnderlineIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleStrike().run()}
+              isActive={editor?.isActive('strike')}
+              title="취소선"
+            >
+              <span className="w-4 h-4 text-sm font-bold">S</span>
+            </ToolbarButton>
+            
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              isActive={editor?.isActive('bulletList')}
+              title="글머리 기호 목록"
+            >
+              <ListBulletIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              isActive={editor?.isActive('orderedList')}
+              title="번호 매기기 목록"
+            >
+              <span className="w-4 h-4 text-sm font-bold">1.</span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleTaskList().run()}
+              isActive={editor?.isActive('taskList')}
+              title="할 일 목록"
+            >
+              <span className="w-4 h-4 text-sm">☐</span>
+            </ToolbarButton>
+            
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleCode().run()}
+              isActive={editor?.isActive('code')}
+              title="인라인 코드"
+            >
+              <span className="w-4 h-4 text-sm font-bold">{'<>'}</span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+              isActive={editor?.isActive('codeBlock')}
+              title="코드 블록"
+            >
+              <span className="w-4 h-4 text-sm font-bold">{'</>'}</span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+              isActive={editor?.isActive('blockquote')}
+              title="인용구"
+            >
+              <span className="w-4 h-4 text-sm font-bold">"</span>
+            </ToolbarButton>
+            
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            
+            <ToolbarButton
+              onClick={() => {
+                const url = window.prompt('URL을 입력하세요:')
+                if (url) {
+                  editor?.chain().focus().setLink({ href: url }).run()
+                }
+              }}
+              isActive={editor?.isActive('link')}
+              title="링크"
+            >
+              <LinkIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+              title="표 삽입"
+            >
+              <span className="w-4 h-4 text-sm font-bold">⊞</span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+              title="구분선"
+            >
+              <span className="w-4 h-4 text-sm font-bold">—</span>
+            </ToolbarButton>
+          </div>
+
+          {/* 에디터 */}
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-4xl mx-auto">
+              <EditorContent editor={editor} className="prose prose-lg max-w-none" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 게시글 작성 모달 */}
+      {showCreatePost && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setShowCreatePost(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+              <input
+                type="text"
+                value={newPost.title || ''}
+                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                className="text-2xl font-bold border-none outline-none bg-transparent"
+                placeholder="제목 없음"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowCreatePost(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreatePost}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                게시
+              </button>
+            </div>
+          </div>
+
+          {/* 툴바 */}
+          <div className="flex items-center space-x-1 p-2 border-b border-gray-200 bg-gray-50">
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              isActive={editor?.isActive('bold')}
+              title="굵게"
+            >
+              <BoldIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              isActive={editor?.isActive('italic')}
+              title="기울임"
+            >
+              <ItalicIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              isActive={editor?.isActive('underline')}
+              title="밑줄"
+            >
+              <UnderlineIcon className="w-4 h-4" />
+            </ToolbarButton>
+            
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              isActive={editor?.isActive('bulletList')}
+              title="글머리 기호 목록"
+            >
+              <ListBulletIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              isActive={editor?.isActive('orderedList')}
+              title="번호 매기기 목록"
+            >
+              <span className="w-4 h-4 text-sm font-bold">1.</span>
+            </ToolbarButton>
+            
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            
+            <ToolbarButton
+              onClick={() => {
+                const url = window.prompt('URL을 입력하세요:')
+                if (url) {
+                  editor?.chain().focus().setLink({ href: url }).run()
+                }
+              }}
+              isActive={editor?.isActive('link')}
+              title="링크"
+            >
+              <LinkIcon className="w-4 h-4" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+              title="표 삽입"
+            >
+              <span className="w-4 h-4 text-sm font-bold">⊞</span>
+            </ToolbarButton>
+          </div>
+
+          {/* 에디터 */}
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-4xl mx-auto">
+              <EditorContent editor={editor} className="prose prose-lg max-w-none" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 게시글 읽기/편집 모달 */}
+      {showPostModal && selectedPost && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => {
+                  setShowPostModal(false)
+                  setSelectedPost(null)
+                  setIsReadingMode(true)
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+              <div className="flex items-center space-x-4">
+                <h2 className="text-xl font-bold">{selectedPost.title}</h2>
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <span>{getDisplayName(selectedPost.authorName)}</span>
+                  <span>•</span>
+                  <span>{formatDate(selectedPost.createdAt)}</span>
+                  <span>•</span>
+                  <span>조회 {selectedPost.viewCount}</span>
+                  <span>•</span>
+                  <span>좋아요 {selectedPost.likeCount}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {isReadingMode ? (
+                <button
+                  onClick={() => {
+                    setIsReadingMode(false)
+                    setEditingPostData(selectedPost)
+                    if (editor) {
+                      editor.commands.setContent(selectedPost.content || '')
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  편집
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsReadingMode(true)
+                      setEditingPostData(null)
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveEditPost}
+                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    저장
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 읽기 모드 */}
+          {isReadingMode ? (
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="max-w-4xl mx-auto">
+                <div 
+                  className="prose prose-lg max-w-none"
+                  dangerouslySetInnerHTML={{ __html: selectedPost.content }}
+                />
+              </div>
+            </div>
+          ) : (
+            /* 편집 모드 */
+            <>
+              {/* 툴바 */}
+              <div className="flex items-center space-x-1 p-2 border-b border-gray-200 bg-gray-50">
+                <ToolbarButton
+                  onClick={() => editor?.chain().focus().toggleBold().run()}
+                  isActive={editor?.isActive('bold')}
+                  title="굵게"
+                >
+                  <BoldIcon className="w-4 h-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor?.chain().focus().toggleItalic().run()}
+                  isActive={editor?.isActive('italic')}
+                  title="기울임"
+                >
+                  <ItalicIcon className="w-4 h-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                  isActive={editor?.isActive('underline')}
+                  title="밑줄"
+                >
+                  <UnderlineIcon className="w-4 h-4" />
+                </ToolbarButton>
+                
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                
+                <ToolbarButton
+                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                  isActive={editor?.isActive('bulletList')}
+                  title="글머리 기호 목록"
+                >
+                  <ListBulletIcon className="w-4 h-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                  isActive={editor?.isActive('orderedList')}
+                  title="번호 매기기 목록"
+                >
+                  <span className="w-4 h-4 text-sm font-bold">1.</span>
+                </ToolbarButton>
+                
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                
+                <ToolbarButton
+                  onClick={() => {
+                    const url = window.prompt('URL을 입력하세요:')
+                    if (url) {
+                      editor?.chain().focus().setLink({ href: url }).run()
+                    }
+                  }}
+                  isActive={editor?.isActive('link')}
+                  title="링크"
+                >
+                  <LinkIcon className="w-4 h-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+                  title="표 삽입"
+                >
+                  <span className="w-4 h-4 text-sm font-bold">⊞</span>
+                </ToolbarButton>
+              </div>
+
+              {/* 에디터 */}
+              <div className="flex-1 overflow-y-auto p-8">
+                <div className="max-w-4xl mx-auto">
+                  <EditorContent editor={editor} className="prose prose-lg max-w-none" />
+                </div>
               </div>
             </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">게시판을 선택해주세요</p>
+          )}
+        </div>
+      )}
+
+      {/* 좌측 메뉴 영역 */}
+      {isSidebar && (
+        <div className="w-full lg:w-3/10 bg-white border-r border-gray-200 p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">게시판</h2>
+              <button
+                onClick={() => setShowCreateBulletin(true)}
+                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                title="새 게시판 생성"
+              >
+                <FolderPlusIcon className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-2">
+              {renderBulletinTree(getTopLevelBulletins(), bulletins)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 우측 메인 콘텐츠 영역 */}
+      {isMainContent && (
+        <div className="flex-1 bg-gray-50 p-4">
+          {currentBulletin ? (
+            <div className="space-y-4">
+              {/* 게시판 경로 (브레드크럼) */}
+              <div className="flex items-center space-x-1 mt-1 text-sm text-gray-500">
+                <span>홈</span>
+                {getBulletinPath(currentBulletin.id).map((bulletin, index) => (
+                  <div key={bulletin.id} className="flex items-center space-x-1">
+                    <ChevronRightIcon className="w-3 h-3" />
+                    <button
+                      onClick={() => handleBulletinSelect(bulletin)}
+                      className="hover:text-blue-600 transition-colors"
+                    >
+                      {bulletin.title}
+                    </button>
+                  </div>
+                ))}
               </div>
+
+              {/* 게시판 제목 */}
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-gray-900">{currentBulletin.title}</h1>
+                <button
+                  onClick={() => setShowCreatePost(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  <span>새 글 작성</span>
+                </button>
+              </div>
+
+              {/* 게시글 목록 */}
+              <div className="space-y-3">
+                {posts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>아직 게시글이 없습니다.</p>
+                    <p className="text-sm">첫 번째 게시글을 작성해보세요!</p>
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <div key={post.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <h3 
+                            className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                            onClick={() => handleSelectPost(post)}
+                          >
+                            {post.title}
+                          </h3>
+                          {post.isPinned && <StarIcon className="w-4 h-4 text-yellow-500" />}
+                          {post.isLocked && <LockClosedIcon className="w-4 h-4 text-gray-500" />}
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditPost(post)
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                            title="게시글 편집"
+                          >
+                            <PencilIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeletePost(post.id)
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="게시글 삭제"
+                          >
+                            <TrashIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 mb-3">
+                        <span>{getDisplayName(post.authorName)}</span>
+                        <span className="mx-2">•</span>
+                        <span>{formatDate(post.createdAt)}</span>
+                        <span className="mx-2">•</span>
+                        <span>조회 {post.viewCount}</span>
+                        <span className="mx-2">•</span>
+                        <span>좋아요 {post.likeCount}</span>
+                      </div>
+                      
+                      <div 
+                        className="text-gray-700 prose prose-sm max-w-none"
+                        onClick={() => handleSelectPost(post)}
+                      >
+                        {post.content.length > 200 
+                          ? `${post.content.substring(0, 200)}...` 
+                          : post.content 
+                        }
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>게시판을 선택하여 게시글을 확인하세요</p>
+              <p className="text-sm">좌측에서 원하는 게시판을 클릭하세요</p>
             </div>
           )}
         </div>
+      )}
     </div>
   )
 } 

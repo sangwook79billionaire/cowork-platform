@@ -26,9 +26,6 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// 테스트 모드 확인
-const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -37,14 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // 브라우저 환경에서만 실행
     if (typeof window === 'undefined') {
-      setLoading(false)
-      return
-    }
-
-    if (isTestMode) {
-      // 테스트 모드: 모의 사용자로 자동 로그인
-      setUser(mockUser as unknown as User)
-      setUserProfile(mockUserProfile)
       setLoading(false)
       return
     }
@@ -96,12 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    if (isTestMode) {
-      // 테스트 모드: 항상 성공
-      setUser(mockUser as unknown as User)
-      setUserProfile(mockUserProfile)
-      return
-    }
 
     // admin 계정 특별 처리
     if (email === 'admin' && password === 'admin') {
@@ -144,14 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signUp = async (email: string, password: string, nickname: string) => {
-    if (isTestMode) {
-      // 테스트 모드: 항상 성공
-      const newUser = { ...mockUser, email, displayName: nickname } as unknown as User
-      const newProfile = { ...mockUserProfile, email, nickname }
-      setUser(newUser)
-      setUserProfile(newProfile)
-      return
-    }
 
     if (!auth || !db) {
       throw new Error('Firebase is not initialized')
@@ -197,12 +172,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    if (isTestMode) {
-      // 테스트 모드: 로그아웃
-      setUser(null)
-      setUserProfile(null)
-      return
-    }
 
     if (!auth) {
       throw new Error('Firebase Auth is not initialized')

@@ -29,7 +29,7 @@ try {
   }
   
   if (app) {
-    db = getFirestore(app);
+  db = getFirestore(app);
   }
 } catch (error) {
   console.error('Firebase Admin SDK 초기화 오류:', error);

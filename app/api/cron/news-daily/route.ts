@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
 
 // 뉴스 검색 함수 (모의 데이터 사용)
 async function searchNews(query: string, sources: string[] = []): Promise<any[]> {
-  return getMockArticles(query);
+    return getMockArticles(query);
 }
 
 // 모의 데이터 함수

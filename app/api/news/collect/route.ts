@@ -49,7 +49,12 @@ function processKeywords(inputKeywords: string[]): string[] {
     // AND 검색 처리 (공백으로 구분된 여러 단어)
     if (trimmedKeyword.includes(' ')) {
       // 공백으로 구분된 단어들을 하나의 검색어로 처리
-      processedKeywords.push(trimmedKeyword);
+      // 한국어 키워드의 경우 더 정확한 검색을 위해 큰따옴표로 감싸기
+      if (/[가-힣]/.test(trimmedKeyword)) {
+        processedKeywords.push(`"${trimmedKeyword}"`);
+      } else {
+        processedKeywords.push(trimmedKeyword);
+      }
       continue;
     }
     
@@ -81,8 +86,11 @@ async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       },
-      timeout: 10000
+      timeout: 15000 // 타임아웃 증가
     });
+
+    console.log(`📡 RSS 응답 상태: ${response.status}`);
+    console.log(`📡 RSS 응답 크기: ${response.data.length} bytes`);
 
     const parser = new XMLParser({
       ignoreAttributes: false,
@@ -103,13 +111,37 @@ async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
     }
 
     console.log(`📊 RSS 파싱 결과: ${items.length}개 아이템`);
+    
+    // RSS 구조 디버깅
+    if (items.length === 0) {
+      console.log('🔍 RSS 구조 확인:', {
+        hasRss: !!result.rss,
+        hasChannel: !!(result.rss && result.rss.channel),
+        hasItems: !!(result.rss && result.rss.channel && result.rss.channel.item),
+        channelKeys: result.rss?.channel ? Object.keys(result.rss.channel) : [],
+        firstItem: result.rss?.channel?.item?.[0] || result.rss?.channel?.item
+      });
+    }
 
     // 각 아이템을 뉴스 기사로 변환
     for (const item of items.slice(0, 100)) { // 최대 100개
       try {
+        // Google News RSS에서 링크 추출 (여러 가능한 필드 확인)
+        let articleLink = '';
+        if (item.link && item.link.trim() !== '') {
+          articleLink = item.link;
+        } else if (item.guid && item.guid.trim() !== '') {
+          articleLink = item.guid;
+        } else if (item.url && item.url.trim() !== '') {
+          articleLink = item.url;
+        } else {
+          // 링크가 없으면 Google News 검색 링크로 대체
+          articleLink = `https://news.google.com/search?q=${encodeURIComponent(keyword)}`;
+        }
+
         const article: NewsArticle = {
           title: item.title || '제목 없음',
-          link: item.link || '',
+          link: articleLink,
           source: extractSourceFromTitle(item.title) || 'Unknown',
           published_at: item.pubDate || new Date().toISOString(),
           description: item.description || '',
@@ -117,11 +149,11 @@ async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
           collected_at: new Date().toISOString()
         };
 
-        if (article.title && article.link) {
+        if (article.title && article.title !== '제목 없음') {
           articles.push(article);
         }
       } catch (error) {
-        console.error('아이템 파싱 오류:', error);
+        console.error('아이템 파싱 오류:', error, '아이템:', item);
       }
     }
 
@@ -130,6 +162,11 @@ async function collectNewsFromRSS(keyword: string): Promise<NewsArticle[]> {
 
   } catch (error) {
     console.error('RSS 수집 오류:', error);
+    console.error('오류 상세:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      keyword: keyword
+    });
     return [];
   }
 }
@@ -189,18 +226,41 @@ export async function POST(request: NextRequest) {
 
     // Firebase에 저장
     let firebaseUploaded = false;
+    let collectionId = '';
+    
     if (uniqueArticles.length > 0 && db) {
       try {
+        // 수집 내역 저장
+        const collectionRef = db.collection('news_collections').doc();
+        collectionId = collectionRef.id;
+        
+        const collectionData = {
+          keywords: keywords,
+          totalCollected: allArticles.length,
+          totalUnique: uniqueArticles.length,
+          collectedAt: new Date().toISOString(),
+          status: failedKeywords.length === 0 ? 'completed' : 
+                 failedKeywords.length === processedKeywords.length ? 'failed' : 'partial',
+          message: failedKeywords.length === 0 ? '수집 완료' : 
+                  `일부 키워드 수집 실패 (${failedKeywords.join(', ')})`
+        };
+        
+        await collectionRef.set(collectionData);
+        
+        // 기사들 저장
         const batch = db.batch();
         
         for (const article of uniqueArticles) {
-          const docRef = db.collection('news').doc();
-          batch.set(docRef, article);
+          const docRef = db.collection('news_articles').doc();
+          batch.set(docRef, {
+            ...article,
+            collectionId: collectionId
+          });
         }
         
         await batch.commit();
         firebaseUploaded = true;
-        console.log(`✅ Firebase 업로드 완료: ${uniqueArticles.length}개 문서`);
+        console.log(`✅ Firebase 업로드 완료: ${uniqueArticles.length}개 문서, 수집 ID: ${collectionId}`);
       } catch (error) {
         console.error('Firebase 업로드 오류:', error);
       }

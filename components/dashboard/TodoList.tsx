@@ -23,8 +23,7 @@ interface TodoListProps {
   isMobile?: boolean
 }
 
-// 테스트 모드 확인
-const isTestMode = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+
 
 // 모의 데이터
 const mockTodos: TodoItem[] = [
@@ -91,11 +90,6 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
     let unsubscribe: (() => void) | undefined
 
     const initializeData = async () => {
-      if (isTestMode) {
-        setTodos(mockTodos)
-        setLoading(false)
-        return
-      }
 
       try {
         const todosRef = collection(db, 'todos')
@@ -184,13 +178,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
     const todo = todos.find(t => t.id === todoId)
     if (!todo) return
 
-    if (isTestMode) {
-      setTodos(todos.map(t => 
-        t.id === todoId ? { ...t, completed: !t.completed } : t
-      ))
-      toast.success(todo.completed ? '할 일을 미완료로 변경했습니다.' : '할 일을 완료했습니다.')
-      return
-    }
+
 
     try {
       await updateDoc(doc(db, 'todos', todoId), {
@@ -210,11 +198,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
   const handleDeleteTodo = async (todoId: string) => {
     if (!user) return
 
-    if (isTestMode) {
-      setTodos(todos.filter(t => t.id !== todoId))
-      toast.success('할 일이 삭제되었습니다.')
-      return
-    }
+
 
     try {
       await deleteDoc(doc(db, 'todos', todoId))
@@ -235,12 +219,15 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
     // 사용자 닉네임 가져오기
     const authorNickname = await getUserNickname(user.uid)
     
-    const todoData = {
+    // dueDate가 있을 때만 Date 객체로 변환
+    const dueDate = todoForm.dueDate ? new Date(`${todoForm.dueDate}T${todoForm.dueTime}`) : undefined
+    
+    // Firebase에 저장할 데이터 (undefined 필드 제외)
+    const todoData: any = {
       title: todoForm.title,
       description: todoForm.description,
       completed: false,
       priority: todoForm.priority,
-      dueDate: todoForm.dueDate ? new Date(`${todoForm.dueDate}T${todoForm.dueTime}`) : undefined,
       userId: user.uid,
       authorName: authorNickname,
       tags: todoForm.tags ? todoForm.tags.split(',').map(tag => tag.trim()) : [],
@@ -249,55 +236,21 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
       updatedAt: serverTimestamp(),
     }
 
-    if (isTestMode) {
-      const newTodo: TodoItem = {
-        id: `todo-${Date.now()}`,
-        ...todoData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-      
-      // 할 일을 캘린더 이벤트로도 추가
-      if (todoForm.dueDate) {
-        const dueDateTime = new Date(`${todoForm.dueDate}T${todoForm.dueTime}`)
-        const calendarEvent: CalendarEvent = {
-          id: `event-from-todo-${Date.now()}`,
-          title: `📋 ${todoForm.title}`,
-          description: todoForm.description,
-          startDate: dueDateTime,
-          endDate: dueDateTime,
-          allDay: false,
-          userId: user.uid,
-          authorName: user.displayName || user.email || '익명',
-          color: '#10B981', // 초록색으로 할 일 표시
-          location: '',
-          reminder: todoForm.reminder,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-        // 여기서는 캘린더 이벤트를 추가할 수 없으므로 콜백으로 처리
-        if (onTodoCreated) {
-          onTodoCreated(calendarEvent)
-        }
-      }
-      
-      setTodos([...todos, newTodo])
-      setShowTodoModal(false)
-      toast.success('할 일이 생성되었습니다.')
-      return
+    // dueDate가 있을 때만 추가
+    if (dueDate) {
+      todoData.dueDate = dueDate
     }
 
     try {
       const docRef = await addDoc(collection(db, 'todos'), todoData)
       
-      // 할 일을 캘린더 이벤트로도 추가
-      if (todoForm.dueDate) {
-        const dueDateTime = new Date(`${todoForm.dueDate}T${todoForm.dueTime}`)
+      // 할 일을 캘린더 이벤트로도 추가 (dueDate가 있을 때만)
+      if (dueDate) {
         const calendarEventData = {
           title: `📋 ${todoForm.title}`,
           description: todoForm.description,
-          startDate: dueDateTime,
-          endDate: dueDateTime,
+          startDate: dueDate,
+          endDate: dueDate,
           allDay: false,
           userId: user.uid,
           authorName: user.displayName || user.email || '익명',
@@ -314,6 +267,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
       const newTodo: TodoItem = {
         id: docRef.id,
         ...todoData,
+        dueDate: dueDate, // undefined로 설정
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -403,16 +357,6 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
         {/* 필터 */}
         <div className="flex space-x-2">
           <button
-            onClick={() => setFilter('all')}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              filter === 'all' 
-                ? 'bg-primary-100 text-primary-700' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            전체 ({todos.length})
-          </button>
-          <button
             onClick={() => setFilter('active')}
             className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
               filter === 'active' 
@@ -420,7 +364,7 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            진행중 ({todos.filter(t => !t.completed).length})
+            진행 ({todos.filter(t => !t.completed).length})
           </button>
           <button
             onClick={() => setFilter('completed')}
@@ -431,6 +375,16 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
             }`}
           >
             완료 ({todos.filter(t => t.completed).length})
+          </button>
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              filter === 'all' 
+                ? 'bg-primary-100 text-primary-700' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            전체 ({todos.length})
           </button>
         </div>
       </div>
@@ -459,9 +413,13 @@ export function TodoList({ onTodoCreated, isMobile = false }: TodoListProps) {
                   className="flex-shrink-0 mt-1"
                 >
                   {todo.completed ? (
-                    <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                    <div className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded border border-green-200">
+                      완료
+                    </div>
                   ) : (
-                    <EllipsisHorizontalIcon className="w-5 h-5 text-gray-400 hover:text-green-600" />
+                    <div className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded border border-gray-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors">
+                      완료
+                    </div>
                   )}
                 </button>
 

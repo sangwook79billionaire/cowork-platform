@@ -15,6 +15,7 @@ interface NewsArticle {
   description: string;
   keyword: string;
   collected_at: string;
+  collectionId?: string; // Firebase 수집 ID 추가
 }
 
 interface SavedArticle {
@@ -37,6 +38,7 @@ interface NewsCollectionResult {
   excel_file: string | null;
   firebase_uploaded: boolean;
   message: string;
+  saved_articles?: NewsArticle[]; // 수집 결과에 저장된 기사 목록
 }
 
 interface NewsSearchProps {
@@ -120,10 +122,20 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
       if (result.total_unique > 0) {
         toast.success(`${result.total_unique}개의 뉴스를 수집했습니다.`);
         
-        // 새로 수집된 키워드들로만 Firebase에서 뉴스 가져오기
-        await fetchCollectedNewsByKeywords(result.keywords);
-        
-        // 자동으로 유사한 기사 삭제는 fetchCollectedNewsByKeywords 내부에서 처리됨
+        // 수집 결과에 저장된 기사들이 있으면 바로 사용
+        if (result.saved_articles && result.saved_articles.length > 0) {
+          console.log(`✅ 수집 결과에서 ${result.saved_articles.length}개 기사 가져옴`);
+          setArticles(result.saved_articles);
+          
+          // 자동으로 유사한 기사 삭제 실행
+          if (result.saved_articles.length > 1) {
+            toast.loading('수집된 뉴스에서 유사한 기사를 자동으로 분석하고 있습니다...');
+            await handleRemoveSimilarArticlesFromList(result.saved_articles, true);
+          }
+        } else {
+          // 기존 방식: 새로 수집된 키워드들로만 Firebase에서 뉴스 가져오기
+          await fetchCollectedNewsByKeywords(result.keywords);
+        }
       } else {
         toast.error('수집된 뉴스가 없습니다.');
       }

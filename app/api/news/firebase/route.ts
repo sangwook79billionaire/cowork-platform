@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
       throw new Error('Firebase Admin SDK가 초기화되지 않았습니다.');
     }
 
-    let query = db.collection('news').orderBy('collected_at', 'desc').limit(limit);
+    // 올바른 컬렉션명 사용: news_articles
+    let query = db.collection('news_articles').orderBy('collected_at', 'desc').limit(limit);
 
     // 키워드 필터링 (한글 키워드 처리 개선)
     if (keyword && keyword.trim() !== '') {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error('키워드 필터링 오류:', error);
         // 키워드 필터링 실패 시 전체 조회로 fallback
-        query = db.collection('news').orderBy('collected_at', 'desc').limit(limit);
+        query = db.collection('news_articles').orderBy('collected_at', 'desc').limit(limit);
       }
     }
 

@@ -41,12 +41,12 @@ export default function NateRankingModal({ isOpen, onClose, onSaveArticle }: Nat
       if (data.success) {
         setArticles(data.articles);
         setLastUpdated(new Date());
-        toast.success('네이트 뉴스 랭킹을 성공적으로 가져왔습니다.');
+        toast.success('네이버 뉴스 랭킹을 성공적으로 가져왔습니다.');
       } else {
         toast.error(data.error || '뉴스 가져오기에 실패했습니다.');
       }
     } catch (error) {
-      console.error('네이트 뉴스 가져오기 오류:', error);
+      console.error('네이버 뉴스 가져오기 오류:', error);
       toast.error('뉴스 가져오기 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -68,9 +68,9 @@ export default function NateRankingModal({ isOpen, onClose, onSaveArticle }: Nat
         toast.success('기사가 저장되었습니다.');
       } else {
         // 기본 저장 로직 (로컬 스토리지)
-        const savedArticles = JSON.parse(localStorage.getItem('savedNateArticles') || '[]');
+        const savedArticles = JSON.parse(localStorage.getItem('savedNaverArticles') || '[]');
         const newSavedArticles = [...savedArticles, { ...article, savedAt: new Date().toISOString() }];
-        localStorage.setItem('savedNateArticles', JSON.stringify(newSavedArticles));
+        localStorage.setItem('savedNaverArticles', JSON.stringify(newSavedArticles));
         toast.success('기사가 로컬에 저장되었습니다.');
       }
     } catch (error) {
@@ -105,10 +105,10 @@ export default function NateRankingModal({ isOpen, onClose, onSaveArticle }: Nat
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">
-                    네이트 뉴스 랭킹 TOP 10
+                    네이버 뉴스 랭킹 TOP 10
                   </h3>
                   <p className="text-blue-100 text-sm">
-                    실시간 인기 뉴스를 확인하세요
+                    실시간 인기 뉴스와 랭킹을 확인하세요
                   </p>
                 </div>
               </div>

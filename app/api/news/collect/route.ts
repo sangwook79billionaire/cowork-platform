@@ -23,6 +23,7 @@ interface NewsCollectionResult {
   excel_file: string | null;
   firebase_uploaded: boolean;
   message: string;
+  saved_articles?: any[]; // 저장된 기사들을 포함하여 반환
 }
 
 // 키워드 처리 함수 - AND, OR, 정확한 구문 검색 지원
@@ -249,18 +250,46 @@ export async function POST(request: NextRequest) {
         
         // 기사들 저장
         const batch = db.batch();
+        const savedArticles: any[] = [];
         
         for (const article of uniqueArticles) {
           const docRef = db.collection('news_articles').doc();
-          batch.set(docRef, {
+          const articleData = {
             ...article,
+            id: docRef.id, // 고유 ID 추가
             collectionId: collectionId
-          });
+          };
+          
+          batch.set(docRef, articleData);
+          savedArticles.push(articleData);
         }
         
         await batch.commit();
         firebaseUploaded = true;
         console.log(`✅ Firebase 업로드 완료: ${uniqueArticles.length}개 문서, 수집 ID: ${collectionId}`);
+        
+        // 저장된 기사들을 결과에 포함
+        const result: NewsCollectionResult = {
+          total_collected: allArticles.length,
+          total_unique: uniqueArticles.length,
+          keywords: keywords, // 원본 키워드 반환
+          failed_keywords: failedKeywords,
+          excel_file: null, // Vercel에서는 파일 생성 불가
+          firebase_uploaded: firebaseUploaded,
+          message: '뉴스 수집이 완료되었습니다.',
+          saved_articles: savedArticles // 저장된 기사들 추가
+        };
+
+        console.log(`📊 수집 결과:
+  - 총 수집: ${result.total_collected}개
+  - 중복 제거 후: ${result.total_unique}개
+  - 성공한 키워드: ${processedKeywords.length - failedKeywords.length}개
+  - 실패한 키워드: ${failedKeywords.length}개
+  - Firebase 업로드: ${firebaseUploaded ? '성공' : '실패'}
+✅ 뉴스 수집 완료!`);
+
+        return NextResponse.json(result);
+
       } catch (error) {
         console.error('Firebase 업로드 오류:', error);
       }

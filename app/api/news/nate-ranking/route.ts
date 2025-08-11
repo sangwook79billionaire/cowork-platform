@@ -22,27 +22,29 @@ export async function GET() {
     // User-Agent 설정
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
     
-    // 네이트 뉴스 메인 페이지로 이동
-    await page.goto('https://news.naver.com/', {
+    // 네이버 뉴스 랭킹 페이지로 이동
+    await page.goto('https://news.naver.com/ranking', {
       waitUntil: 'networkidle2',
       timeout: 30000
     });
 
     // 페이지 로딩 대기
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // 랭킹 뉴스 섹션에서 top 10 기사 수집 (여러 셀렉터 시도)
+    // 랭킹 뉴스 섹션에서 top 10 기사 수집 (더 정확한 셀렉터 사용)
     const articles = await page.evaluate(() => {
       const articles: NateNewsArticle[] = [];
       
-      // 다양한 셀렉터 시도
+      // 랭킹 페이지의 다양한 셀렉터 시도
       const selectors = [
         '.ranking_list li',
-        '.news_area .ranking_list li',
+        '.ranking_list .ranking_item',
+        '.ranking_list .item',
+        '.ranking_list a',
+        '.ranking_area li',
+        '.ranking_area .ranking_item',
         '.main_component .ranking_list li',
-        '.main_component .news_area li',
-        '.main_component .news_list li',
-        '.main_component .list_area li'
+        '.main_component .ranking_area li'
       ];
 
       let articleElements: Element[] = [];
@@ -55,10 +57,10 @@ export async function GET() {
         }
       }
 
-      // 대안: 메인 뉴스 영역에서 기사 찾기
+      // 대안: 랭킹 관련 링크 찾기
       if (articleElements.length === 0) {
-        const mainNews = document.querySelectorAll('.main_component a[href*="/article/"]');
-        articleElements = Array.from(mainNews);
+        const rankingLinks = document.querySelectorAll('a[href*="/article/"]');
+        articleElements = Array.from(rankingLinks);
       }
 
       articleElements.forEach((element, index) => {
@@ -82,7 +84,7 @@ export async function GET() {
           }
 
           // 출처 추출 (여러 셀렉터 시도)
-          const sourceSelectors = ['.source', '.press', '.media', '.company'];
+          const sourceSelectors = ['.source', '.press', '.media', '.company', '.press_name'];
           for (const sourceSelector of sourceSelectors) {
             const sourceElement = element.querySelector(sourceSelector);
             if (sourceElement) {
@@ -92,15 +94,23 @@ export async function GET() {
           }
 
           // 요약 추출
-          const summaryElement = element.querySelector('.summary, .desc, .content');
-          if (summaryElement) {
-            summary = summaryElement.textContent?.trim() || '';
+          const summarySelectors = ['.summary', '.desc', '.content', '.article_summary'];
+          for (const summarySelector of summarySelectors) {
+            const summaryElement = element.querySelector(summarySelector);
+            if (summaryElement) {
+              summary = summaryElement.textContent?.trim() || '';
+              break;
+            }
           }
 
           // 시간 추출
-          const timeElement = element.querySelector('.time, .date, .time_info');
-          if (timeElement) {
-            publishedAt = timeElement.textContent?.trim() || '';
+          const timeSelectors = ['.time', '.date', '.time_info', '.article_time'];
+          for (const timeSelector of timeSelectors) {
+            const timeElement = element.querySelector(timeSelector);
+            if (timeElement) {
+              publishedAt = timeElement.textContent?.trim() || '';
+              break;
+            }
           }
 
           // 유효한 데이터가 있는 경우만 추가
@@ -118,7 +128,7 @@ export async function GET() {
               rank: index + 1,
               title,
               link,
-              source: source || '네이트 뉴스',
+              source: source || '네이버 뉴스',
               summary,
               publishedAt: publishedAt || '방금 전'
             });

@@ -112,6 +112,10 @@ export function IntegratedSidebar({
     },
   ]
 
+  // 디버깅: features 배열 로그
+  console.log('🔍 사이드바 features:', features);
+  console.log('🔍 현재 activeFeature:', activeFeature);
+
   const handleBulletinClick = () => {
     if (activeFeature === 'bulletin') {
       setIsBulletinExpanded(!isBulletinExpanded)
@@ -143,7 +147,7 @@ export function IntegratedSidebar({
       <div className={`
         fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-xl transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:relative lg:translate-x-0 lg:shadow-none lg:w-64
+        lg:relative lg:translate-x-0 lg:shadow-none lg:w-72
       `}>
         <div className="flex flex-col h-full">
           {/* 헤더 */}
@@ -176,11 +180,13 @@ export function IntegratedSidebar({
             </div>
           )}
 
-          {/* 메뉴 */}
-          <nav className="flex-1 p-4 space-y-3">
+          {/* 네비게이션 메뉴 */}
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {features.map((feature) => {
               const Icon = feature.icon
               const isActive = activeFeature === feature.id
+              
+              console.log(`🔍 메뉴 렌더링: ${feature.name} (${feature.id}) - 활성: ${isActive}`);
               
               if (feature.id === 'bulletin') {
                 return (

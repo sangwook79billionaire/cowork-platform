@@ -106,9 +106,9 @@ export function IntegratedSidebar({
       id: 'saved-articles' as ActiveFeature, 
       name: '저장된 기사', 
       icon: BookmarkIcon, 
-      color: 'text-orange-600', 
-      bgColor: 'bg-orange-50', 
-      borderColor: 'border-orange-200' 
+      color: 'text-red-600', 
+      bgColor: 'bg-red-50', 
+      borderColor: 'border-red-200' 
     },
   ]
 

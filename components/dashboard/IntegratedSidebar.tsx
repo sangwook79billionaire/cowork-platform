@@ -17,7 +17,7 @@ import { collection, query, orderBy, getDocs, onSnapshot, where } from 'firebase
 import { db } from '@/lib/firebase'
 import { Bulletin } from '@/types/firebase'
 
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news'
+type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -112,6 +112,22 @@ export function IntegratedSidebar({
       id: 'saved-articles' as ActiveFeature, 
       name: '저장된 기사', 
       icon: BookmarkIcon, 
+      color: 'text-red-600', 
+      bgColor: 'bg-red-50', 
+      borderColor: 'border-red-200' 
+    },
+    { 
+      id: 'todo-list' as ActiveFeature, 
+      name: '할 일 목록', 
+      icon: ChatBubbleLeftRightIcon, 
+      color: 'text-indigo-600', 
+      bgColor: 'bg-indigo-50', 
+      borderColor: 'border-indigo-200' 
+    },
+    { 
+      id: 'calendar' as ActiveFeature, 
+      name: '캘린더', 
+      icon: ArchiveBoxIcon, 
       color: 'text-red-600', 
       bgColor: 'bg-red-50', 
       borderColor: 'border-red-200' 

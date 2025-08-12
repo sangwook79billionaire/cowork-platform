@@ -24,6 +24,12 @@ export function Dashboard() {
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [showCreateTopLevelBulletin, setShowCreateTopLevelBulletin] = useState(false)
 
+  // 디버깅: Dashboard 상태 확인
+  console.log('🔍 Dashboard 렌더링');
+  console.log('  - activeFeature:', activeFeature);
+  console.log('  - sidebarOpen:', sidebarOpen);
+  console.log('  - user:', !!user);
+
   // 모바일에서 사이드바 토글
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)

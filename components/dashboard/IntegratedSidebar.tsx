@@ -10,6 +10,7 @@ import {
   ArchiveBoxIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 import { BulletinTree } from './BulletinTree'
 import { collection, query, orderBy, getDocs, onSnapshot, where } from 'firebase/firestore'
@@ -37,6 +38,11 @@ export function IntegratedSidebar({
   const [isBulletinExpanded, setIsBulletinExpanded] = useState(false)
   const [topLevelBulletins, setTopLevelBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
+
+  // 디버깅: 컴포넌트 렌더링 확인
+  console.log('🔍 IntegratedSidebar 렌더링 시작');
+  console.log('  - props:', { activeFeature, isOpen, onClose: !!onClose });
+  console.log('  - user:', !!user);
 
   // Firebase에서 최상위 게시판 데이터만 가져오기
   useEffect(() => {
@@ -115,6 +121,13 @@ export function IntegratedSidebar({
   // 디버깅: features 배열 로그
   console.log('🔍 사이드바 features:', features);
   console.log('🔍 현재 activeFeature:', activeFeature);
+  console.log('🔍 features 배열 길이:', features.length);
+  console.log('🔍 features ID 목록:', features.map(f => f.id));
+
+  // 네비게이션 메뉴 렌더링 로그
+  useEffect(() => {
+    console.log('🔍 네비게이션 메뉴 렌더링 시작');
+  }, [features, activeFeature]);
 
   const handleBulletinClick = () => {
     if (activeFeature === 'bulletin') {
@@ -176,6 +189,12 @@ export function IntegratedSidebar({
                   </p>
                   <p className="text-xs text-gray-500">로그인됨</p>
                 </div>
+                <button
+                  onClick={signOut}
+                  className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                >
+                  <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                </button>
               </div>
             </div>
           )}

@@ -23,7 +23,7 @@ export async function GET() {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
     
     // 네이트 뉴스 랭킹 페이지로 이동
-    await page.goto('https://news.nate.com/rank', {
+    await page.goto('https://news.nate.com/rank/?mid=n1000', {
       waitUntil: 'networkidle2',
       timeout: 30000
     });
@@ -31,11 +31,23 @@ export async function GET() {
     // 페이지 로딩 대기
     await new Promise(resolve => setTimeout(resolve, 3000));
 
+    // 페이지의 실제 HTML 구조 확인을 위한 로그
+    const pageContent = await page.content();
+    console.log('🔍 페이지 HTML 길이:', pageContent.length);
+    
+    // 페이지 제목 확인
+    const pageTitle = await page.title();
+    console.log('🔍 페이지 제목:', pageTitle);
+
     // 네이트 뉴스 랭킹에서 top 10 기사 수집
     const articles = await page.evaluate(() => {
       const articles: NateNewsArticle[] = [];
       
-      // 네이트 뉴스 랭킹 페이지의 다양한 셀렉터 시도
+      // 페이지 구조 디버깅
+      console.log('🔍 페이지 내 모든 링크 수:', document.querySelectorAll('a').length);
+      console.log('🔍 페이지 내 뉴스 관련 링크 수:', document.querySelectorAll('a[href*="/view/"]').length);
+      
+      // 네이트 뉴스 랭킹 페이지의 올바른 셀렉터들
       const selectors = [
         '.rankNews .rankNewsList li',
         '.rankNews .rankNewsList .rankNewsItem',
@@ -50,7 +62,29 @@ export async function GET() {
         '.rankNews .rankNewsList .newsLink',
         '.rankNews .rankNewsList .newsItem a',
         '.rankNews .rankNewsList .newsTitle a',
-        '.rankNews .rankNewsList .newsLink a'
+        '.rankNews .rankNewsList .newsLink a',
+        // 새로운 셀렉터들 추가
+        '.rankNewsList li',
+        '.rankNewsList .rankNewsItem',
+        '.rankNewsList a',
+        '.rankNewsItem',
+        '.rankNewsList .item',
+        '.rankNewsList .newsItem',
+        '.rankNewsList .news',
+        '.rankNewsList .article',
+        '.rankNewsList .title',
+        '.rankNewsList .newsTitle',
+        '.rankNewsList .newsLink',
+        '.rankNewsList .newsItem a',
+        '.rankNewsList .newsTitle a',
+        '.rankNewsList .newsLink a',
+        // 더 구체적인 셀렉터들
+        'ul.rankNewsList li',
+        'ul.rankNewsList .rankNewsItem',
+        'ul.rankNewsList a',
+        '.rankNewsList ul li',
+        '.rankNewsList ul .rankNewsItem',
+        '.rankNewsList ul a'
       ];
 
       let articleElements: Element[] = [];
@@ -98,66 +132,56 @@ export async function GET() {
             }
           }
 
-          // 출처 추출 (네이트 뉴스에 맞는 셀렉터)
-          const sourceSelectors = [
-            '.source', '.press', '.media', '.company', '.press_name',
-            '.newsSource', '.newsPress', '.newsMedia', '.newsCompany',
-            '.rankNewsSource', '.rankNewsPress', '.rankNewsMedia'
-          ];
-          for (const sourceSelector of sourceSelectors) {
-            const sourceElement = element.querySelector(sourceSelector);
-            if (sourceElement) {
-              source = sourceElement.textContent?.trim() || '';
-              break;
-            }
+          // 링크가 상대 경로인 경우 절대 경로로 변환
+          if (link && link.startsWith('/')) {
+            link = `https://news.nate.com${link}`;
+          }
+
+          // 출처 추출 (뉴스 매체명)
+          const sourceElement = element.querySelector('.source') || 
+                               element.querySelector('.press') || 
+                               element.querySelector('.media') ||
+                               element.querySelector('.newsSource') ||
+                               element.querySelector('.newsPress') ||
+                               element.querySelector('.newsMedia');
+          
+          if (sourceElement) {
+            source = sourceElement.textContent?.trim() || '';
           }
 
           // 요약 추출
-          const summarySelectors = [
-            '.summary', '.desc', '.content', '.article_summary',
-            '.newsSummary', '.newsDesc', '.newsContent',
-            '.rankNewsSummary', '.rankNewsDesc', '.rankNewsContent'
-          ];
-          for (const summarySelector of summarySelectors) {
-            const summaryElement = element.querySelector(summarySelector);
-            if (summaryElement) {
-              summary = summaryElement.textContent?.trim() || '';
-              break;
-            }
+          const summaryElement = element.querySelector('.summary') || 
+                                element.querySelector('.desc') || 
+                                element.querySelector('.description') ||
+                                element.querySelector('.newsSummary') ||
+                                element.querySelector('.newsDesc') ||
+                                element.querySelector('.newsDescription');
+          
+          if (summaryElement) {
+            summary = summaryElement.textContent?.trim() || '';
           }
 
-          // 시간 추출
-          const timeSelectors = [
-            '.time', '.date', '.time_info', '.article_time',
-            '.newsTime', '.newsDate', '.newsTimeInfo',
-            '.rankNewsTime', '.rankNewsDate', '.rankNewsTimeInfo'
-          ];
-          for (const timeSelector of timeSelectors) {
-            const timeElement = element.querySelector(timeSelector);
-            if (timeElement) {
-              publishedAt = timeElement.textContent?.trim() || '';
-              break;
-            }
+          // 발행일 추출
+          const dateElement = element.querySelector('.date') || 
+                             element.querySelector('.time') || 
+                             element.querySelector('.publishedAt') ||
+                             element.querySelector('.newsDate') ||
+                             element.querySelector('.newsTime') ||
+                             element.querySelector('.newsPublishedAt');
+          
+          if (dateElement) {
+            publishedAt = dateElement.textContent?.trim() || '';
           }
 
           // 유효한 데이터가 있는 경우만 추가
           if (title && link) {
-            // 링크 정규화 (네이트 뉴스 도메인)
-            if (!link.startsWith('http')) {
-              if (link.startsWith('/')) {
-                link = `https://news.nate.com${link}`;
-              } else {
-                link = `https://news.nate.com/${link}`;
-              }
-            }
-
             articles.push({
               rank: index + 1,
               title,
               link,
-              source: source || '네이트 뉴스',
+              source,
               summary,
-              publishedAt: publishedAt || '방금 전'
+              publishedAt
             });
           }
         }

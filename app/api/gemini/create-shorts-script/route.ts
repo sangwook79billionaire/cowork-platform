@@ -5,9 +5,9 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
-    const { articleTitle, articleContent, articleSource, publishedAt } = await request.json();
+    const { title, content, source, link } = await request.json();
 
-    if (!articleTitle || !articleContent) {
+    if (!title || !content) {
       return NextResponse.json(
         { error: '기사 제목과 내용이 필요합니다.' },
         { status: 400 }
@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
 다음 뉴스 기사를 바탕으로 40초 내의 숏폼 영상 스크립트를 작성해주세요.
 
 **뉴스 기사 정보:**
-- 제목: ${articleTitle}
-- 출처: ${articleSource}
-- 발행일: ${publishedAt}
-- 내용: ${articleContent}
+- 제목: ${title}
+- 출처: ${source || '네이트 뉴스'}
+- 링크: ${link}
+- 내용: ${content}
 
 **숏폼 제작 가이드라인:**
 ${guidelines}

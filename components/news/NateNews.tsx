@@ -99,6 +99,72 @@ export default function NateNews() {
     window.open(link, '_blank', 'noopener,noreferrer');
   };
 
+  const handleCreateShorts = async (article: NateNewsArticle) => {
+    try {
+      console.log('🔍 숏폼 제작 시작:', article.title);
+      
+      // 숏폼 제작 API 호출
+      const response = await fetch('/api/gemini/create-shorts-script', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: article.title,
+          content: article.summary || article.title,
+          source: article.source,
+          link: article.link
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('숏폼 스크립트가 생성되었습니다!');
+        console.log('✅ 숏폼 스크립트 생성 성공:', result);
+        
+        // 생성된 스크립트를 새 창에서 열기
+        if (result.script) {
+          const newWindow = window.open('', '_blank');
+          if (newWindow) {
+            newWindow.document.write(`
+              <html>
+                <head>
+                  <title>숏폼 스크립트 - ${article.title}</title>
+                  <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
+                    .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+                    .script { background: #fff; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; }
+                    .title { color: #495057; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+                    .source { color: #6c757d; font-size: 14px; margin-bottom: 15px; }
+                    .content { white-space: pre-wrap; }
+                  </style>
+                </head>
+                <body>
+                  <div class="header">
+                    <div class="title">${article.title}</div>
+                    <div class="source">출처: ${article.source || '네이트 뉴스'}</div>
+                  </div>
+                  <div class="script">
+                    <h3>숏폼 스크립트:</h3>
+                    <div class="content">${result.script}</div>
+                  </div>
+                </body>
+              </html>
+            `);
+            newWindow.document.close();
+          }
+        }
+      } else {
+        toast.error('숏폼 스크립트 생성에 실패했습니다.');
+        console.error('❌ 숏폼 스크립트 생성 실패:', result);
+      }
+    } catch (error) {
+      console.error('❌ 숏폼 제작 오류:', error);
+      toast.error('숏폼 제작 중 오류가 발생했습니다.');
+    }
+  };
+
   const toggleAutoRefresh = () => {
     setAutoRefresh(!autoRefresh);
     if (!autoRefresh) {
@@ -238,6 +304,14 @@ export default function NateNews() {
                       title="기사 저장"
                     >
                       <BookmarkIcon className="h-5 w-5" />
+                    </button>
+
+                    <button
+                      onClick={() => handleCreateShorts(article)}
+                      className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="숏폼 제작"
+                    >
+                      <ChartBarIcon className="h-5 w-5" />
                     </button>
                   </div>
                 </div>

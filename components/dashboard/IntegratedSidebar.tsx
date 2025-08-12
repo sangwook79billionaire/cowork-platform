@@ -146,19 +146,19 @@ export function IntegratedSidebar({
   }, [features, activeFeature]);
 
   const handleBulletinClick = () => {
-    if (activeFeature === 'bulletin') {
-      setIsBulletinExpanded(!isBulletinExpanded)
-    } else {
-      onFeatureChange('bulletin')
-      setIsBulletinExpanded(true)
-    }
+    setIsBulletinExpanded(!isBulletinExpanded)
+    // 게시판 기능 활성화
+    onFeatureChange('bulletin')
   }
 
   const handleBulletinSelect = (bulletinId: string) => {
-    onBulletinSelect?.(bulletinId)
+    console.log('🔍 게시판 선택:', bulletinId);
+    if (onBulletinSelect) {
+      onBulletinSelect(bulletinId);
+    }
     // 모바일에서 게시판 선택 시 사이드바 닫기
     if (window.innerWidth < 1024) {
-      onClose()
+      onClose();
     }
   }
 

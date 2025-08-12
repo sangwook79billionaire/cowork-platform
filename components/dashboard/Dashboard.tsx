@@ -120,50 +120,18 @@ export function Dashboard() {
         {/* 우측 구역: 선택된 콘텐츠 */}
         <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
           {activeFeature === 'bulletin' && (
-            <div className="flex-1 flex overflow-hidden">
-              {/* 좌측: 게시판 트리 */}
-              <div className="w-80 border-r border-gray-200 bg-white flex flex-col">
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900">게시판 목록</h3>
-                    <button
-                      onClick={handleAddTopLevelBulletin}
-                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      title="최상위 게시판 추가"
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4">
-                  <BulletinBoard
-                    selectedBulletinId={selectedBulletinId}
-                    onBulletinSelect={setSelectedBulletinId}
-                    selectedPostId={selectedPostId}
-                    onSelectPost={handleSelectPost}
-                    onCreatePost={handleCreatePost}
-                    showCreatePost={showCreatePost}
-                    setShowCreatePost={setShowCreatePost}
-                    isSidebar={true} // 사이드바 모드로 표시
-                    onAddTopLevelBulletin={handleAddTopLevelBulletin}
-                  />
-                </div>
-              </div>
-              
-              {/* 우측: 게시판 내용 */}
-              <div className="flex-1 overflow-hidden">
-                <div className="h-full overflow-y-auto p-4">
-                  <BulletinBoard
-                    selectedBulletinId={selectedBulletinId}
-                    onBulletinSelect={setSelectedBulletinId}
-                    selectedPostId={selectedPostId}
-                    onSelectPost={handleSelectPost}
-                    onCreatePost={handleCreatePost}
-                    showCreatePost={showCreatePost}
-                    setShowCreatePost={setShowCreatePost}
-                    isMainContent={true} // 메인 콘텐츠 모드로 표시
-                  />
-                </div>
+            <div className="flex-1 overflow-hidden">
+              <div className="h-full overflow-y-auto p-4">
+                <BulletinBoard
+                  selectedBulletinId={selectedBulletinId}
+                  onBulletinSelect={setSelectedBulletinId}
+                  selectedPostId={selectedPostId}
+                  onSelectPost={handleSelectPost}
+                  onCreatePost={handleCreatePost}
+                  showCreatePost={showCreatePost}
+                  setShowCreatePost={setShowCreatePost}
+                  isMainContent={true} // 메인 콘텐츠 모드로 표시
+                />
               </div>
             </div>
           )}

@@ -36,7 +36,7 @@ export function IntegratedSidebar({
 }: IntegratedSidebarProps) {
   const { user, signOut } = useAuth()
   const [isBulletinExpanded, setIsBulletinExpanded] = useState(false)
-  const [topLevelBulletins, setTopLevelBulletins] = useState<Bulletin[]>([])
+  const [allBulletins, setAllBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
 
   // 디버깅: 컴포넌트 렌더링 확인
@@ -44,15 +44,15 @@ export function IntegratedSidebar({
   console.log('  - props:', { activeFeature, isOpen, onClose: !!onClose });
   console.log('  - user:', !!user);
 
-  // Firebase에서 최상위 게시판 데이터만 가져오기
+  // Firebase에서 모든 게시판 데이터 가져오기
   useEffect(() => {
     if (!isBulletinExpanded) return
 
     const unsubscribe = onSnapshot(
       query(
         collection(db, 'bulletins'), 
-        where('parentId', '==', null), // 최상위 게시판만
-        orderBy('createdAt', 'asc')
+        orderBy('level', 'asc'),
+        orderBy('order', 'asc')
       ),
       (snapshot) => {
         const bulletinData: Bulletin[] = []
@@ -62,7 +62,8 @@ export function IntegratedSidebar({
             ...doc.data()
           } as Bulletin)
         })
-        setTopLevelBulletins(bulletinData)
+        console.log('🔍 모든 게시판 데이터:', bulletinData);
+        setAllBulletins(bulletinData)
         setLoading(false)
       },
       (error) => {
@@ -73,6 +74,43 @@ export function IntegratedSidebar({
 
     return () => unsubscribe()
   }, [isBulletinExpanded])
+
+  // 게시판을 계층 구조로 정리하는 함수
+  const buildBulletinTree = (bulletins: Bulletin[], parentId: string | null = null): Bulletin[] => {
+    return bulletins
+      .filter(bulletin => bulletin.parentId === parentId)
+      .sort((a, b) => a.order - b.order)
+      .map(bulletin => ({
+        ...bulletin,
+        children: buildBulletinTree(bulletins, bulletin.id)
+      }));
+  };
+
+  // 계층 구조로 정리된 게시판 데이터
+  const bulletinTree = buildBulletinTree(allBulletins);
+
+  // 게시판을 재귀적으로 렌더링하는 함수
+  const renderBulletinTree = (bulletins: any[], level: number = 0) => {
+    return bulletins.map((bulletin) => (
+      <div key={bulletin.id} className="space-y-1">
+        <button
+          onClick={() => handleBulletinSelect(bulletin.id)}
+          className={`w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors ${
+            level > 0 ? 'ml-' + (level * 4) : ''
+          }`}
+          style={{ marginLeft: level * 16 }}
+        >
+          {level > 0 && <span className="mr-2">└─</span>}
+          {bulletin.title}
+        </button>
+        {bulletin.children && bulletin.children.length > 0 && (
+          <div className="ml-4">
+            {renderBulletinTree(bulletin.children, level + 1)}
+          </div>
+        )}
+      </div>
+    ));
+  };
 
   const features = [
     { 
@@ -257,20 +295,12 @@ export function IntegratedSidebar({
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                             <span className="text-xs text-gray-500">게시판 로딩 중...</span>
                           </div>
-                        ) : topLevelBulletins.length === 0 ? (
+                        ) : bulletinTree.length === 0 ? (
                           <div className="text-xs text-gray-500 py-2">
                             최상위 게시판이 없습니다
                           </div>
                         ) : (
-                          topLevelBulletins.map((bulletin) => (
-                            <button
-                              key={bulletin.id}
-                              onClick={() => handleBulletinSelect(bulletin.id)}
-                              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-                            >
-                              {bulletin.title}
-                            </button>
-                          ))
+                          renderBulletinTree(bulletinTree)
                         )}
                       </div>
                     )}

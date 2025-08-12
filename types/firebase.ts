@@ -45,6 +45,7 @@ export interface Bulletin {
   updatedAt: Date
   isActive: boolean
   order: number
+  children?: Bulletin[] // 하위 게시판들을 위한 children 속성
 }
 
 export interface BulletinPost {

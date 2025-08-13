@@ -11,15 +11,30 @@ interface NateNewsArticle {
   source: string;
   summary: string;
   publishedAt: string;
+  section: string;
+}
+
+interface NateNewsSection {
+  section: string;
+  sectionName: string;
+  articles: NateNewsArticle[];
+}
+
+interface NateNewsResponse {
+  success: boolean;
+  date: string;
+  sections: NateNewsSection[];
+  totalArticles: number;
 }
 
 export default function NateNews() {
-  const [articles, setArticles] = useState<NateNewsArticle[]>([]);
+  const [sections, setSections] = useState<NateNewsSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [savingArticles, setSavingArticles] = useState<Set<number>>(new Set());
+  const [savingArticles, setSavingArticles] = useState<Set<string>>(new Set());
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(300000); // 5분
+  const [currentDate, setCurrentDate] = useState<string>('');
 
   // 컴포넌트 마운트 시 자동으로 뉴스 가져오기
   useEffect(() => {
@@ -42,23 +57,21 @@ export default function NateNews() {
     try {
       console.log('🔍 네이트 뉴스 API 호출 시작...');
       const response = await fetch('/api/news/nate-ranking');
-      const result = await response.json();
+      const result: NateNewsResponse = await response.json();
       
       console.log('🔍 네이트 뉴스 API 응답:', result);
       console.log('🔍 result.success:', result.success);
-      console.log('🔍 result.articles:', result.articles);
-      console.log('🔍 result.articles?.length:', result.articles?.length);
+      console.log('🔍 result.sections:', result.sections);
+      console.log('🔍 result.totalArticles:', result.totalArticles);
 
-      if (result.success && result.articles && result.articles.length > 0) {
-        console.log('✅ 네이트 뉴스 성공적으로 가져옴:', result.articles.length, '개');
-        setArticles(result.articles);
+      if (result.success && result.sections && result.sections.length > 0) {
+        console.log('✅ 네이트 뉴스 성공적으로 가져옴:', result.totalArticles, '개 기사,', result.sections.length, '개 섹션');
+        setSections(result.sections);
+        setCurrentDate(result.date);
         setLastUpdated(new Date());
         toast.success('네이트 뉴스 랭킹을 성공적으로 가져왔습니다.');
       } else {
         console.error('❌ 네이트 뉴스 가져오기 실패:', result);
-        console.error('❌ success:', result.success);
-        console.error('❌ articles:', result.articles);
-        console.error('❌ articles length:', result.articles?.length);
         toast.error('네이트 뉴스 랭킹을 가져오는데 실패했습니다.');
       }
     } catch (error) {
@@ -74,9 +87,9 @@ export default function NateNews() {
   };
 
   const handleSaveArticle = async (article: NateNewsArticle) => {
-    if (savingArticles.has(article.rank)) return;
+    if (savingArticles.has(article.rank.toString())) return;
 
-    setSavingArticles(prev => new Set(prev).add(article.rank));
+    setSavingArticles(prev => new Set(prev).add(article.rank.toString()));
     
     try {
       // 로컬 스토리지에 저장
@@ -89,7 +102,7 @@ export default function NateNews() {
     } finally {
       setSavingArticles(prev => {
         const newSet = new Set(prev);
-        newSet.delete(article.rank);
+        newSet.delete(article.rank.toString());
         return newSet;
       });
     }
@@ -237,83 +250,90 @@ export default function NateNews() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mr-3"></div>
             <span className="text-gray-600">뉴스를 가져오는 중...</span>
           </div>
-        ) : articles.length > 0 ? (
+        ) : sections.length > 0 ? (
           <div className="grid gap-4">
-            {articles.map((article) => (
-              <div
-                key={article.rank}
-                className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:shadow-md transition-all bg-white"
-              >
-                <div className="flex items-start space-x-4">
-                  {/* 순위 */}
-                  <div className="flex-shrink-0">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                      article.rank <= 3 
-                        ? 'bg-red-500' 
-                        : article.rank <= 6 
-                        ? 'bg-orange-500' 
-                        : 'bg-blue-500'
-                    }`}>
-                      {article.rank}
-                    </div>
-                  </div>
+            {sections.map((section) => (
+              <div key={section.section} className="bg-white rounded-lg p-4 shadow-md">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">{section.sectionName}</h2>
+                <div className="grid gap-4">
+                  {section.articles.map((article) => (
+                    <div
+                      key={article.rank}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start space-x-4">
+                        {/* 순위 */}
+                        <div className="flex-shrink-0">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                            article.rank <= 3 
+                              ? 'bg-red-500' 
+                              : article.rank <= 6 
+                              ? 'bg-orange-500' 
+                              : 'bg-blue-500'
+                          }`}>
+                            {article.rank}
+                          </div>
+                        </div>
 
-                  {/* 기사 정보 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-3 line-clamp-2 hover:text-purple-600 cursor-pointer"
-                            onClick={() => handleOpenArticle(article.link)}>
-                          {article.title}
-                        </h3>
-                        
-                        {article.summary && (
-                          <p className="text-gray-600 text-base mb-4 line-clamp-3 leading-relaxed">
-                            {article.summary}
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span className="font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded">
-                            {article.source}
-                          </span>
-                          {article.publishedAt && (
-                            <span className="bg-gray-100 px-2 py-1 rounded">
-                              {article.publishedAt}
-                            </span>
-                          )}
+                        {/* 기사 정보 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="text-xl font-semibold text-gray-900 mb-3 line-clamp-2 hover:text-purple-600 cursor-pointer"
+                                  onClick={() => handleOpenArticle(article.link)}>
+                                {article.title}
+                              </h3>
+                              
+                              {article.summary && (
+                                <p className="text-gray-600 text-base mb-4 line-clamp-3 leading-relaxed">
+                                  {article.summary}
+                                </p>
+                              )}
+                              
+                              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                <span className="font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                                  {article.source}
+                                </span>
+                                {article.publishedAt && (
+                                  <span className="bg-gray-100 px-2 py-1 rounded">
+                                    {article.publishedAt}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 액션 버튼들 */}
+                        <div className="flex flex-col space-y-2">
+                          <button
+                            onClick={() => handleOpenArticle(article.link)}
+                            className="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="기사 보기"
+                          >
+                            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                          </button>
+                          
+                          <button
+                            onClick={() => handleSaveArticle(article)}
+                            disabled={savingArticles.has(article.rank.toString())}
+                            className="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="기사 저장"
+                          >
+                            <BookmarkIcon className="h-5 w-5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleCreateShorts(article)}
+                            className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="숏폼 제작"
+                          >
+                            <ChartBarIcon className="h-5 w-5" />
+                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* 액션 버튼들 */}
-                  <div className="flex flex-col space-y-2">
-                    <button
-                      onClick={() => handleOpenArticle(article.link)}
-                      className="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                      title="기사 보기"
-                    >
-                      <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleSaveArticle(article)}
-                      disabled={savingArticles.has(article.rank)}
-                      className="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="기사 저장"
-                    >
-                      <BookmarkIcon className="h-5 w-5" />
-                    </button>
-
-                    <button
-                      onClick={() => handleCreateShorts(article)}
-                      className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="숏폼 제작"
-                    >
-                      <ChartBarIcon className="h-5 w-5" />
-                    </button>
-                  </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -333,29 +353,29 @@ export default function NateNews() {
       </div>
 
       {/* 통계 정보 */}
-      {articles.length > 0 && (
+      {sections.length > 0 && (
         <div className="mt-8 p-4 bg-purple-50 rounded-lg">
           <h3 className="text-lg font-semibold text-purple-800 mb-3">📊 뉴스 통계</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{articles.length}</div>
+              <div className="text-2xl font-bold text-purple-600">{sections.reduce((sum, s) => sum + s.articles.length, 0)}</div>
               <div className="text-purple-700">총 기사 수</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">
-                {articles.filter(a => a.rank <= 3).length}
+                {sections.reduce((sum, s) => sum + s.articles.filter(a => a.rank <= 3).length, 0)}
               </div>
               <div className="text-red-700">TOP 3</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {articles.filter(a => a.rank > 3 && a.rank <= 6).length}
+                {sections.reduce((sum, s) => sum + s.articles.filter(a => a.rank > 3 && a.rank <= 6).length, 0)}
               </div>
               <div className="text-orange-700">TOP 4-6</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {articles.filter(a => a.rank > 6).length}
+                {sections.reduce((sum, s) => sum + s.articles.filter(a => a.rank > 6).length, 0)}
               </div>
               <div className="text-blue-700">TOP 7-10</div>
             </div>

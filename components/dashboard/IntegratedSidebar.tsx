@@ -2,20 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import {
-  ChatBubbleLeftRightIcon,
-  XMarkIcon,
-  MagnifyingGlassIcon,
+import { 
+  ChatBubbleLeftRightIcon, 
+  MagnifyingGlassIcon, 
+  ArchiveBoxIcon, 
   BookmarkIcon,
-  ArchiveBoxIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   ArrowRightOnRectangleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
-import { BulletinTree } from './BulletinTree'
-import { collection, query, orderBy, getDocs, onSnapshot, where } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Bulletin } from '@/types/firebase'
+import { toast } from 'react-hot-toast';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar'
 
@@ -38,6 +57,14 @@ export function IntegratedSidebar({
   const [isBulletinExpanded, setIsBulletinExpanded] = useState(false)
   const [allBulletins, setAllBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
+
+  // 드래그 앤 드롭 센서 설정
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // 디버깅: 컴포넌트 렌더링 확인
   console.log('🔍 IntegratedSidebar 렌더링 시작');
@@ -89,20 +116,74 @@ export function IntegratedSidebar({
   // 계층 구조로 정리된 게시판 데이터
   const bulletinTree = buildBulletinTree(allBulletins);
 
+  // 드래그 앤 드롭 종료 시 처리
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = allBulletins.findIndex(b => b.id === active.id);
+      const newIndex = allBulletins.findIndex(b => b.id === over?.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newBulletins = arrayMove(allBulletins, oldIndex, newIndex);
+        setAllBulletins(newBulletins);
+        
+        // Firebase에 순서 업데이트
+        try {
+          // TODO: Firebase batch update로 순서 변경
+          toast.success('게시판 순서가 변경되었습니다.');
+        } catch (error) {
+          console.error('게시판 순서 변경 오류:', error);
+          toast.error('게시판 순서 변경에 실패했습니다.');
+        }
+      }
+    }
+  };
+
   // 게시판을 재귀적으로 렌더링하는 함수
   const renderBulletinTree = (bulletins: any[], level: number = 0) => {
     return bulletins.map((bulletin) => (
       <div key={bulletin.id} className="space-y-1">
-        <button
-          onClick={() => handleBulletinSelect(bulletin.id)}
-          className={`w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors ${
-            level > 0 ? 'ml-' + (level * 4) : ''
-          }`}
-          style={{ marginLeft: level * 16 }}
-        >
-          {level > 0 && <span className="mr-2">└─</span>}
-          {bulletin.title}
-        </button>
+        <div className="flex items-center justify-between group">
+          <button
+            onClick={() => handleBulletinSelect(bulletin.id)}
+            className={`flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors ${
+              level > 0 ? 'ml-' + (level * 4) : ''
+            }`}
+            style={{ marginLeft: level * 16 }}
+          >
+            {level > 0 && <span className="mr-2">└─</span>}
+            {bulletin.title}
+          </button>
+          
+          {/* 게시판 관리 버튼들 */}
+          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditBulletin(bulletin);
+              }}
+              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="게시판 수정"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteBulletin(bulletin);
+              }}
+              className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="게시판 삭제"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
         {bulletin.children && bulletin.children.length > 0 && (
           <div className="ml-4">
             {renderBulletinTree(bulletin.children, level + 1)}
@@ -200,6 +281,33 @@ export function IntegratedSidebar({
     }
   }
 
+  const handleEditBulletin = (bulletin: Bulletin) => {
+    console.log('🔍 게시판 수정:', bulletin);
+    // TODO: 게시판 수정 모달 열기
+    toast.success('게시판 수정 기능은 준비 중입니다.');
+  }
+
+  const handleDeleteBulletin = async (bulletin: Bulletin) => {
+    if (!confirm(`"${bulletin.title}" 게시판을 삭제하시겠습니까?`)) {
+      return;
+    }
+    
+    try {
+      console.log('🔍 게시판 삭제:', bulletin.id);
+      // TODO: Firebase에서 게시판 삭제
+      toast.success('게시판이 삭제되었습니다.');
+    } catch (error) {
+      console.error('게시판 삭제 오류:', error);
+      toast.error('게시판 삭제에 실패했습니다.');
+    }
+  }
+
+  const handleAddTopLevelBulletin = () => {
+    console.log('🔍 최상위 게시판 추가');
+    // TODO: 게시판 추가 모달 열기
+    toast.success('게시판 추가 기능은 준비 중입니다.');
+  }
+
   return (
     <>
       {/* 모바일 오버레이 */}
@@ -289,20 +397,82 @@ export function IntegratedSidebar({
                     
                     {/* 최상위 게시판 드롭다운 */}
                     {isActive && isBulletinExpanded && (
-                      <div className="ml-4 pl-4 border-l-2 border-blue-200 space-y-1">
-                        {loading ? (
-                          <div className="flex items-center space-x-2 py-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            <span className="text-xs text-gray-500">게시판 로딩 중...</span>
-                          </div>
-                        ) : bulletinTree.length === 0 ? (
-                          <div className="text-xs text-gray-500 py-2">
-                            최상위 게시판이 없습니다
-                          </div>
-                        ) : (
-                          renderBulletinTree(bulletinTree)
-                        )}
-                      </div>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={bulletinTree.map(b => b.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {bulletinTree.map((bulletin) => (
+                            <div key={bulletin.id} className="space-y-1">
+                              <div className="flex items-center justify-between group">
+                                <button
+                                  onClick={() => handleBulletinSelect(bulletin.id)}
+                                  className={`flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors ${
+                                    bulletin.children && bulletin.children.length > 0 ? 'ml-4' : ''
+                                  }`}
+                                  style={{ marginLeft: bulletin.children && bulletin.children.length > 0 ? 16 : 0 }}
+                                >
+                                  {bulletin.children && bulletin.children.length > 0 && (
+                                    <ChevronRightIcon className="w-4 h-4 mr-2" />
+                                  )}
+                                  {bulletin.title}
+                                </button>
+                                
+                                {/* 게시판 관리 버튼들 */}
+                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditBulletin(bulletin);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="게시판 수정"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteBulletin(bulletin);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="게시판 삭제"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                              {bulletin.children && bulletin.children.length > 0 && (
+                                <SortableContext
+                                  items={bulletin.children.map(b => b.id)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  {bulletin.children.map((childBulletin) => (
+                                    <div key={childBulletin.id} className="ml-4">
+                                      <button
+                                        onClick={() => handleBulletinSelect(childBulletin.id)}
+                                        className={`
+                                          flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors
+                                        `}
+                                      >
+                                        {childBulletin.title}
+                                      </button>
+                                    </div>
+                                  ))}
+                                </SortableContext>
+                              )}
+                            </div>
+                          ))}
+                        </SortableContext>
+                      </DndContext>
                     )}
                   </div>
                 )

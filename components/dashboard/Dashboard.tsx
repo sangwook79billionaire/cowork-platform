@@ -10,10 +10,11 @@ import NewsSearch from '@/components/news/NewsSearch'
 import NewsArchive from '@/components/news/NewsArchive'
 import SavedArticles from '@/components/news/SavedArticles'
 import NateNews from '@/components/news/NateNews'
+import AutoCrawlScheduler from './AutoCrawlScheduler'
 import { Bars3Icon, XMarkIcon, ArrowRightOnRectangleIcon, PlusIcon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar'
+type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
 
 export function Dashboard() {
   const { user, loading, signOut } = useAuth()
@@ -180,6 +181,14 @@ export function Dashboard() {
             <div className="flex-1 overflow-hidden">
               <div className="h-full overflow-y-auto p-4">
                 <Calendar />
+              </div>
+            </div>
+          )}
+
+          {activeFeature === 'auto-crawl-scheduler' && (
+            <div className="flex-1 overflow-hidden">
+              <div className="h-full overflow-y-auto p-4">
+                <AutoCrawlScheduler />
               </div>
             </div>
           )}

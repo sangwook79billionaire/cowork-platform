@@ -36,7 +36,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar'
+type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -250,6 +250,14 @@ export function IntegratedSidebar({
       color: 'text-red-600', 
       bgColor: 'bg-red-50', 
       borderColor: 'border-red-200' 
+    },
+    { 
+      id: 'auto-crawl-scheduler' as ActiveFeature, 
+      name: '자동 크롤링', 
+      icon: ArchiveBoxIcon, 
+      color: 'text-teal-600', 
+      bgColor: 'bg-teal-50', 
+      borderColor: 'border-teal-200' 
     },
   ]
 

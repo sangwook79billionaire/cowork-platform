@@ -6,11 +6,11 @@
   "devCommand": "npm run dev",
   "crons": [
     {
-      "path": "/api/cron/news-daily?timeSlot=morning&userId=system&includeAutoSummary=true",
-      "schedule": "0 6 * * *"
+      "path": "/api/news/auto-crawl",
+      "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/cron/news-daily?timeSlot=evening&userId=system&includeAutoSummary=true",
+      "path": "/api/news/auto-crawl",
       "schedule": "0 18 * * *"
     }
   ]

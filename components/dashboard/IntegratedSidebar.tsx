@@ -10,7 +10,8 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
-  XMarkIcon
+  XMarkIcon,
+  PlayIcon
 } from '@heroicons/react/24/outline'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -218,6 +219,14 @@ export function IntegratedSidebar({
       color: 'text-purple-600', 
       bgColor: 'bg-purple-50', 
       borderColor: 'border-purple-200' 
+    },
+    { 
+      id: 'shorts-scripts' as ActiveFeature, 
+      name: '숏폼 스크립트', 
+      icon: PlayIcon, 
+      color: 'text-pink-600', 
+      bgColor: 'bg-pink-50', 
+      borderColor: 'border-pink-200' 
     },
     { 
       id: 'news-archive' as ActiveFeature, 

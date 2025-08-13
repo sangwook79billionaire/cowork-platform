@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const keyword = searchParams.get('keyword');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    // request.url 대신 searchParams를 직접 사용
+    const keyword = request.nextUrl?.searchParams.get('keyword') || null;
+    const limit = parseInt(request.nextUrl?.searchParams.get('limit') || '50');
 
     console.log(`🔍 Firebase에서 뉴스 가져오기: keyword=${keyword}, limit=${limit}`);
 

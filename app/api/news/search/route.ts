@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const keywords = searchParams.get('keywords');
-    const language = searchParams.get('language') || 'ko';
+    // request.url 대신 searchParams를 직접 사용
+    const keywords = request.nextUrl?.searchParams.get('keywords') || '';
+    const language = request.nextUrl?.searchParams.get('language') || 'ko';
     
     console.log('=== Firebase 뉴스 검색 API (GET) ===');
     console.log('검색 키워드:', keywords);

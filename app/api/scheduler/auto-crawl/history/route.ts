@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 크롤링 이력 조회 시작');
     
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const status = searchParams.get('status');
-    const date = searchParams.get('date');
+    // request.url 대신 searchParams를 직접 사용
+    const limit = parseInt(request.nextUrl?.searchParams.get('limit') || '50');
+    const status = request.nextUrl?.searchParams.get('status') || null;
+    const date = request.nextUrl?.searchParams.get('date') || null;
     
     let query = db.collection('crawlHistory').orderBy('crawledAt', 'desc');
     

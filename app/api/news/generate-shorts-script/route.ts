@@ -305,10 +305,10 @@ export async function POST(request: NextRequest) {
 // GET: 생성된 스크립트 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const section = searchParams.get('section');
-    const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    // request.url 대신 searchParams를 직접 사용
+    const section = request.nextUrl?.searchParams.get('section') || null;
+    const status = request.nextUrl?.searchParams.get('status') || null;
+    const limit = parseInt(request.nextUrl?.searchParams.get('limit') || '50');
     
     let query = db.collection('shortsScripts').orderBy('createdAt', 'desc');
     

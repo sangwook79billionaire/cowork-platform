@@ -41,6 +41,8 @@ interface ScriptGenerationRequest {
   date?: string;
   limit?: number;
   forceRegenerate?: boolean;
+  aiProvider?: 'google' | 'openai' | 'anthropic';
+  aiModel?: string;
 }
 
 const ShortsScriptManager: React.FC = () => {
@@ -59,7 +61,9 @@ const ShortsScriptManager: React.FC = () => {
     section: 'all',
     date: new Date().toISOString().split('T')[0],
     limit: 10,
-    forceRegenerate: false
+    forceRegenerate: false,
+    aiProvider: 'google',
+    aiModel: 'gemini-pro'
   });
 
   // 스크립트 목록 조회
@@ -397,6 +401,59 @@ const ShortsScriptManager: React.FC = () => {
                 <label htmlFor="forceRegenerate" className="text-sm font-medium text-gray-700">
                   기존 스크립트 재생성
                 </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  AI 모델 선택
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">AI 제공자</label>
+                    <select
+                      value={generateForm.aiProvider}
+                      onChange={(e) => {
+                        const provider = e.target.value as 'google' | 'openai' | 'anthropic';
+                        setGenerateForm({
+                          ...generateForm, 
+                          aiProvider: provider,
+                          aiModel: provider === 'google' ? 'gemini-pro' : 
+                                   provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3'
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="google">Google Gemini</option>
+                      <option value="openai">OpenAI GPT</option>
+                      <option value="anthropic">Anthropic Claude</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">모델</label>
+                    <select
+                      value={generateForm.aiModel}
+                      onChange={(e) => setGenerateForm({...generateForm, aiModel: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {generateForm.aiProvider === 'google' && (
+                        <option value="gemini-pro">Gemini Pro</option>
+                      )}
+                      {generateForm.aiProvider === 'openai' && (
+                        <>
+                          <option value="gpt-4">GPT-4</option>
+                          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        </>
+                      )}
+                      {generateForm.aiProvider === 'anthropic' && (
+                        <>
+                          <option value="claude-3">Claude 3</option>
+                          <option value="claude-2">Claude 2</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 

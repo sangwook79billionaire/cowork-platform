@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AIModelSelector, AIProvider, AIModel } from '@/lib/ai-providers';
 
 // Firebase Admin 초기화
 if (!getApps().length) {
@@ -23,9 +23,6 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-// Gemini AI 초기화
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
 interface ShortsScript {
   id: string;
   originalArticleId: string;
@@ -42,6 +39,8 @@ interface ShortsScript {
   tags: string[];
   targetAudience: string;
   callToAction: string;
+  aiProvider?: string;
+  aiModel?: string;
 }
 
 interface GenerateScriptRequest {
@@ -49,6 +48,8 @@ interface GenerateScriptRequest {
   date?: string;
   limit?: number;
   forceRegenerate?: boolean;
+  aiProvider?: AIProvider;
+  aiModel?: AIModel;
 }
 
 interface GenerateScriptResponse {
@@ -57,6 +58,8 @@ interface GenerateScriptResponse {
   generatedScripts: number;
   totalArticles: number;
   scripts: ShortsScript[];
+  aiProvider: string;
+  aiModel: string;
 }
 
 // 숏폼 스크립트 생성 프롬프트
@@ -150,13 +153,16 @@ export async function POST(request: NextRequest) {
         
         console.log(`🎬 스크립트 생성 중: ${article.title}`);
         
-        // Gemini AI로 스크립트 생성
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        // AI 모델로 스크립트 생성
         const prompt = generateShortsPrompt(article);
         
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        const aiResponse = await AIModelSelector.generateContent(
+          prompt,
+          body.aiProvider,
+          { model: body.aiModel }
+        );
+        
+        const text = aiResponse.content;
         
         // JSON 파싱 시도
         let scriptData;
@@ -211,7 +217,9 @@ export async function POST(request: NextRequest) {
           status: 'draft',
           tags: scriptData.tags || ['뉴스'],
           targetAudience: scriptData.targetAudience || '일반 시청자',
-          callToAction: scriptData.callToAction || '더 자세한 내용을 확인해보세요!'
+          callToAction: scriptData.callToAction || '더 자세한 내용을 확인해보세요!',
+          aiProvider: aiResponse.provider,
+          aiModel: aiResponse.model
         };
         
         // Firebase에 저장
@@ -258,12 +266,19 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // 사용된 AI 모델 정보 가져오기
+    const aiInfo = AIModelSelector.getProviderInfo();
+    const usedProvider = body.aiProvider || aiInfo.default || 'google';
+    const usedModel = body.aiModel || 'gemini-pro';
+    
     const response: GenerateScriptResponse = {
       success: true,
       message: `${successCount}개의 숏폼 스크립트가 성공적으로 생성되었습니다.`,
       generatedScripts: successCount,
       totalArticles: articles.length,
-      scripts: generatedScripts
+      scripts: generatedScripts,
+      aiProvider: usedProvider,
+      aiModel: usedModel
     };
     
     console.log(`🎉 숏폼 스크립트 생성 완료: ${successCount}/${articles.length}`);

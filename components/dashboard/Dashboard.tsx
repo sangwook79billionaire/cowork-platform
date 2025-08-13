@@ -12,6 +12,7 @@ import SavedArticles from '@/components/news/SavedArticles'
 import NateNews from '@/components/news/NateNews'
 import ShortsScriptManager from '@/components/news/ShortsScriptManager'
 import GeminiAITester from './GeminiAITester'
+import QuickExecuteModal from './QuickExecuteModal'
 import AutoCrawlScheduler from './AutoCrawlScheduler'
 import { Bars3Icon, XMarkIcon, ArrowRightOnRectangleIcon, PlusIcon } from '@heroicons/react/24/outline'
 
@@ -26,6 +27,7 @@ export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [showCreateTopLevelBulletin, setShowCreateTopLevelBulletin] = useState(false)
+  const [showQuickExecuteModal, setShowQuickExecuteModal] = useState(false)
 
   // 디버깅: Dashboard 상태 확인
   console.log('🔍 Dashboard 렌더링');
@@ -106,7 +108,13 @@ export function Dashboard() {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-lg font-semibold text-gray-900">협업 플랫폼</h1>
-          <div className="w-10"></div> {/* 균형을 위한 빈 공간 */}
+          <button
+            onClick={() => setShowQuickExecuteModal(true)}
+            className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 transition-colors"
+          >
+            <PlusIcon className="w-4 h-4" />
+            <span>즉시 실행</span>
+          </button>
         </div>
       </div>
 
@@ -212,6 +220,12 @@ export function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* 즉시 실행 모달 */}
+      <QuickExecuteModal
+        isOpen={showQuickExecuteModal}
+        onClose={() => setShowQuickExecuteModal(false)}
+      />
 
       {/* 모바일에서 사이드바가 열렸을 때 배경 오버레이 */}
       {sidebarOpen && (

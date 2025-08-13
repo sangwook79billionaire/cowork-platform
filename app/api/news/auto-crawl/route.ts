@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 자동 크롤링 시작');
     
+    const body = await request.json();
+    const { sections: requestedSections, limit: requestedLimit } = body;
+    
     // 오늘 날짜 가져오기
     const today = new Date();
     const dateString = today.getFullYear().toString() + 
@@ -61,9 +64,11 @@ export async function POST(request: NextRequest) {
     const crawledAt = today.toISOString();
     
     console.log('🔍 크롤링 날짜:', dateString);
+    console.log('🔍 요청된 섹션:', requestedSections || '전체');
+    console.log('🔍 요청된 제한:', requestedLimit || '기본값');
     
     // 각 섹션별 URL 정의
-    const sections = [
+    const allSections = [
       { code: 'sisa', name: '시사', url: `https://news.nate.com/rank/interest?sc=sisa&p=day&date=${dateString}` },
       { code: 'spo', name: '스포츠', url: `https://news.nate.com/rank/interest?sc=spo&p=day&date=${dateString}` },
       { code: 'ent', name: '연예', url: `https://news.nate.com/rank/interest?sc=ent&p=day&date=${dateString}` },
@@ -73,8 +78,13 @@ export async function POST(request: NextRequest) {
       { code: 'int', name: '세계', url: `https://news.nate.com/rank/interest?sc=int&p=day&date=${dateString}` },
       { code: 'its', name: '과학', url: `https://news.nate.com/rank/interest?sc=its&p=day&date=${dateString}` }
     ];
+    
+    // 요청된 섹션이 있으면 필터링, 없으면 전체
+    const sections = requestedSections && requestedSections.length > 0
+      ? allSections.filter(section => requestedSections.includes(section.code))
+      : allSections;
 
-    const allSections: NateNewsSection[] = [];
+    const resultSections: NateNewsSection[] = [];
     let totalArticles = 0;
     let newArticles = 0;
     let duplicateArticles = 0;

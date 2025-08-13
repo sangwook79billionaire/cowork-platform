@@ -5,16 +5,25 @@ import { getFirestore } from 'firebase-admin/firestore';
 // Firebase Admin 초기화
 if (!getApps().length) {
   try {
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-    };
+    // 환경 변수 확인
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    initializeApp({
-      credential: cert(serviceAccount as any)
-    });
-    console.log('✅ Firebase Admin 초기화 성공');
+    if (!projectId || !clientEmail || !privateKey) {
+      console.log('⚠️ Firebase 환경 변수가 설정되지 않음 - 빌드 시 건너뜀');
+    } else {
+      const serviceAccount = {
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n')
+      };
+
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+      console.log('✅ Firebase Admin 초기화 성공');
+    }
   } catch (error) {
     console.error('❌ Firebase Admin 초기화 실패:', error);
   }

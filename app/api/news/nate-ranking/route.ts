@@ -26,6 +26,37 @@ interface NateNewsResponse {
 
 export async function GET() {
   try {
+    console.log('🔍 네이트 뉴스 API 시작');
+    
+    // 간단한 테스트 응답 (크롤링 없이)
+    const testResponse = {
+      success: true,
+      date: new Date().toISOString().split('T')[0],
+      sections: [
+        {
+          section: 'sisa',
+          sectionName: '시사',
+          articles: [
+            {
+              rank: 1,
+              title: '테스트 뉴스 - 시사',
+              link: 'https://news.nate.com',
+              source: '네이트 뉴스',
+              summary: '테스트용 뉴스입니다.',
+              publishedAt: new Date().toISOString().split('T')[0],
+              section: 'sisa'
+            }
+          ]
+        }
+      ],
+      totalArticles: 1
+    };
+
+    console.log('✅ 테스트 응답 반환:', testResponse);
+    return NextResponse.json(testResponse);
+
+    // TODO: 실제 크롤링 로직은 테스트 완료 후 활성화
+    /*
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -143,6 +174,7 @@ export async function GET() {
     console.log(`🎉 전체 크롤링 완료: ${totalArticles}개 기사, ${allSections.length}개 섹션`);
     
     return NextResponse.json(response);
+    */
 
   } catch (error) {
     console.error('❌ 네이트 뉴스 크롤링 오류:', error);

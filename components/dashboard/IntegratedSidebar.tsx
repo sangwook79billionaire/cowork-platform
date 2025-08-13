@@ -41,6 +41,44 @@ import { CSS } from '@dnd-kit/utilities';
 import { ActiveFeature } from '@/types/dashboard'
 import BulletinEditModal from './BulletinEditModal'
 
+// Timestamp를 Date로 안전하게 변환하는 함수
+const safeTimestampToDate = (timestamp: any): Date | null => {
+  if (!timestamp) return null;
+  
+  // 이미 Date 객체인 경우
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  
+  // Firestore Timestamp인 경우
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  
+  // 문자열인 경우 (ISO 문자열)
+  if (typeof timestamp === 'string') {
+    try {
+      return new Date(timestamp);
+    } catch (error) {
+      console.warn('Invalid date string:', timestamp);
+      return null;
+    }
+  }
+  
+  // 숫자인 경우 (Unix timestamp)
+  if (typeof timestamp === 'number') {
+    try {
+      return new Date(timestamp);
+    } catch (error) {
+      console.warn('Invalid timestamp number:', timestamp);
+      return null;
+    }
+  }
+  
+  console.warn('Unknown timestamp format:', timestamp);
+  return null;
+}
+
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
   onFeatureChange: (feature: ActiveFeature) => void
@@ -103,10 +141,22 @@ export function IntegratedSidebar({
       (snapshot) => {
         const bulletinData: Bulletin[] = []
         snapshot.forEach((doc) => {
-          bulletinData.push({
+          const data = doc.data()
+          // Timestamp를 Date로 안전하게 변환
+          const bulletin: Bulletin = {
             id: doc.id,
-            ...doc.data()
-          } as Bulletin)
+            title: data.title || '',
+            description: data.description || '',
+            parentId: data.parentId || '',
+            level: data.level || 0,
+            userId: data.userId || '',
+            createdAt: safeTimestampToDate(data.createdAt) || new Date(),
+            updatedAt: safeTimestampToDate(data.updatedAt) || new Date(),
+            isActive: data.isActive !== false,
+            order: data.order || 0,
+            children: []
+          }
+          bulletinData.push(bulletin)
         })
         console.log('🔍 모든 게시판 데이터:', bulletinData);
         setAllBulletins(bulletinData)

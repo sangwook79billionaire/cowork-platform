@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { AIModelSelector, AIProvider, AIModel } from '@/lib/ai-providers';
+import { AIModelSelector, AIProvider, AIModel, AIProviderFactory } from '@/lib/ai-providers';
 
 // Firebase Admin 초기화
 if (!getApps().length) {
@@ -22,6 +22,9 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
+
+// AI Provider 초기화
+AIProviderFactory.initialize();
 
 interface ShortsScript {
   id: string;
@@ -154,15 +157,31 @@ export async function POST(request: NextRequest) {
         console.log(`🎬 스크립트 생성 중: ${article.title}`);
         
         // AI 모델로 스크립트 생성
-        const prompt = generateShortsPrompt(article);
+        let aiResponse;
+        let text = '';
         
-        const aiResponse = await AIModelSelector.generateContent(
-          prompt,
-          body.aiProvider,
-          { model: body.aiModel }
-        );
-        
-        const text = aiResponse.content;
+        try {
+          const prompt = generateShortsPrompt(article);
+          
+          aiResponse = await AIModelSelector.generateContent(
+            prompt,
+            body.aiProvider,
+            { model: body.aiModel }
+          );
+          
+          text = aiResponse.content;
+          console.log(`✅ AI 응답 성공: ${article.title}`);
+          
+        } catch (aiError) {
+          console.warn(`⚠️ AI 생성 실패, 기본 스크립트 사용: ${article.title}`, aiError);
+          // AI 생성 실패 시 기본 응답 사용
+          aiResponse = {
+            content: '',
+            model: body.aiModel || 'gemini-pro',
+            provider: body.aiProvider || 'google'
+          };
+          text = '';
+        }
         
         // JSON 파싱 시도
         let scriptData;
@@ -186,6 +205,21 @@ export async function POST(request: NextRequest) {
             targetAudience: '일반 시청자',
             callToAction: '더 자세한 내용은 링크를 확인해보세요!',
             tags: ['뉴스', '정보']
+          };
+        }
+        
+        // AI 생성이 실패했거나 텍스트가 비어있는 경우 기본 스크립트 사용
+        if (!text || text.trim() === '') {
+          console.log(`📝 기본 스크립트 생성: ${article.title}`);
+          scriptData = {
+            title: article.title.substring(0, 15),
+            script: `오늘의 주요 뉴스입니다.\n\n${article.title}\n\n이 뉴스에 대해 더 자세히 알아보세요.`,
+            summary: article.title.substring(0, 50),
+            keywords: ['뉴스', '정보'],
+            duration: 30,
+            targetAudience: '일반 시청자',
+            callToAction: '더 자세한 내용을 확인해보세요!',
+            tags: ['뉴스']
           };
         }
         
@@ -288,11 +322,25 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ 숏폼 스크립트 생성 오류:', error);
     
+    // 더 자세한 오류 정보 로깅
+    if (error instanceof Error) {
+      console.error('오류 메시지:', error.message);
+      console.error('오류 스택:', error.stack);
+    }
+    
+    // AI Provider 상태 확인
+    const aiInfo = AIProviderFactory.getAvailableProviders();
+    console.log('🔍 사용 가능한 AI Provider:', aiInfo);
+    
     return NextResponse.json(
       { 
         success: false, 
         message: '숏폼 스크립트 생성 중 오류가 발생했습니다.',
         error: error instanceof Error ? error.message : '알 수 없는 오류',
+        details: {
+          availableProviders: aiInfo,
+          timestamp: new Date().toISOString()
+        },
         generatedScripts: 0,
         totalArticles: 0,
         scripts: []

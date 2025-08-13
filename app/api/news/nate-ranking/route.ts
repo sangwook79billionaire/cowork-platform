@@ -66,7 +66,19 @@ export async function GET() {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const html = await response.text();
+        // EUC-KR 인코딩을 UTF-8로 변환
+        let html: string;
+        try {
+          const buffer = await response.arrayBuffer();
+          const decoder = new TextDecoder('euc-kr');
+          html = decoder.decode(buffer);
+          console.log(`✅ ${section.name} EUC-KR → UTF-8 변환 성공`);
+        } catch (encodingError) {
+          console.warn(`⚠️ ${section.name} EUC-KR 변환 실패, 원본 텍스트 사용:`, encodingError);
+          // 대안: 원본 텍스트 사용 (일부 한글이 깨질 수 있음)
+          html = await response.text();
+        }
+        
         console.log(`✅ ${section.name} HTML 가져오기 완료: ${html.length} bytes`);
         
         // HTML 내용 일부 출력 (디버깅용)

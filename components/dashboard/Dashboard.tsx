@@ -174,7 +174,7 @@ export function Dashboard() {
           {activeFeature === 'nate-news' && (
             <div className="flex-1 overflow-hidden">
               <div className="h-full overflow-y-auto p-4">
-                <NateNews />
+                <NateNews onQuickExecute={() => setShowQuickExecuteModal(true)} />
               </div>
             </div>
           )}

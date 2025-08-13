@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BookmarkIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BookmarkIcon, ChartBarIcon, PlayIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 
 interface NateNewsArticle {
@@ -27,7 +27,11 @@ interface NateNewsResponse {
   totalArticles: number;
 }
 
-export default function NateNews() {
+interface NateNewsProps {
+  onQuickExecute?: () => void;
+}
+
+export default function NateNews({ onQuickExecute }: NateNewsProps) {
   const [sections, setSections] = useState<NateNewsSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -239,6 +243,17 @@ export default function NateNews() {
             <span className="text-sm text-gray-500">
               마지막 업데이트: {lastUpdated.toLocaleString('ko-KR')}
             </span>
+          )}
+
+          {/* 즉시 실행 버튼 */}
+          {onQuickExecute && (
+            <button
+              onClick={onQuickExecute}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2"
+            >
+              <PlayIcon className="h-4 w-4" />
+              즉시 실행
+            </button>
           )}
         </div>
       </div>

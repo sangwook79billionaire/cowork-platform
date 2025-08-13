@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
+// 이 API는 항상 동적으로 실행되어야 함
+export const dynamic = 'force-dynamic';
+
 // Firebase Admin 초기화
 if (!getApps().length) {
   try {

@@ -15,9 +15,9 @@ import GeminiAITester from './GeminiAITester'
 import QuickExecuteModal from './QuickExecuteModal'
 import AutoCrawlScheduler from './AutoCrawlScheduler'
 import { Bars3Icon, XMarkIcon, ArrowRightOnRectangleIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { ActiveFeature } from '@/types/dashboard'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'shorts-scripts' | 'gemini-ai-tester' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
 
 export function Dashboard() {
   const { user, loading, signOut } = useAuth()

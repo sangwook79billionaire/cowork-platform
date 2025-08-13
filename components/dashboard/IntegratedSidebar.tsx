@@ -38,7 +38,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'shorts-scripts' | 'gemini-ai-tester' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
+import { ActiveFeature } from '@/types/dashboard'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature

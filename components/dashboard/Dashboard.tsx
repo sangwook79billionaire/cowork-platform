@@ -11,11 +11,12 @@ import NewsArchive from '@/components/news/NewsArchive'
 import SavedArticles from '@/components/news/SavedArticles'
 import NateNews from '@/components/news/NateNews'
 import ShortsScriptManager from '@/components/news/ShortsScriptManager'
+import GeminiAITester from './GeminiAITester'
 import AutoCrawlScheduler from './AutoCrawlScheduler'
 import { Bars3Icon, XMarkIcon, ArrowRightOnRectangleIcon, PlusIcon } from '@heroicons/react/24/outline'
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create'
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'shorts-scripts' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
+type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'shorts-scripts' | 'gemini-ai-tester' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
 
 export function Dashboard() {
   const { user, loading, signOut } = useAuth()
@@ -174,6 +175,14 @@ export function Dashboard() {
             <div className="flex-1 overflow-hidden">
               <div className="h-full overflow-y-auto p-4">
                 <ShortsScriptManager />
+              </div>
+            </div>
+          )}
+
+          {activeFeature === 'gemini-ai-tester' && (
+            <div className="flex-1 overflow-hidden">
+              <div className="h-full overflow-y-auto p-4">
+                <GeminiAITester />
               </div>
             </div>
           )}

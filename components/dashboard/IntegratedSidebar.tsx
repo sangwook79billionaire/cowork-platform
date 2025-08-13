@@ -11,7 +11,8 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   XMarkIcon,
-  PlayIcon
+  PlayIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -37,7 +38,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
+type ActiveFeature = 'bulletin' | 'news-search' | 'news-archive' | 'saved-articles' | 'nate-news' | 'shorts-scripts' | 'gemini-ai-tester' | 'todo-list' | 'calendar' | 'auto-crawl-scheduler'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -227,6 +228,14 @@ export function IntegratedSidebar({
       color: 'text-pink-600', 
       bgColor: 'bg-pink-50', 
       borderColor: 'border-pink-200' 
+    },
+    { 
+      id: 'gemini-ai-tester' as ActiveFeature, 
+      name: 'Gemini AI 테스트', 
+      icon: SparklesIcon, 
+      color: 'text-purple-600', 
+      bgColor: 'bg-purple-50', 
+      borderColor: 'border-purple-200' 
     },
     { 
       id: 'news-archive' as ActiveFeature, 

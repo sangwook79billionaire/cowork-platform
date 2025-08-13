@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     ];
     
     // 요청된 섹션이 있으면 필터링, 없으면 전체
-    const sections = requestedSections && requestedSections.length > 0
+    const crawlSections = requestedSections && requestedSections.length > 0
       ? allSections.filter(section => requestedSections.includes(section.code))
       : allSections;
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     let duplicateArticles = 0;
 
     // 각 섹션별로 크롤링 및 저장
-    for (const section of sections) {
+    for (const section of crawlSections) {
       try {
         console.log(`🔍 ${section.name} 섹션 크롤링 시작:`, section.url);
         
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        allSections.push({
+        resultSections.push({
           section: section.code,
           sectionName: section.name,
           articles
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
         console.error(`❌ ${section.name} 섹션 크롤링 오류:`, error);
         
         // 오류 발생 시 빈 배열로 추가
-        allSections.push({
+        resultSections.push({
           section: section.code,
           sectionName: section.name,
           articles: []
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
         totalArticles,
         newArticles,
         duplicateArticles,
-        sections: allSections.length,
+        sections: crawlSections.length,
         status: 'success'
       });
       console.log('✅ 크롤링 이력 저장 완료');
@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
       message: '자동 크롤링이 성공적으로 완료되었습니다.',
       crawledAt,
       totalArticles,
-      sections: allSections.length,
+      sections: crawlSections.length,
       newArticles,
       duplicateArticles
     };

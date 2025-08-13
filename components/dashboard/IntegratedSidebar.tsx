@@ -12,7 +12,8 @@ import {
   ArrowRightOnRectangleIcon,
   XMarkIcon,
   PlayIcon,
-  SparklesIcon
+  SparklesIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -37,8 +38,8 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
 import { ActiveFeature } from '@/types/dashboard'
+import BulletinEditModal from './BulletinEditModal'
 
 interface IntegratedSidebarProps {
   activeFeature: ActiveFeature
@@ -59,6 +60,22 @@ export function IntegratedSidebar({
   const [isBulletinExpanded, setIsBulletinExpanded] = useState(false)
   const [allBulletins, setAllBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedBulletin, setSelectedBulletin] = useState<Bulletin | null>(null)
+
+  // 게시판 수정 모달 열기
+  const handleEditBulletin = (bulletin: Bulletin) => {
+    setSelectedBulletin(bulletin);
+    setShowEditModal(true);
+  };
+
+  // 게시판 수정 완료 후 처리
+  const handleBulletinUpdate = () => {
+    // 게시판 데이터 새로고침
+    if (isBulletinExpanded) {
+      // useEffect가 자동으로 데이터를 새로고침함
+    }
+  };
 
   // 드래그 앤 드롭 센서 설정
   const sensors = useSensors(
@@ -307,11 +324,7 @@ export function IntegratedSidebar({
     }
   }
 
-  const handleEditBulletin = (bulletin: Bulletin) => {
-    console.log('🔍 게시판 수정:', bulletin);
-    // TODO: 게시판 수정 모달 열기
-    toast.success('게시판 수정 기능은 준비 중입니다.');
-  }
+  // 기존 handleEditBulletin 함수는 위에서 정의됨
 
   const handleDeleteBulletin = async (bulletin: Bulletin) => {
     if (!confirm(`"${bulletin.title}" 게시판을 삭제하시겠습니까?`)) {
@@ -542,6 +555,19 @@ export function IntegratedSidebar({
           )}
         </div>
       </div>
+
+      {/* 게시판 수정 모달 */}
+      <BulletinEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        bulletin={selectedBulletin ? {
+          id: selectedBulletin.id,
+          title: selectedBulletin.title,
+          level: selectedBulletin.level,
+          order: selectedBulletin.order
+        } : null}
+        onUpdate={handleBulletinUpdate}
+      />
     </>
   )
 } 

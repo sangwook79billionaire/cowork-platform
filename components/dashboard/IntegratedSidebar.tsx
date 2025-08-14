@@ -157,8 +157,9 @@ export function IntegratedSidebar({
     
     const unsubscribe = onSnapshot(
       query(
-        collection(db, 'bulletins')
-        // 임시로 복합 인덱스 제거 - level과 order로 정렬은 클라이언트에서 처리
+        collection(db, 'bulletins'), 
+        orderBy('level', 'asc'),
+        orderBy('order', 'asc')
       ),
       (snapshot) => {
         console.log('🔍 Firestore 스냅샷 수신:', snapshot.size, '개 문서');
@@ -183,15 +184,7 @@ export function IntegratedSidebar({
           bulletinData.push(bulletin)
         })
         
-        // 클라이언트 사이드에서 정렬: level ASC, order ASC
-        bulletinData.sort((a, b) => {
-          if (a.level !== b.level) {
-            return a.level - b.level;
-          }
-          return a.order - b.order;
-        });
-        
-        console.log('🔍 정렬된 게시판 데이터:', bulletinData);
+        console.log('🔍 처리된 게시판 데이터:', bulletinData);
         setAllBulletins(bulletinData)
         setLoading(false)
       },

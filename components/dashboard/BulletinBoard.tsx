@@ -1923,72 +1923,131 @@ export function BulletinBoard({
               </div>
 
               {/* 게시글 목록 */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {posts.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>아직 게시글이 없습니다.</p>
-                    <p className="text-sm">첫 번째 게시글을 작성해보세요!</p>
+                  <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg font-medium text-gray-600 mb-2">아직 게시글이 없습니다</p>
+                    <p className="text-sm text-gray-500">첫 번째 게시글을 작성해보세요!</p>
+                    <button
+                      onClick={() => setShowCreatePost(true)}
+                      className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      <span>첫 글 작성하기</span>
+                    </button>
                   </div>
                 ) : (
-                  posts.map((post) => (
-                    <div key={post.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <h3 
-                            className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
-                            onClick={() => handleSelectPost(post)}
-                          >
-                            {post.title}
-                          </h3>
-                          {post.isPinned && <StarIcon className="w-4 h-4 text-yellow-500" />}
-                          {post.isLocked && <LockClosedIcon className="w-4 h-4 text-gray-500" />}
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEditPost(post)
-                            }}
-                            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                            title="게시글 편집"
-                          >
-                            <PencilIcon className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeletePost(post.id)
-                            }}
-                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="게시글 삭제"
-                          >
-                            <TrashIcon className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600 mb-3">
-                        <span>{getDisplayName(post.authorName)}</span>
-                        <span className="mx-2">•</span>
-                        <span>{formatDate(post.createdAt)}</span>
-                        <span className="mx-2">•</span>
-                        <span>조회 {post.viewCount}</span>
-                        <span className="mx-2">•</span>
-                        <span>좋아요 {post.likeCount}</span>
-                      </div>
-                      
-                      <div 
-                        className="text-gray-700 prose prose-sm max-w-none"
-                        onClick={() => handleSelectPost(post)}
-                      >
-                        {post.content.length > 200 
-                          ? `${post.content.substring(0, 200)}...` 
-                          : post.content 
-                        }
+                  <div className="space-y-3">
+                    {/* 게시글 통계 */}
+                    <div className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-lg">
+                      <span>총 {posts.length}개의 게시글</span>
+                      <div className="flex items-center space-x-4">
+                        <span>📌 고정글: {posts.filter(p => p.isPinned).length}개</span>
+                        <span>🔒 잠금글: {posts.filter(p => p.isLocked).length}개</span>
                       </div>
                     </div>
-                  ))
+                    
+                    {/* 게시글 목록 */}
+                    {posts.map((post, index) => (
+                      <div 
+                        key={post.id} 
+                        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                        onClick={() => handleSelectPost(post)}
+                      >
+                        {/* 게시글 헤더 */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                                {post.title}
+                              </h3>
+                              {post.isPinned && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  📌 고정
+                                </span>
+                              )}
+                              {post.isLocked && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  🔒 잠금
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* 태그 */}
+                            {post.tags && post.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {post.tags.map((tag, tagIndex) => (
+                                  <span 
+                                    key={tagIndex}
+                                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                  >
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* 관리 버튼들 */}
+                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditPost(post)
+                              }}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="게시글 편집"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeletePost(post.id)
+                              }}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="게시글 삭제"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* 게시글 메타 정보 */}
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                          <span className="flex items-center space-x-1">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            <span className="font-medium">{getDisplayName(post.authorName)}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <span>📅</span>
+                            <span>{formatDate(post.createdAt)}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <span>👁️</span>
+                            <span>{post.viewCount}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <span>❤️</span>
+                            <span>{post.likeCount}</span>
+                          </span>
+                        </div>
+                        
+                        {/* 게시글 내용 미리보기 */}
+                        <div className="text-gray-700 leading-relaxed">
+                          {post.content.length > 300 ? (
+                            <div>
+                              <p className="mb-2">{post.content.substring(0, 300)}...</p>
+                              <span className="text-blue-600 text-sm font-medium">더 보기</span>
+                            </div>
+                          ) : (
+                            <p>{post.content}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

@@ -497,67 +497,93 @@ export function IntegratedSidebar({
                         >
                           {bulletinTree.map((bulletin) => (
                             <div key={bulletin.id} className="space-y-1">
-                              <div className="flex items-center justify-between group">
-                                <button
-                                  onClick={() => handleBulletinSelect(bulletin.id)}
-                                  className={`flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors ${
-                                    bulletin.children && bulletin.children.length > 0 ? 'ml-4' : ''
-                                  }`}
-                                  style={{ marginLeft: bulletin.children && bulletin.children.length > 0 ? 16 : 0 }}
-                                >
-                                  {bulletin.children && bulletin.children.length > 0 && (
-                                    <ChevronRightIcon className="w-4 h-4 mr-2" />
-                                  )}
-                                  {bulletin.title}
-                                </button>
-                                
-                                {/* 게시판 관리 버튼들 */}
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="space-y-1">
+                                {/* 최상위 게시판 */}
+                                <div className="flex items-center justify-between group">
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditBulletin(bulletin);
-                                    }}
-                                    className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                    title="게시판 수정"
+                                    onClick={() => handleBulletinSelect(bulletin.id)}
+                                    className="flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors font-medium"
                                   >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
+                                    <span className="flex items-center">
+                                      {bulletin.children && bulletin.children.length > 0 && (
+                                        <ChevronRightIcon className="w-4 h-4 mr-2 text-gray-500" />
+                                      )}
+                                      📋 {bulletin.title}
+                                    </span>
                                   </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteBulletin(bulletin);
-                                    }}
-                                    className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                    title="게시판 삭제"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
+                                  
+                                  {/* 게시판 관리 버튼들 */}
+                                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditBulletin(bulletin);
+                                      }}
+                                      className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                      title="게시판 수정"
+                                    >
+                                      <PencilIcon className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteBulletin(bulletin);
+                                      }}
+                                      className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      title="게시판 삭제"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </div>
+                                
+                                {/* 하위 게시판들 */}
+                                {bulletin.children && bulletin.children.length > 0 && (
+                                  <div className="ml-6 space-y-1">
+                                    {bulletin.children.map((childBulletin) => (
+                                      <div key={childBulletin.id} className="flex items-center justify-between group">
+                                        <button
+                                          onClick={() => handleBulletinSelect(childBulletin.id)}
+                                          className="flex-1 text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors"
+                                        >
+                                          <span className="flex items-center">
+                                            <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                                            📄 {childBulletin.title}
+                                          </span>
+                                        </button>
+                                        
+                                        {/* 하위 게시판 관리 버튼들 */}
+                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleEditBulletin(childBulletin);
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                            title="게시판 수정"
+                                          >
+                                            <PencilIcon className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteBulletin(childBulletin);
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                            title="게시판 삭제"
+                                          >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                              {bulletin.children && bulletin.children.length > 0 && (
-                                <SortableContext
-                                  items={bulletin.children.map(b => b.id)}
-                                  strategy={verticalListSortingStrategy}
-                                >
-                                  {bulletin.children.map((childBulletin) => (
-                                    <div key={childBulletin.id} className="ml-4">
-                                      <button
-                                        onClick={() => handleBulletinSelect(childBulletin.id)}
-                                        className={`
-                                          flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors
-                                        `}
-                                      >
-                                        {childBulletin.title}
-                                      </button>
-                                    </div>
-                                  ))}
-                                </SortableContext>
-                              )}
                             </div>
                           ))}
                         </SortableContext>

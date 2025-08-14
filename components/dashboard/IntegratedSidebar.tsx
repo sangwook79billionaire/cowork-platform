@@ -85,6 +85,7 @@ interface IntegratedSidebarProps {
   isOpen: boolean
   onClose: () => void
   onBulletinSelect?: (bulletinId: string) => void
+  defaultBulletinExpanded?: boolean
 }
 
 export function IntegratedSidebar({ 
@@ -92,10 +93,11 @@ export function IntegratedSidebar({
   onFeatureChange, 
   isOpen, 
   onClose,
-  onBulletinSelect
+  onBulletinSelect,
+  defaultBulletinExpanded = false
 }: IntegratedSidebarProps) {
   const { user, signOut } = useAuth()
-  const [isBulletinExpanded, setIsBulletinExpanded] = useState(false)
+  const [isBulletinExpanded, setIsBulletinExpanded] = useState(defaultBulletinExpanded)
   const [allBulletins, setAllBulletins] = useState<Bulletin[]>([])
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -362,6 +364,13 @@ export function IntegratedSidebar({
     // 게시판 기능 활성화
     onFeatureChange('bulletin')
   }
+
+  // activeFeature가 'bulletin'일 때 자동으로 게시판 확장
+  useEffect(() => {
+    if (activeFeature === 'bulletin' && !isBulletinExpanded) {
+      setIsBulletinExpanded(true)
+    }
+  }, [activeFeature, isBulletinExpanded])
 
   const handleBulletinSelect = (bulletinId: string) => {
     console.log('🔍 게시판 선택:', bulletinId);

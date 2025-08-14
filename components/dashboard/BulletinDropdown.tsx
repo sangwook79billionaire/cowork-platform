@@ -177,8 +177,8 @@ export function BulletinDropdown({
           </div>
 
           {/* 하위 게시판들 */}
-          {hasChildren && isExpanded && (
-            <div className="ml-2">
+          {hasChildren && (
+            <div className={`ml-4 border-l border-gray-200 ${isExpanded ? 'block' : 'hidden'}`}>
               {renderBulletinTree(children, level + 1)}
             </div>
           )}

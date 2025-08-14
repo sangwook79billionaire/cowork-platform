@@ -286,55 +286,77 @@ export function IntegratedSidebar({
 
   // 게시판을 재귀적으로 렌더링하는 함수
   const renderBulletinTree = (bulletins: any[], level: number = 0) => {
-    return bulletins.map((bulletin) => (
-      <div key={bulletin.id} className="space-y-1">
-        <div className="flex items-center justify-between group">
-          <button
-            onClick={() => handleBulletinSelect(bulletin.id)}
-            className={`flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors ${
-              level > 0 ? 'ml-' + (level * 4) : ''
-            }`}
-            style={{ marginLeft: level * 16 }}
-          >
-            {level > 0 && <span className="mr-2">└─</span>}
-            {bulletin.title}
-          </button>
+    return bulletins.map((bulletin) => {
+      const hasChildren = bulletin.children && bulletin.children.length > 0;
+      const isExpanded = expandedBulletins.has(bulletin.id);
+      
+      return (
+        <div key={bulletin.id} className="space-y-1">
+          <div className="flex items-center justify-between group">
+            <div className="flex items-center flex-1">
+              {/* 확장/축소 버튼 */}
+              {hasChildren && (
+                <button
+                  onClick={() => toggleBulletinExpansion(bulletin.id)}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors mr-1"
+                  title={isExpanded ? "게시판 접기" : "게시판 펼치기"}
+                >
+                  {isExpanded ? (
+                    <ChevronDownIcon className="w-3 h-3" />
+                  ) : (
+                    <ChevronRightIcon className="w-3 h-3" />
+                  )}
+                </button>
+              )}
+              
+              <button
+                onClick={() => handleBulletinSelect(bulletin.id)}
+                className={`flex-1 text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors`}
+                style={{ marginLeft: level * 16 }}
+              >
+                {level > 0 && <span className="mr-2">└─</span>}
+                {bulletin.title}
+              </button>
+            </div>
+            
+            {/* 게시판 관리 버튼들 */}
+            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditBulletin(bulletin);
+                }}
+                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                title="게시판 수정"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteBulletin(bulletin);
+                }}
+                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="게시판 삭제"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
           
-          {/* 게시판 관리 버튼들 */}
-          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditBulletin(bulletin);
-              }}
-              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="게시판 수정"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteBulletin(bulletin);
-              }}
-              className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="게시판 삭제"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
+          {/* 하위 게시판들 - 계층 구조로 표시 */}
+          {hasChildren && (
+            <div className={`ml-4 border-l border-gray-200 ${isExpanded ? 'block' : 'hidden'}`}>
+              {renderBulletinTree(bulletin.children, level + 1)}
+            </div>
+          )}
         </div>
-        {bulletin.children && bulletin.children.length > 0 && (
-          <div className="ml-4">
-            {renderBulletinTree(bulletin.children, level + 1)}
-          </div>
-        )}
-      </div>
-    ));
+      );
+    });
   };
 
   const features = [
@@ -478,6 +500,31 @@ export function IntegratedSidebar({
     // TODO: 게시판 추가 모달 열기
     toast.success('게시판 추가 기능은 준비 중입니다.');
   }
+
+  // 게시판 확장/접기 상태를 관리하는 상태
+  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(() => {
+    const expanded = new Set<string>();
+    // 기본적으로 최상위 게시판은 확장된 상태로 설정
+    bulletinTree.forEach(bulletin => {
+      if (!bulletin.parentId || bulletin.parentId.trim() === '') {
+        expanded.add(bulletin.id);
+      }
+    });
+    return expanded;
+  });
+
+  // 게시판 확장/접기 상태를 토글하는 함수
+  const toggleBulletinExpansion = (bulletinId: string) => {
+    setExpandedBulletins(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(bulletinId)) {
+        newExpanded.delete(bulletinId);
+      } else {
+        newExpanded.add(bulletinId);
+      }
+      return newExpanded;
+    });
+  };
 
   return (
     <>

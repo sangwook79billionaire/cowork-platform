@@ -176,11 +176,27 @@ function SortableBulletinItem({
   }
 
   return (
-    <div
-      ref={setDroppableRef}
-      className={`relative ${isOver ? 'bg-blue-50 border-2 border-blue-300 rounded-lg' : ''}`}
-    >
+          <div
+        ref={setDroppableRef}
+        className={`relative ${isOver ? 'bg-blue-50 border-2 border-blue-300 rounded-lg' : ''}`}
+      >
+        {/* 드롭 영역 표시 */}
+        {isOver && (
+          <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 rounded-lg pointer-events-none z-10">
+            <div className="flex flex-col items-center justify-center h-full space-y-1">
+              <div className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                여기에 드롭
+              </div>
+              <div className="text-blue-600 text-xs text-center">
+                <div>• 상단: 앞으로 이동</div>
+                <div>• 중간: 하위로 이동</div>
+                <div>• 하단: 뒤로 이동</div>
+              </div>
+            </div>
+          </div>
+        )}
       <div
+        id={bulletin.id}
         ref={setNodeRef}
         style={style}
         className={`
@@ -463,7 +479,11 @@ export function BulletinBoard({
   const [selectedBulletinIds, setSelectedBulletinIds] = useState<Set<string>>(new Set())
   const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set())
   const [currentBulletin, setCurrentBulletin] = useState<Bulletin | null>(null)
-  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(new Set())
+  const [expandedBulletins, setExpandedBulletins] = useState<Set<string>>(() => {
+    const expanded = new Set<string>();
+    // 기본적으로 최상위 게시판은 확장된 상태로 설정
+    return expanded;
+  })
   const [internalSelectedBulletinId, setInternalSelectedBulletinId] = useState<string | null>(null)
   
   // 게시판 생성 관련 상태
@@ -756,49 +776,108 @@ export function BulletinBoard({
       const overBulletin = bulletins.find(b => b.id === over.id)
 
       if (activeBulletin && overBulletin) {
-        // 같은 레벨에서만 드래그 앤 드롭 허용
-        if (activeBulletin.level !== overBulletin.level) {
-          toast.error('같은 레벨 내에서만 순서를 변경할 수 있습니다.')
-          return
-        }
-
         try {
-          // 같은 레벨의 게시판들을 찾기
-          const sameLevelBulletins = bulletins.filter(b => 
-            b.level === activeBulletin.level && 
-            b.parentId === activeBulletin.parentId
-          ).sort((a, b) => (a.order || 0) - (b.order || 0))
+          let newParentId: string | null = null
+          let newLevel: number = 0
+          let newOrder: number = 0
+          let moveType: 'same-level-before' | 'same-level-after' | 'sub-level' = 'same-level-before'
 
-          // 드래그된 게시판의 원래 위치와 목표 위치 찾기
-          const activeIndex = sameLevelBulletins.findIndex(b => b.id === activeBulletin.id)
-          const overIndex = sameLevelBulletins.findIndex(b => b.id === overBulletin.id)
-
-          if (activeIndex === -1 || overIndex === -1) {
-            toast.error('순서 변경에 실패했습니다.')
-            return
+          // 드롭 위치에 따른 처리
+          const targetElement = document.getElementById(overBulletin.id)
+          if (targetElement) {
+            const targetRect = targetElement.getBoundingClientRect()
+            const dropY = (event.activatorEvent as MouseEvent)?.clientY || 0
+            const targetTop = targetRect.top
+            const targetBottom = targetRect.bottom
+            const targetHeight = targetRect.height
+            
+            // 드롭 위치가 타겟의 상단 1/4 영역이면 타겟의 위에 배치 (같은 레벨)
+            if (dropY < targetTop + targetHeight / 4) {
+              moveType = 'same-level-before'
+              // 타겟과 같은 레벨에 배치
+              newParentId = overBulletin.parentId
+              newLevel = overBulletin.level
+              
+              // 타겟보다 앞에 배치
+              const siblings = bulletins.filter(b => 
+                b.parentId === newParentId && b.level === newLevel
+              )
+              newOrder = Math.max(0, overBulletin.order - 1)
+              
+              // 기존 순서 조정
+              const batch = writeBatch(db)
+              for (const sibling of siblings) {
+                if (sibling.order >= newOrder && sibling.id !== activeBulletin.id) {
+                  const ref = doc(db, 'bulletins', sibling.id)
+                  batch.update(ref, { 
+                    order: sibling.order + 1,
+                    updatedAt: serverTimestamp()
+                  })
+                }
+              }
+              await batch.commit()
+            }
+            // 드롭 위치가 타겟의 하단 1/4 영역이면 타겟의 아래에 배치 (같은 레벨)
+            else if (dropY > targetBottom - targetHeight / 4) {
+              moveType = 'same-level-after'
+              // 타겟과 같은 레벨에 배치
+              newParentId = overBulletin.parentId
+              newLevel = overBulletin.level
+              
+              // 타겟보다 뒤에 배치
+              const siblings = bulletins.filter(b => 
+                b.parentId === newParentId && b.level === newLevel
+              )
+              newOrder = overBulletin.order + 1
+              
+              // 기존 순서 조정
+              const batch = writeBatch(db)
+              for (const sibling of siblings) {
+                if (sibling.order > overBulletin.order && sibling.id !== activeBulletin.id) {
+                  const ref = doc(db, 'bulletins', sibling.id)
+                  batch.update(ref, { 
+                    order: sibling.order + 1,
+                    updatedAt: serverTimestamp()
+                  })
+                }
+              }
+              await batch.commit()
+            }
+            // 드롭 위치가 타겟의 중간 영역이면 타겟의 하위로 배치 (하위 레벨)
+            else {
+              moveType = 'sub-level'
+              // 타겟의 하위로 배치
+              newParentId = overBulletin.id
+              newLevel = overBulletin.level + 1
+              
+              // 하위 게시판들의 순서 조정
+              const children = bulletins.filter(b => b.parentId === overBulletin.id)
+              newOrder = children.length
+            }
           }
 
-          // 새로운 순서 배열 생성
-          const newOrderedBulletins = [...sameLevelBulletins]
-          const [movedBulletin] = newOrderedBulletins.splice(activeIndex, 1)
-          newOrderedBulletins.splice(overIndex, 0, movedBulletin)
-
-          // 모든 게시판의 order 업데이트
-          const batch = writeBatch(db)
-          newOrderedBulletins.forEach((bulletin, index) => {
-            const ref = doc(db, 'bulletins', bulletin.id)
-            batch.update(ref, { 
-              order: index,
-              updatedAt: serverTimestamp()
-            })
+          // 드래그된 게시판 업데이트
+          await updateDoc(doc(db, 'bulletins', activeBulletin.id), {
+            parentId: newParentId,
+            level: newLevel,
+            order: newOrder,
+            updatedAt: serverTimestamp()
           })
           
-          await batch.commit()
+          // 이동 타입에 따른 메시지 표시
+          let message = ''
+          if (moveType === 'same-level-before') {
+            message = `게시판이 "${overBulletin.title}" 앞으로 이동되었습니다.`
+          } else if (moveType === 'same-level-after') {
+            message = `게시판이 "${overBulletin.title}" 뒤로 이동되었습니다.`
+          } else if (moveType === 'sub-level') {
+            message = `게시판이 "${overBulletin.title}"의 하위로 이동되었습니다.`
+          }
           
-          toast.success('게시판 순서가 변경되었습니다.')
+          toast.success(message)
         } catch (error) {
-          console.error('게시판 순서 변경 오류:', error)
-          toast.error('게시판 순서 변경에 실패했습니다.')
+          console.error('게시판 위치 변경 오류:', error)
+          toast.error('게시판 위치 변경에 실패했습니다.')
         }
       }
     }
@@ -887,6 +966,32 @@ export function BulletinBoard({
     return bulletins.filter(b => !b.parentId || b.parentId === '')
   }
 
+  // 계층 구조에 따라 게시판 정렬
+  const sortBulletinsByHierarchy = (bulletins: Bulletin[]): Bulletin[] => {
+    const result: Bulletin[] = []
+    const processed = new Set<string>()
+    
+    // 최상위 게시판부터 시작
+    const topLevel = bulletins.filter(b => !b.parentId || b.parentId.trim() === '')
+    
+    const addBulletinWithChildren = (bulletin: Bulletin) => {
+      if (processed.has(bulletin.id)) return
+      
+      result.push(bulletin)
+      processed.add(bulletin.id)
+      
+      // 자식 게시판들 추가
+      const children = bulletins.filter(b => b.parentId === bulletin.id)
+      children.sort((a, b) => a.order - b.order)
+      children.forEach(child => addBulletinWithChildren(child))
+    }
+    
+    topLevel.sort((a, b) => a.order - b.order)
+    topLevel.forEach(bulletin => addBulletinWithChildren(bulletin))
+    
+    return result
+  }
+
   // 게시판 레벨 가져오기
   const getBulletinLevel = (bulletinId: string): number => {
     const bulletin = bulletins.find(b => b.id === bulletinId)
@@ -957,8 +1062,9 @@ export function BulletinBoard({
                     level={level}
                   />
                   
-                  {hasChildren && isExpanded && (
-                    <div className="ml-4 space-y-1">
+                  {/* 하위 게시판들 - 계층 구조로 표시 */}
+                  {hasChildren && (
+                    <div className={`ml-4 border-l border-gray-200 ${isExpanded ? 'block' : 'hidden'}`}>
                       {renderBulletinTree(childBulletins, allBulletins, level + 1)}
                     </div>
                   )}
@@ -1108,9 +1214,18 @@ export function BulletinBoard({
               }
               bulletinData.push(bulletin)
             })
-            // order 필드로 정렬
-            bulletinData.sort((a, b) => a.order - b.order)
-            setBulletins(bulletinData)
+            // 계층 구조에 따라 정렬
+            const sortedBulletins = sortBulletinsByHierarchy(bulletinData)
+            setBulletins(sortedBulletins)
+            
+            // 기본적으로 최상위 게시판을 확장 상태로 설정
+            const topLevelBulletins = sortedBulletins.filter(b => !b.parentId || b.parentId.trim() === '')
+            const expandedSet = new Set<string>()
+            topLevelBulletins.forEach(bulletin => {
+              expandedSet.add(bulletin.id)
+            })
+            setExpandedBulletins(expandedSet)
+            
             setLoading(false)
           }, (error) => {
             console.error('실시간 게시판 데이터 가져오기 오류:', error)

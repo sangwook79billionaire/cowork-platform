@@ -15,7 +15,7 @@ import {
   SparklesIcon,
   PencilIcon
 } from '@heroicons/react/24/outline'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Bulletin } from '@/types/firebase'
 import { toast } from 'react-hot-toast';
@@ -153,11 +153,11 @@ export function IntegratedSidebar({
     }
 
     console.log('🔍 Firebase에서 게시판 데이터 가져오기 시작');
-    console.log('🔍 Firestore 쿼리 실행: bulletins 컬렉션, level ASC, order ASC');
+    console.log('🔍 Firestore 쿼리 실행: bulletins 컬렉션, level ASC, order ASC (색인 사용)');
     
     const unsubscribe = onSnapshot(
       query(
-        collection(db, 'bulletins'), 
+        collection(db, 'bulletins'),
         orderBy('level', 'asc'),
         orderBy('order', 'asc')
       ),
@@ -184,51 +184,13 @@ export function IntegratedSidebar({
           bulletinData.push(bulletin)
         })
         
-        // Firestore에 데이터가 없으면 임시 테스트 데이터 사용
+        // Firebase에서 이미 level ASC, order ASC로 정렬되어 있음
+        console.log('🔍 Firebase에서 정렬된 게시판 데이터:', bulletinData);
+        
+        // Firestore에 데이터가 없으면 빈 배열로 설정
         if (bulletinData.length === 0) {
-          console.log('🔍 Firestore에 게시판 데이터가 없음 - 임시 테스트 데이터 사용');
-          const tempData: Bulletin[] = [
-            {
-              id: 'temp-1',
-              title: '공지사항',
-              description: '중요한 공지사항을 확인하세요',
-              parentId: '',
-              level: 0,
-              order: 1,
-              isActive: true,
-              userId: 'system',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              children: []
-            },
-            {
-              id: 'temp-2',
-              title: '자유게시판',
-              description: '자유롭게 의견을 나누는 공간입니다',
-              parentId: '',
-              level: 0,
-              order: 2,
-              isActive: true,
-              userId: 'system',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              children: []
-            },
-            {
-              id: 'temp-3',
-              title: '질문과 답변',
-              description: '궁금한 점을 물어보고 답변을 받는 공간입니다',
-              parentId: '',
-              level: 0,
-              order: 3,
-              isActive: true,
-              userId: 'system',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              children: []
-            }
-          ];
-          setAllBulletins(tempData);
+          console.log('🔍 Firestore에 게시판 데이터가 없음 - 빈 게시판 목록 설정');
+          setAllBulletins([]);
           setLoading(false);
           return;
         }
@@ -245,50 +207,9 @@ export function IntegratedSidebar({
           stack: error.stack
         });
         
-        // 오류 발생 시에도 임시 테스트 데이터 사용
-        console.log('🔍 오류 발생으로 임시 테스트 데이터 사용');
-        const tempData: Bulletin[] = [
-          {
-            id: 'temp-1',
-            title: '공지사항',
-            description: '중요한 공지사항을 확인하세요',
-            parentId: '',
-            level: 0,
-            order: 1,
-            isActive: true,
-            userId: 'system',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            children: []
-          },
-          {
-            id: 'temp-2',
-            title: '자유게시판',
-            description: '자유롭게 의견을 나누는 공간입니다',
-            parentId: '',
-            level: 0,
-            order: 2,
-            isActive: true,
-            userId: 'system',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            children: []
-          },
-          {
-            id: 'temp-3',
-            title: '질문과 답변',
-            description: '궁금한 점을 물어보고 답변을 받는 공간입니다',
-            parentId: '',
-            level: 0,
-            order: 3,
-            isActive: true,
-            userId: 'system',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            children: []
-          }
-        ];
-        setAllBulletins(tempData);
+        // 오류 발생 시 빈 배열로 설정
+        console.log('🔍 오류 발생으로 빈 게시판 목록 설정');
+        setAllBulletins([]);
         setLoading(false);
       }
     )
@@ -298,13 +219,39 @@ export function IntegratedSidebar({
 
   // 게시판을 계층 구조로 정리하는 함수
   const buildBulletinTree = (bulletins: Bulletin[], parentId: string | null = null): Bulletin[] => {
-    return bulletins
-      .filter(bulletin => bulletin.parentId === parentId)
-      .sort((a, b) => a.order - b.order)
-      .map(bulletin => ({
-        ...bulletin,
-        children: buildBulletinTree(bulletins, bulletin.id)
-      }));
+    console.log('🔍 buildBulletinTree 호출:', {
+      bulletinsLength: bulletins.length,
+      parentId,
+      bulletins: bulletins.map(b => ({ id: b.id, title: b.title, parentId: b.parentId, level: b.level, order: b.order }))
+    });
+    
+    const filtered = bulletins.filter(bulletin => {
+      // parentId가 null이거나 빈 문자열이면 최상위 게시판
+      if (parentId === null) {
+        return !bulletin.parentId || bulletin.parentId.trim() === '';
+      }
+      // 특정 parentId를 가진 자식 게시판
+      return bulletin.parentId === parentId;
+    });
+    
+    console.log('🔍 필터링 결과:', {
+      parentId,
+      filteredLength: filtered.length,
+      filtered: filtered.map(b => ({ id: b.id, title: b.title, parentId: b.parentId }))
+    });
+    
+    const result = filtered.map(bulletin => ({
+      ...bulletin,
+      children: buildBulletinTree(bulletins, bulletin.id)
+    }));
+    
+    console.log('🔍 최종 결과:', {
+      parentId,
+      resultLength: result.length,
+      result: result.map(b => ({ id: b.id, title: b.title, childrenCount: b.children?.length || 0 }))
+    });
+    
+    return result;
   };
 
   // 계층 구조로 정리된 게시판 데이터

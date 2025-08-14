@@ -1275,6 +1275,7 @@ export function BulletinBoard({
         setEditingPostData({ ...editingPostData, content: editor.getHTML() })
       }
     },
+    immediatelyRender: false, // SSR hydration 오류 방지
   })
 
   // 에디터 툴바 버튼들

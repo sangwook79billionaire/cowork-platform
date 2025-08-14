@@ -135,6 +135,7 @@ export function IntegratedSidebar({
     console.log('🔍 게시판 데이터 로딩 useEffect 실행');
     console.log('  - isBulletinExpanded:', isBulletinExpanded);
     console.log('  - user:', !!user);
+    console.log('  - db 객체 존재:', !!db);
     
     if (!isBulletinExpanded) {
       console.log('🔍 게시판이 확장되지 않음 - 데이터 로딩 건너뜀');
@@ -146,7 +147,13 @@ export function IntegratedSidebar({
       return;
     }
 
+    if (!db) {
+      console.log('🔍 Firebase db 객체가 없음 - 데이터 로딩 건너뜀');
+      return;
+    }
+
     console.log('🔍 Firebase에서 게시판 데이터 가져오기 시작');
+    console.log('🔍 Firestore 쿼리 실행: bulletins 컬렉션, level ASC, order ASC');
     
     const unsubscribe = onSnapshot(
       query(
@@ -182,12 +189,17 @@ export function IntegratedSidebar({
       },
       (error) => {
         console.error('게시판 데이터 로드 오류:', error)
+        console.error('오류 상세 정보:', {
+          code: error.code,
+          message: error.message,
+          stack: error.stack
+        });
         setLoading(false)
       }
     )
 
     return () => unsubscribe()
-  }, [isBulletinExpanded, user])
+  }, [isBulletinExpanded, user, db])
 
   // 게시판을 계층 구조로 정리하는 함수
   const buildBulletinTree = (bulletins: Bulletin[], parentId: string | null = null): Bulletin[] => {

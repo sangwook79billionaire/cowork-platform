@@ -132,8 +132,22 @@ export function IntegratedSidebar({
 
   // Firebase에서 모든 게시판 데이터 가져오기
   useEffect(() => {
-    if (!isBulletinExpanded) return
+    console.log('🔍 게시판 데이터 로딩 useEffect 실행');
+    console.log('  - isBulletinExpanded:', isBulletinExpanded);
+    console.log('  - user:', !!user);
+    
+    if (!isBulletinExpanded) {
+      console.log('🔍 게시판이 확장되지 않음 - 데이터 로딩 건너뜀');
+      return;
+    }
 
+    if (!user) {
+      console.log('🔍 사용자가 로그인되지 않음 - 데이터 로딩 건너뜀');
+      return;
+    }
+
+    console.log('🔍 Firebase에서 게시판 데이터 가져오기 시작');
+    
     const unsubscribe = onSnapshot(
       query(
         collection(db, 'bulletins'), 
@@ -141,9 +155,11 @@ export function IntegratedSidebar({
         orderBy('order', 'asc')
       ),
       (snapshot) => {
+        console.log('🔍 Firestore 스냅샷 수신:', snapshot.size, '개 문서');
         const bulletinData: Bulletin[] = []
         snapshot.forEach((doc) => {
           const data = doc.data()
+          console.log('🔍 게시판 문서 데이터:', { id: doc.id, ...data });
           // Timestamp를 Date로 안전하게 변환
           const bulletin: Bulletin = {
             id: doc.id,
@@ -160,7 +176,7 @@ export function IntegratedSidebar({
           }
           bulletinData.push(bulletin)
         })
-        console.log('🔍 모든 게시판 데이터:', bulletinData);
+        console.log('🔍 처리된 게시판 데이터:', bulletinData);
         setAllBulletins(bulletinData)
         setLoading(false)
       },
@@ -171,7 +187,7 @@ export function IntegratedSidebar({
     )
 
     return () => unsubscribe()
-  }, [isBulletinExpanded])
+  }, [isBulletinExpanded, user])
 
   // 게시판을 계층 구조로 정리하는 함수
   const buildBulletinTree = (bulletins: Bulletin[], parentId: string | null = null): Bulletin[] => {
@@ -186,6 +202,9 @@ export function IntegratedSidebar({
 
   // 계층 구조로 정리된 게시판 데이터
   const bulletinTree = buildBulletinTree(allBulletins);
+  console.log('🔍 게시판 트리 빌드 결과:', bulletinTree);
+  console.log('  - 전체 게시판 수:', allBulletins.length);
+  console.log('  - 트리 구조:', bulletinTree.map(b => ({ id: b.id, title: b.title, children: b.children?.length || 0 })));
 
   // 드래그 앤 드롭 종료 시 처리
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -468,6 +487,11 @@ export function IntegratedSidebar({
               console.log(`🔍 메뉴 렌더링: ${feature.name} (${feature.id}) - 활성: ${isActive}`);
               
               if (feature.id === 'bulletin') {
+                console.log('🔍 게시판 메뉴 렌더링:', {
+                  isActive,
+                  isBulletinExpanded,
+                  bulletinTreeLength: bulletinTree.length
+                });
                 return (
                   <div key={feature.id} className="space-y-2">
                     <button

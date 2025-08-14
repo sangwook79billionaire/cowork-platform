@@ -90,6 +90,25 @@ interface BulletinBoardProps {
   onAddTopLevelBulletin?: () => void
 }
 
+// Timestamp를 Date로 안전하게 변환하는 함수
+const safeTimestampToDate = (timestamp: any): Date | null => {
+  if (!timestamp) return null;
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  if (typeof timestamp === 'string') {
+    try { return new Date(timestamp); } catch (error) { console.warn('Invalid date string:', timestamp); return null; }
+  }
+  if (typeof timestamp === 'number') {
+    try { return new Date(timestamp); } catch (error) { console.warn('Invalid timestamp number:', timestamp); return null; }
+  }
+  console.warn('Unknown timestamp format:', timestamp);
+  return null;
+}
+
 // Firebase 연결 상태 확인
 const isFirebaseConnected = typeof window !== 'undefined' && 
   process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
@@ -1084,8 +1103,8 @@ export function BulletinBoard({
                 order: data.order || 0,
                 isActive: data.isActive,
                 userId: data.userId || 'unknown',
-                createdAt: data.createdAt?.toDate() || new Date(),
-                updatedAt: data.updatedAt?.toDate() || new Date(),
+                createdAt: safeTimestampToDate(data.createdAt) || new Date(),
+                updatedAt: safeTimestampToDate(data.updatedAt) || new Date(),
               }
               bulletinData.push(bulletin)
             })
@@ -1147,8 +1166,8 @@ export function BulletinBoard({
                 viewCount: data.viewCount || 0,
                 likeCount: data.likeCount || 0,
                 tags: data.tags || [],
-                createdAt: data.createdAt?.toDate() || new Date(),
-                updatedAt: data.updatedAt?.toDate() || new Date(),
+                createdAt: safeTimestampToDate(data.createdAt) || new Date(),
+                updatedAt: safeTimestampToDate(data.updatedAt) || new Date(),
               }
               postData.push(post)
             })

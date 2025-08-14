@@ -108,13 +108,7 @@ export function Dashboard() {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-lg font-semibold text-gray-900">협업 플랫폼</h1>
-          <button
-            onClick={() => setShowQuickExecuteModal(true)}
-            className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 transition-colors"
-          >
-            <PlusIcon className="w-4 h-4" />
-            <span>즉시 실행</span>
-          </button>
+          {/* 즉시 실행 버튼은 네이트 뉴스 메뉴에서만 표시 */}
         </div>
       </div>
 

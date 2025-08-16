@@ -1454,7 +1454,7 @@ export function BulletinBoard({
                     modalRef.current.editBulletinForm.title = e.target.value
                     setModalKey(prev => prev + 1)
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black placeholder-gray-500"
                   placeholder="게시판 제목을 입력하세요"
                 />
               </div>
@@ -1468,7 +1468,7 @@ export function BulletinBoard({
                     modalRef.current.editBulletinForm.description = e.target.value
                     setModalKey(prev => prev + 1)
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black placeholder-gray-500"
                   placeholder="게시판 설명을 입력하세요"
                   rows={3}
                 />
@@ -1548,7 +1548,7 @@ export function BulletinBoard({
                   type="text"
                   value={createBulletinForm.title}
                   onChange={(e) => setCreateBulletinForm({ ...createBulletinForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black placeholder-gray-500"
                   placeholder="새 게시판 제목을 입력하세요"
                 />
               </div>
@@ -1559,7 +1559,7 @@ export function BulletinBoard({
                 <textarea
                   value={createBulletinForm.description}
                   onChange={(e) => setCreateBulletinForm({ ...createBulletinForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black placeholder-gray-500"
                   placeholder="게시판 설명을 입력하세요"
                   rows={3}
                 />
@@ -1612,7 +1612,7 @@ export function BulletinBoard({
                 type="text"
                 value={editingPostData.title || ''}
                 onChange={(e) => setEditingPostData({ ...editingPostData, title: e.target.value })}
-                className="text-2xl font-bold border-none outline-none bg-transparent"
+                className="text-2xl font-bold border-none outline-none bg-transparent text-black placeholder-gray-500"
                 placeholder="제목 없음"
               />
             </div>
@@ -1764,7 +1764,7 @@ export function BulletinBoard({
                 type="text"
                 value={newPost.title || ''}
                 onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                className="text-2xl font-bold border-none outline-none bg-transparent"
+                className="text-2xl font-bold border-none outline-none bg-transparent text-black placeholder-gray-500"
                 placeholder="제목 없음"
               />
             </div>

@@ -141,7 +141,7 @@ const BulletinEditModal: React.FC<BulletinEditModalProps> = ({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="새로운 게시판 이름을 입력하세요"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
               maxLength={50}
               disabled={isLoading}
             />

@@ -2209,8 +2209,15 @@ export function BulletinBoard({
         bulletin={modalRef.current.editingBulletin ? {
           id: modalRef.current.editingBulletin.id,
           title: modalRef.current.editingBulletin.title,
+          description: modalRef.current.editingBulletin.description || '',
+          parentId: modalRef.current.editingBulletin.parentId || '',
           level: modalRef.current.editingBulletin.level,
-          order: modalRef.current.editingBulletin.order
+          userId: modalRef.current.editingBulletin.userId || '',
+          createdAt: modalRef.current.editingBulletin.createdAt || new Date(),
+          updatedAt: modalRef.current.editingBulletin.updatedAt || new Date(),
+          isActive: modalRef.current.editingBulletin.isActive !== false,
+          order: modalRef.current.editingBulletin.order,
+          children: modalRef.current.editingBulletin.children || []
         } : null}
         onUpdate={() => {
           // 게시판 데이터 새로고침

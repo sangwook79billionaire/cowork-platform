@@ -57,7 +57,7 @@ export async function generateContentFromNews(
 - SEO: 한국어 슬러그, 메타타이틀(≤60자), 메타디스크립션(≤120자), 키워드 6~10개`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo", // 더 저렴한 모델로 변경
+    model: "gpt-4o-mini", // gpt-4o-mini 모델로 변경
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }

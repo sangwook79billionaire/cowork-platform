@@ -700,7 +700,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               placeholder="키워드를 입력하세요 (예: 삼성전자, AI OR 인공지능, '전기차 시장')"
-              className="w-full px-4 py-3 text-sm lg:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 text-sm lg:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
               onKeyPress={(e) => e.key === 'Enter' && handleNewsCollection()}
             />
             <button
@@ -880,7 +880,7 @@ export default function NewsSearch({ onArticleSelect }: NewsSearchProps) {
                   value={filterKeyword}
                   onChange={(e) => setFilterKeyword(e.target.value)}
                   placeholder="키워드로 필터링..."
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-auto"
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-auto text-black placeholder-gray-500"
                   onKeyPress={(e) => e.key === 'Enter' && handleFilterByKeyword()}
                 />
                 <div className="flex gap-1">

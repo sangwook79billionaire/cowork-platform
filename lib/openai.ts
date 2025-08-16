@@ -34,6 +34,7 @@ export async function generateContentFromNews(
   keyword: string, 
   newsContent?: string
 ): Promise<ContentOutput> {
+  try {
   const systemPrompt = `너는 한국어 카피라이터이자 SEO 에디터입니다. 
 자연스럽고 인간적인 톤을 유지하고, 숫자는 발음하기 쉽게 표기하세요.
 
@@ -56,7 +57,7 @@ export async function generateContentFromNews(
 - SEO: 한국어 슬러그, 메타타이틀(≤60자), 메타디스크립션(≤120자), 키워드 6~10개`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-3.5-turbo", // 더 저렴한 모델로 변경
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
@@ -66,16 +67,31 @@ export async function generateContentFromNews(
     max_tokens: 4000
   });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("OpenAI API 응답이 비어있습니다.");
-  }
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("OpenAI API 응답이 비어있습니다.");
+    }
 
-  try {
-    return JSON.parse(content) as ContentOutput;
-  } catch (error) {
-    console.error("JSON 파싱 오류:", error);
-    throw new Error("OpenAI API 응답을 파싱할 수 없습니다.");
+    try {
+      return JSON.parse(content) as ContentOutput;
+    } catch (error) {
+      console.error("JSON 파싱 오류:", error);
+      throw new Error("OpenAI API 응답을 파싱할 수 없습니다.");
+    }
+  } catch (error: any) {
+    console.error("OpenAI API 오류:", error);
+    
+    // 할당량 초과 오류 처리
+    if (error.status === 429 || error.code === 'insufficient_quota') {
+      throw new Error("OpenAI API 할당량이 초과되었습니다. 계정 상태를 확인해주세요.");
+    }
+    
+    // 기타 API 오류
+    if (error.status) {
+      throw new Error(`OpenAI API 오류 (${error.status}): ${error.message || '알 수 없는 오류'}`);
+    }
+    
+    throw new Error(`콘텐츠 생성 중 오류가 발생했습니다: ${error.message}`);
   }
 }
 

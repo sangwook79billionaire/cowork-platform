@@ -36,6 +36,7 @@ export default function NateNews({ onQuickExecute }: NateNewsProps) {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [savingArticles, setSavingArticles] = useState<Set<string>>(new Set());
+  const [savedArticles, setSavedArticles] = useState<Set<string>>(new Set());
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(300000); // 5분
   const [currentDate, setCurrentDate] = useState<string>('');
@@ -43,6 +44,11 @@ export default function NateNews({ onQuickExecute }: NateNewsProps) {
   // 컴포넌트 마운트 시 자동으로 뉴스 가져오기
   useEffect(() => {
     fetchNateRanking();
+    
+    // 저장된 기사들 상태 복원
+    const savedArticles = JSON.parse(localStorage.getItem('savedNateArticles') || '[]');
+    const savedRanks = new Set<string>(savedArticles.map((article: any) => article.rank.toString()));
+    setSavedArticles(savedRanks);
   }, []);
 
   // 자동 새로고침 설정
@@ -98,9 +104,20 @@ export default function NateNews({ onQuickExecute }: NateNewsProps) {
     try {
       // 로컬 스토리지에 저장
       const savedArticles = JSON.parse(localStorage.getItem('savedNateArticles') || '[]');
-      const newSavedArticles = [...savedArticles, { ...article, savedAt: new Date().toISOString() }];
-      localStorage.setItem('savedNateArticles', JSON.stringify(newSavedArticles));
-      toast.success('기사가 로컬에 저장되었습니다.');
+      const isAlreadySaved = savedArticles.some((saved: any) => saved.link === article.link);
+      
+      if (isAlreadySaved) {
+        toast.success('이미 저장된 기사입니다.');
+        return;
+      }
+
+      savedArticles.push(article);
+      localStorage.setItem('savedNateArticles', JSON.stringify(savedArticles));
+      
+      // 저장된 기사 상태 업데이트
+      setSavedArticles(prev => new Set(prev).add(article.rank.toString()));
+      
+      toast.success('기사가 성공적으로 저장되었습니다!');
     } catch (error) {
       toast.error('기사 저장에 실패했습니다.');
     } finally {
@@ -378,7 +395,7 @@ ${aiResult.content.blogPost}`,
                       key={article.rank}
                       className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:shadow-md transition-all"
                     >
-                      <div className="flex items-start space-x-4">
+                      <div className="flex items-start space-x-6">
                         {/* 순위 */}
                         <div className="flex-shrink-0">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
@@ -422,38 +439,54 @@ ${aiResult.content.blogPost}`,
                         </div>
 
                         {/* 액션 버튼들 */}
-                        <div className="flex flex-col space-y-2">
+                        <div className="flex flex-col space-y-3 flex-shrink-0 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="text-xs font-medium text-gray-600 text-center mb-2 border-b border-gray-200 pb-1">
+                            액션
+                          </div>
+                          
+                          {/* 기사 보기 버튼 */}
                           <button
                             onClick={() => handleOpenArticle(article.link)}
-                            className="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            className="flex items-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 rounded-lg transition-all duration-200 border border-blue-200 hover:border-blue-300 hover:shadow-sm min-w-[120px] group"
                             title="기사 보기"
                           >
-                            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                            <ArrowTopRightOnSquareIcon className="h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-medium">기사 보기</span>
                           </button>
                           
+                          {/* 기사 저장 버튼 */}
                           <button
                             onClick={() => handleSaveArticle(article)}
                             disabled={savingArticles.has(article.rank.toString())}
-                            className="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                            title="기사 저장"
+                            className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200 border hover:shadow-sm min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed group ${
+                              savedArticles.has(article.rank.toString())
+                                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200'
+                                : 'bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200 hover:border-green-300'
+                            }`}
+                            title={savedArticles.has(article.rank.toString()) ? '이미 저장됨' : '기사 저장'}
                           >
-                            <BookmarkIcon className="h-5 w-5" />
+                            <BookmarkIcon className={`h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform ${
+                              savedArticles.has(article.rank.toString()) ? 'fill-current' : ''
+                            }`} />
+                            <span className="text-sm font-medium">
+                              {savingArticles.has(article.rank.toString()) 
+                                ? '저장 중...' 
+                                : savedArticles.has(article.rank.toString()) 
+                                  ? '저장됨' 
+                                  : '저장'
+                              }
+                            </span>
                           </button>
 
+                          {/* 숏폼 스크립트 제작 버튼 */}
                           <button
                             onClick={() => handleCreateShorts(article)}
-                            className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="flex items-center gap-2 px-4 py-3 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 rounded-lg transition-all duration-200 border border-purple-200 hover:border-purple-300 hover:shadow-sm min-w-[120px] group"
                             title="숏폼 스크립트 제작"
                           >
-                            <PlayIcon className="h-5 w-5" />
+                            <PlayIcon className="h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-medium">스크립트</span>
                           </button>
-                          
-                          {/* 버튼 설명 텍스트 */}
-                          <div className="text-xs text-gray-500 text-center mt-1">
-                            <div>기사 보기</div>
-                            <div>저장</div>
-                            <div>스크립트</div>
-                          </div>
                         </div>
                       </div>
                     </div>

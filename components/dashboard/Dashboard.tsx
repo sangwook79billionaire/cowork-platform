@@ -121,7 +121,6 @@ export function Dashboard() {
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           onBulletinSelect={handleBulletinSelect}
-          defaultBulletinExpanded={true}
         />
 
         {/* 우측 구역: 선택된 콘텐츠 */}

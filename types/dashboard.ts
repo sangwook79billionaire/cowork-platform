@@ -8,6 +8,7 @@ export type ActiveFeature =
   | 'nate-news' 
   | 'shorts-scripts' 
   | 'gemini-ai-tester' 
+  | 'ai-content'
   | 'todo-list' 
   | 'calendar' 
   | 'auto-crawl-scheduler';

@@ -132,44 +132,32 @@ export function BulletinDropdown({
             }`}
             style={{ paddingLeft: `${level * 16 + 12}px` }}
           >
-            {/* 확장/축소 버튼 */}
-            <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-              {hasChildren ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleBulletinExpansion(bulletin.id)
-                  }}
-                  className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-                >
-                  {isExpanded ? (
-                    <ChevronDownIcon className="w-3 h-3" />
-                  ) : (
-                    <ChevronRightIcon className="w-3 h-3" />
-                  )}
-                </button>
-              ) : (
-                <div className="w-3 h-3"></div>
-              )}
-            </div>
+            {/* 확장/축소 버튼 - 하위 게시판이 있을 때만 표시 */}
+            {hasChildren ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleBulletinExpansion(bulletin.id)
+                }}
+                className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+              >
+                {isExpanded ? (
+                  <ChevronDownIcon className="w-3 h-3" />
+                ) : (
+                  <ChevronRightIcon className="w-3 h-3" />
+                )}
+              </button>
+            ) : (
+              <div className="w-3 h-3 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+              </div>
+            )}
 
-            {/* 게시판 아이콘 */}
+            {/* 레벨 표시 */}
             <div className="flex-shrink-0">
-              {level === 0 ? (
-                <ChatBubbleLeftRightIcon className="w-4 h-4 text-blue-600" />
-              ) : level === 1 ? (
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-2.5 h-2.5 bg-blue-400 rounded-sm"></div>
-                </div>
-              ) : level === 2 ? (
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
-                </div>
-              ) : (
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-sm"></div>
-                </div>
-              )}
+              <span className="text-xs text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
+                lv.{bulletin.level + 1}
+              </span>
             </div>
 
             {/* 게시판 제목 */}

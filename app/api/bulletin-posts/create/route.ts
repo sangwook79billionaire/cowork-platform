@@ -1,58 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
   try {
-    const { bulletinId, title, content, userId, authorName } = await request.json();
-
-    if (!bulletinId || !title || !content) {
-      return NextResponse.json(
-        { error: '게시글 정보가 필요합니다.' },
-        { status: 400 }
-      );
+    const { title, content, bulletinId, source, link, type = 'news' } = await request.json();
+    
+    if (!title || !content || !bulletinId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: '제목, 내용, 게시판 ID가 필요합니다.' 
+      }, { status: 400 });
     }
 
-    if (!db) {
-      return NextResponse.json(
-        { error: '데이터베이스 연결 오류입니다.' },
-        { status: 500 }
-      );
-    }
+    console.log('🔍 게시판 포스트 생성 시작:', { title, bulletinId, type });
 
-    // 게시글 저장
+    // Firestore에 포스트 추가
     const postData = {
+      title: title.trim(),
+      content: content.trim(),
       bulletinId,
-      title,
-      content,
-      userId: userId || 'temp-user-id',
-      authorName: authorName || '익명',
-      isPinned: false,
-      isLocked: false,
-      viewCount: 0,
-      likeCount: 0,
-      tags: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      source: source || '네이트 뉴스',
+      link: link || '',
+      type, // 'news', 'shorts-script' 등
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isActive: true,
+      order: 0
     };
 
-    const docRef = await db.collection('bulletinPosts').add(postData);
+    const docRef = await addDoc(collection(db, 'bulletinPosts'), postData);
+
+    console.log('✅ 게시판 포스트 생성 완료:', docRef.id);
 
     return NextResponse.json({
       success: true,
-      data: {
-        postId: docRef.id,
-        message: '게시글이 성공적으로 저장되었습니다.'
-      }
+      postId: docRef.id,
+      message: '포스트가 성공적으로 생성되었습니다.'
     });
 
   } catch (error) {
-    console.error('게시글 저장 API 오류:', error);
-    return NextResponse.json(
-      { 
-        error: '게시글 저장 중 오류가 발생했습니다.',
-        details: error instanceof Error ? error.message : '알 수 없는 오류'
-      },
-      { status: 500 }
-    );
+    console.error('❌ 게시판 포스트 생성 오류:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: '포스트 생성에 실패했습니다.',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 } 

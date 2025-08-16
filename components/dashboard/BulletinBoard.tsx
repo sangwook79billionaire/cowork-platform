@@ -75,6 +75,7 @@ import {
   LinkIcon,
   ArrowsUpDownIcon,
 } from '@heroicons/react/24/outline'
+import BulletinEditModal from './BulletinEditModal'
 
 interface BulletinBoardProps {
   onSelectPost: (postId: string) => void
@@ -194,6 +195,11 @@ function SortableBulletinItem({
               </div>
             </div>
           </div>
+        )}
+        
+        {/* 드래그 중일 때 시각적 피드백 */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-blue-100 bg-opacity-30 border-2 border-blue-300 rounded-lg pointer-events-none z-5"></div>
         )}
       <div
         id={bulletin.id}
@@ -1062,9 +1068,9 @@ export function BulletinBoard({
                     level={level}
                   />
                   
-                  {/* 하위 게시판들 - 계층 구조로 표시 */}
+                  {/* 하위 게시판들 - 드롭다운 형식으로 표시 */}
                   {hasChildren && (
-                    <div className={`ml-4 border-l border-gray-200 ${isExpanded ? 'block' : 'hidden'}`}>
+                    <div className={`ml-4 border-l border-gray-200 transition-all duration-200 ${isExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                       {renderBulletinTree(childBulletins, allBulletins, level + 1)}
                     </div>
                   )}
@@ -2195,6 +2201,22 @@ export function BulletinBoard({
           )}
         </div>
       )}
+      
+      {/* 게시판 수정 모달 */}
+      <BulletinEditModal
+        isOpen={modalRef.current.showEditBulletin}
+        onClose={() => setModalState(false, null, { title: '', description: '' })}
+        bulletin={modalRef.current.editingBulletin ? {
+          id: modalRef.current.editingBulletin.id,
+          title: modalRef.current.editingBulletin.title,
+          level: modalRef.current.editingBulletin.level,
+          order: modalRef.current.editingBulletin.order
+        } : null}
+        onUpdate={() => {
+          // 게시판 데이터 새로고침
+          // useEffect가 자동으로 데이터를 새로고침함
+        }}
+      />
     </div>
   )
 } 

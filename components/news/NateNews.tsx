@@ -118,67 +118,169 @@ export default function NateNews({ onQuickExecute }: NateNewsProps) {
 
   const handleCreateShorts = async (article: NateNewsArticle) => {
     try {
-      console.log('🔍 숏폼 제작 시작:', article.title);
+      console.log('🔍 숏폼 스크립트 제작 시작:', article.title);
       
-      // 숏폼 제작 API 호출
-      const response = await fetch('/api/gemini/create-shorts-script', {
+      // 1단계: 기사 원문 내용 추출
+      toast.loading('기사 내용을 가져오는 중...');
+      
+      const extractResponse = await fetch('/api/news/extract-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: article.link }),
+      });
+
+      const extractResult = await extractResponse.json();
+      
+      if (!extractResult.success) {
+        toast.dismiss();
+        toast.error('기사 내용을 가져오는데 실패했습니다.');
+        return;
+      }
+
+      // 2단계: AI를 사용하여 숏폼 스크립트 생성
+      toast.loading('AI가 숏폼 스크립트를 생성하는 중...');
+      
+      const aiResponse = await fetch('/api/ai/generate-content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: article.title,
-          content: article.summary || article.title,
-          source: article.source,
-          link: article.link
+          keyword: article.title,
+          newsContent: extractResult.content
         }),
+      });
+
+      if (!aiResponse.ok) {
+        toast.dismiss();
+        const errorText = await aiResponse.text();
+        console.error('AI API 응답 오류:', aiResponse.status, errorText);
+        
+        if (aiResponse.status === 500) {
+          toast.error('AI 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        } else {
+          toast.error(`AI API 오류: ${aiResponse.status}`);
+        }
+        return;
+      }
+
+      let aiResult;
+      try {
+        aiResult = await aiResponse.json();
+      } catch (error) {
+        toast.dismiss();
+        console.error('AI API JSON 파싱 오류:', error);
+        toast.error('AI 응답을 처리하는 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      if (!aiResult.success) {
+        toast.dismiss();
+        toast.error(`AI 스크립트 생성에 실패했습니다: ${aiResult.error || '알 수 없는 오류'}`);
+        return;
+      }
+
+      // 3단계: 해당 섹션의 게시판 찾기
+      const targetBulletinId = await findTargetBulletin(article.section);
+      
+      if (!targetBulletinId) {
+        toast.dismiss();
+        toast.error('해당 섹션의 게시판을 찾을 수 없습니다.');
+        return;
+      }
+
+      // 4단계: 게시판에 포스트 저장
+      toast.loading('게시판에 저장하는 중...');
+      
+      const postData = {
+        title: `[숏폼 스크립트] ${article.title}`,
+        content: `## 원문 기사
+**제목**: ${article.title}
+**출처**: ${article.source}
+**링크**: ${article.link}
+**섹션**: ${article.section}
+
+## AI 생성 숏폼 스크립트
+${aiResult.content.shortsScript}
+
+## 원문 요약
+${aiResult.content.blogPost}`,
+        bulletinId: targetBulletinId,
+        source: '네이트 뉴스',
+        link: article.link,
+        type: 'shorts-script'
+      };
+
+      const saveResponse = await fetch('/api/bulletin-posts/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData),
+      });
+
+      const saveResult = await saveResponse.json();
+      
+      if (saveResult.success) {
+        toast.dismiss();
+        toast.success('숏폼 스크립트가 게시판에 저장되었습니다!');
+        console.log('✅ 숏폼 스크립트 저장 완료:', saveResult);
+      } else {
+        toast.dismiss();
+        toast.error('게시판 저장에 실패했습니다.');
+        console.error('❌ 게시판 저장 실패:', saveResult);
+      }
+      
+    } catch (error) {
+      toast.dismiss();
+      console.error('❌ 숏폼 제작 오류:', error);
+      toast.error('숏폼 제작 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 해당 섹션의 게시판 ID 찾기
+  const findTargetBulletin = async (section: string): Promise<string | null> => {
+    try {
+      // 섹션별 게시판 매핑
+      const sectionMapping: { [key: string]: string[] } = {
+        '시사': ['시사뉴스', '시사', '정치', '사회'],
+        '정치': ['정치뉴스', '정치', '시사'],
+        '경제': ['경제뉴스', '경제', '금융'],
+        '사회': ['사회뉴스', '사회', '시사'],
+        '세계': ['세계뉴스', '세계', '국제'],
+        'IT/과학': ['IT뉴스', '과학뉴스', 'IT', '과학'],
+        '연예': ['연예뉴스', '연예', '문화'],
+        '스포츠': ['스포츠뉴스', '스포츠']
+      };
+
+      const targetKeywords = sectionMapping[section] || [section];
+      
+      // Firebase에서 게시판 검색
+      const response = await fetch('/api/bulletins/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keywords: targetKeywords }),
       });
 
       const result = await response.json();
       
-      if (result.success) {
-        toast.success('숏폼 스크립트가 생성되었습니다!');
-        console.log('✅ 숏폼 스크립트 생성 성공:', result);
+      if (result.success && result.bulletins.length > 0) {
+        // 가장 적합한 게시판 반환 (제목에 섹션명이 포함된 것 우선)
+        const bestMatch = result.bulletins.find((b: any) => 
+          targetKeywords.some(keyword => b.title.includes(keyword))
+        );
         
-        // 생성된 스크립트를 새 창에서 열기
-        if (result.script) {
-          const newWindow = window.open('', '_blank');
-          if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head>
-                  <title>숏폼 스크립트 - ${article.title}</title>
-                  <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
-                    .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-                    .script { background: #fff; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; }
-                    .title { color: #495057; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-                    .source { color: #6c757d; font-size: 14px; margin-bottom: 15px; }
-                    .content { white-space: pre-wrap; }
-                  </style>
-                </head>
-                <body>
-                  <div class="header">
-                    <div class="title">${article.title}</div>
-                    <div class="source">출처: ${article.source || '네이트 뉴스'}</div>
-                  </div>
-                  <div class="script">
-                    <h3>숏폼 스크립트:</h3>
-                    <div class="content">${result.script}</div>
-                  </div>
-                </body>
-              </html>
-            `);
-            newWindow.document.close();
-          }
-        }
-      } else {
-        toast.error('숏폼 스크립트 생성에 실패했습니다.');
-        console.error('❌ 숏폼 스크립트 생성 실패:', result);
+        return bestMatch ? bestMatch.id : result.bulletins[0].id;
       }
+      
+      return null;
     } catch (error) {
-      console.error('❌ 숏폼 제작 오류:', error);
-      toast.error('숏폼 제작 중 오류가 발생했습니다.');
+      console.error('게시판 검색 오류:', error);
+      return null;
     }
   };
 
@@ -341,10 +443,17 @@ export default function NateNews({ onQuickExecute }: NateNewsProps) {
                           <button
                             onClick={() => handleCreateShorts(article)}
                             className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="숏폼 제작"
+                            title="숏폼 스크립트 제작"
                           >
-                            <ChartBarIcon className="h-5 w-5" />
+                            <PlayIcon className="h-5 w-5" />
                           </button>
+                          
+                          {/* 버튼 설명 텍스트 */}
+                          <div className="text-xs text-gray-500 text-center mt-1">
+                            <div>기사 보기</div>
+                            <div>저장</div>
+                            <div>스크립트</div>
+                          </div>
                         </div>
                       </div>
                     </div>

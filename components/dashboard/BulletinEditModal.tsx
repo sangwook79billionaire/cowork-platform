@@ -6,16 +6,15 @@ import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'react-hot-toast';
 
+import { Bulletin } from '@/types/firebase';
+
 interface BulletinEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  bulletin: {
-    id: string;
-    title: string;
-    level: number;
-    order: number;
-  } | null;
+  bulletin: Bulletin | null;
   onUpdate: () => void;
+  parentId?: string | null; // 새 게시판 생성 시 부모 ID
+  isCreate?: boolean; // 새 게시판 생성 모드인지 여부
 }
 
 const BulletinEditModal: React.FC<BulletinEditModalProps> = ({ 
@@ -65,8 +64,8 @@ const BulletinEditModal: React.FC<BulletinEditModalProps> = ({
       // Firestore에서 게시판 정보 업데이트
       const bulletinRef = doc(db, 'bulletins', bulletin.id);
       await updateDoc(bulletinRef, {
-        name: newName.trim(),
-        updatedAt: new Date().toISOString()
+        title: newName.trim(),
+        updatedAt: new Date()
       });
 
       toast.success('게시판 이름이 성공적으로 수정되었습니다.');

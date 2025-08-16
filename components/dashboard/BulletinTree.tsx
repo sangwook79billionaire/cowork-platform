@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, orderBy, getDocs, updateDoc, doc } from 'firebase/firestore'
+import { collection, query, orderBy, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Bulletin } from '@/types/firebase'
@@ -109,22 +109,24 @@ function SortableBulletinItem({
               여기에 드롭
             </div>
             <div className="text-blue-600 text-xs text-center">
-              {isDroppableOver && (
-                <>
-                  <div>• 상단: 앞으로 이동</div>
-                  <div>• 중간: 하위로 이동</div>
-                  <div>• 하단: 뒤로 이동</div>
-                </>
-              )}
+              <div>• 상단: 앞으로 이동</div>
+              <div>• 중간: 하위로 이동</div>
+              <div>• 하단: 뒤로 이동</div>
             </div>
           </div>
         </div>
       )}
+      
+      {/* 드래그 중일 때 시각적 피드백 */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-blue-100 bg-opacity-30 border-2 border-blue-300 rounded-lg pointer-events-none z-5"></div>
+      )}
+      
       <div
         id={bulletin.id}
         ref={setNodeRef}
         onClick={onSelect}
-        className={`flex items-center space-x-2 px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-md transition-colors ${
+        className={`flex items-center space-x-2 px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-md transition-colors relative ${
           isSelected ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'text-gray-700'
         } ${isOver ? 'bg-blue-50 border-2 border-blue-300' : ''}`}
         style={{ paddingLeft: `${level * 16 + 12}px` }}
@@ -143,45 +145,33 @@ function SortableBulletinItem({
           </div>
         </div>
 
-        {/* 확장/축소 버튼 */}
-        <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-          {hasChildren ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleExpansion()
-              }}
-              className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-              title={isExpanded ? "게시판 접기" : "게시판 펼치기"}
-            >
-              {isExpanded ? (
-                <ChevronDownIcon className="w-3 h-3" />
-              ) : (
-                <ChevronRightIcon className="w-3 h-3" />
-              )}
-            </button>
-          ) : (
-            <div className="w-3 h-3"></div>
-          )}
-        </div>
+        {/* 확장/축소 버튼 - 하위 게시판이 있을 때만 표시 */}
+        {hasChildren ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleExpansion()
+            }}
+            className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+            title={isExpanded ? "게시판 접기" : "게시판 펼치기"}
+          >
+            {isExpanded ? (
+              <ChevronDownIcon className="w-3 h-3" />
+            ) : (
+              <ChevronRightIcon className="w-3 h-3" />
+            )}
+          </button>
+        ) : (
+          <div className="w-3 h-3 flex items-center justify-center">
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+          </div>
+        )}
 
-        {/* 게시판 아이콘 */}
+        {/* 레벨 표시 */}
         <div className="flex-shrink-0">
-          {level === 0 ? (
-            <ChatBubbleLeftRightIcon className="w-4 h-4 text-blue-600" />
-          ) : level === 1 ? (
-            <div className="w-4 h-4 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 bg-blue-400 rounded-sm"></div>
-            </div>
-          ) : level === 2 ? (
-            <div className="w-4 h-4 flex items-center justify-center">
-              <div className="w-2 h-2 bg-blue-300 rounded-sm"></div>
-            </div>
-          ) : (
-            <div className="w-4 h-4 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-gray-400 rounded-sm"></div>
-            </div>
-          )}
+                        <span className="text-xs text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
+                lv.{bulletin.level + 1}
+              </span>
         </div>
 
         {/* 게시판 제목 */}
@@ -258,36 +248,46 @@ export function BulletinTree({
   )
 
   // 게시판 데이터 가져오기
-  const fetchBulletins = async () => {
+  const fetchBulletins = () => {
     try {
       const bulletinsRef = collection(db, 'bulletins')
       const q = query(bulletinsRef, orderBy('level', 'asc'), orderBy('order', 'asc'))
-      const querySnapshot = await getDocs(q)
       
-      const fetchedBulletins: Bulletin[] = []
-      querySnapshot.forEach((doc) => {
-        const data = doc.data()
-        fetchedBulletins.push({
-          id: doc.id,
-          title: data.title || '',
-          description: data.description || '',
-          parentId: data.parentId || '',
-          level: data.level || 0,
-          userId: data.userId || '',
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          isActive: data.isActive !== false,
-          order: data.order || 0,
+      // 실시간 데이터 구독
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const fetchedBulletins: Bulletin[] = []
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          fetchedBulletins.push({
+            id: doc.id,
+            title: data.title || '',
+            description: data.description || '',
+            parentId: data.parentId || '',
+            level: data.level || 0,
+            userId: data.userId || '',
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate() || new Date(),
+            isActive: data.isActive !== false,
+            order: data.order || 0,
+          })
         })
+        
+        // 계층 구조에 따라 정렬
+        const sortedBulletins = sortBulletinsByHierarchy(fetchedBulletins)
+        setBulletins(sortedBulletins)
+        setLoading(false)
+      }, (error) => {
+        console.error('게시판 데이터 실시간 구독 오류:', error)
+        setLoading(false)
       })
       
-      // 계층 구조에 따라 정렬
-      const sortedBulletins = sortBulletinsByHierarchy(fetchedBulletins)
-      setBulletins(sortedBulletins)
+      // 구독 해제 함수 반환
+      return unsubscribe
     } catch (error) {
       console.error('게시판 데이터 가져오기 오류:', error)
-    } finally {
       setLoading(false)
+      // 에러 발생 시 빈 함수 반환
+      return () => {}
     }
   }
 
@@ -318,8 +318,28 @@ export function BulletinTree({
   }
 
   useEffect(() => {
-    fetchBulletins()
+    const unsubscribe = fetchBulletins()
+    
+    // cleanup 함수 반환
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe()
+      }
+    }
   }, [])
+
+  // 최상위 게시판만 자동으로 확장 (하위 게시판은 접힌 상태)
+  useEffect(() => {
+    if (bulletins.length > 0) {
+      const topLevelBulletins = bulletins.filter(b => !b.parentId || b.parentId.trim() === '');
+      const newExpanded = new Set<string>();
+      // 최상위 게시판만 확장
+      topLevelBulletins.forEach(bulletin => {
+        newExpanded.add(bulletin.id);
+      });
+      onExpandedBulletinsChange(newExpanded);
+    }
+  }, [bulletins, onExpandedBulletinsChange]);
 
   // 하위 게시판 가져오기
   const getChildBulletins = (parentId: string) => {
@@ -513,7 +533,7 @@ export function BulletinTree({
           toast.success(message)
           
           // 게시판 데이터 새로고침
-          fetchBulletins()
+          // fetchBulletins() // onSnapshot으로 인해 불필요
         } catch (error) {
           console.error('Error updating bulletin position:', error)
           toast.error('게시판 위치 변경에 실패했습니다.')

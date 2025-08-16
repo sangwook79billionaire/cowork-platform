@@ -12,6 +12,7 @@ import SavedArticles from '@/components/news/SavedArticles'
 import NateNews from '@/components/news/NateNews'
 import ShortsScriptManager from '@/components/news/ShortsScriptManager'
 import GeminiAITester from './GeminiAITester'
+import { NewsContentPipeline } from '@/components/news/NewsContentPipeline'
 import QuickExecuteModal from './QuickExecuteModal'
 import AutoCrawlScheduler from './AutoCrawlScheduler'
 import { Bars3Icon, XMarkIcon, ArrowRightOnRectangleIcon, PlusIcon } from '@heroicons/react/24/outline'
@@ -186,6 +187,14 @@ export function Dashboard() {
             <div className="flex-1 overflow-hidden">
               <div className="h-full overflow-y-auto p-4">
                 <GeminiAITester />
+              </div>
+            </div>
+          )}
+
+          {activeFeature === 'ai-content' && (
+            <div className="flex-1 overflow-hidden">
+              <div className="h-full overflow-y-auto p-4">
+                <NewsContentPipeline />
               </div>
             </div>
           )}
